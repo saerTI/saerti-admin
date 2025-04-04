@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
@@ -19,7 +20,9 @@ export default defineConfig({
       '/odoo': {
         target: 'http://localhost:8069',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/odoo/, '')
+        rewrite: (path) => path.replace(/^\/odoo/, ''),
+        secure: false,
+        ws: true
       }
     }
   }

@@ -17,7 +17,7 @@ export default function OdooInitializer({ children }: { children: React.ReactNod
         console.log('Using baseUrl:', odooAPI.getBaseUrl());
         
         // First check if server is accessible
-        console.log('Checking connection...');
+        console.log('Checking connection to CORS endpoint...');
         const isConnected = await odooAPI.checkConnection();
         console.log('Connection check result:', isConnected);
         

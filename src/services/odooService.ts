@@ -1,13 +1,23 @@
 // src/services/odooService.ts
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
-// Default configuration baseUrl to work with proxy
+// Default configuration baseUrl
 const odooConfig = {
   baseUrl: import.meta.env.VITE_ODOO_URL || '/odoo',
   db: import.meta.env.VITE_ODOO_DB || 'postgres',
   apiTimeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10),
   debug: import.meta.env.VITE_DEBUG === 'true',
 };
+
+// Create axios instance with proper configuration
+const odooAxios = axios.create({
+  baseURL: odooConfig.baseUrl,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: odooConfig.apiTimeout
+});
 
 // Types
 interface OdooCredentials {
@@ -84,7 +94,8 @@ class OdooAPI {
   // Authentication
   async authenticate(username: string, password: string): Promise<OdooSession> {
     try {
-      const response = await axios.post(`${this.baseUrl}/jsonrpc`, {
+      // Use the CORS-enabled endpoint for authentication
+      const response = await odooAxios.post(`/jsonrpc-cors`, {
         jsonrpc: '2.0',
         method: 'call',
         params: {
@@ -93,61 +104,113 @@ class OdooAPI {
           args: [this.db, username, password, {}],
         },
         id: new Date().getTime(),
-      }, {
-        withCredentials: true
       });
-  
+
       if (response.data.error) {
         throw new Error(response.data.error.message || 'Authentication failed');
       }
-  
+
       const uid = response.data.result;
       if (!uid) {
-        throw new Error('Authentication failed');
+        throw new Error('Authentication failed: Invalid credentials');
       }
-  
+
+      console.log('Authentication successful, uid:', uid);
       this.uid = uid;
-      this.sessionId = `session_id=${response.headers['set-cookie']?.join(';').match(/session_id=([^;]+)/)?.[1] || ''}`;
-  
-      // Get company_id from user
-      const userInfo = await this.callMethod('res.users', 'read', [[uid], ['company_id']]);
-      const companyId = userInfo[0].company_id[0];
-      this.companyId = companyId;
-  
-      return {
-        uid,
-        companyId,
-        sessionId: this.sessionId,
-        context: {},
-      };
+      
+      // Save password temporarily for subsequent requests (don't store permanently)
+      const tempPassword = password;
+      
+      // Get company_id from user - use the password in this request
+      try {
+        const userInfo = await this.callMethod('res.users', 'read', [[uid], ['company_id']], 
+          { password: tempPassword }); // Pass password in kwargs
+        
+        const companyId = userInfo[0].company_id[0];
+        this.companyId = companyId;
+        
+        console.log('Got company ID:', companyId);
+      
+        // Extract session ID from cookies if available
+        const sessionId = `session_id=${response.headers['set-cookie']?.join(';').match(/session_id=([^;]+)/)?.[1] || ''}`;
+        this.sessionId = sessionId;
+
+        // Return session object
+        return {
+          uid,
+          companyId,
+          sessionId: this.sessionId,
+          context: {},
+        };
+      } catch (error) {
+        console.error('Failed to get user info after authentication:', error);
+        throw new Error('Authentication succeeded but failed to get user info');
+      }
     } catch (error) {
       console.error('Odoo authentication error:', error);
-      throw new Error('Authentication failed');
+      throw error;
     }
   }
 
   async checkConnection(): Promise<boolean> {
     try {
-      const response = await axios.post(
-        `${this.baseUrl}/jsonrpc`,
-        {
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            service: 'common',
-            method: 'version',
-          },
-          id: new Date().getTime(),
+      const url = `${this.baseUrl}/jsonrpc-cors`;
+      console.log('Checking connection to:', url);
+      
+      // Add request debugging
+      const requestData = {
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          service: 'common',
+          method: 'version',
         },
-        { 
-          timeout: odooConfig.apiTimeout,
-          withCredentials: true  // Add this
+        id: new Date().getTime(),
+      };
+      console.log('Request data:', requestData);
+      
+      const response = await odooAxios.post(
+        `/jsonrpc-cors`,
+        requestData,
+        {
+          // Add request debugging
+          onUploadProgress: (p) => console.log(`Upload progress: ${p.loaded}/${p.total}`),
+          headers: {
+            'X-Debug-Info': 'Checking connection'
+          }
         }
       );
+      
+      console.log('Response received:', response.status);
+      console.log('Response headers:', response.headers);
+      console.log('Response data:', response.data);
       
       return !!response.data.result;
     } catch (error) {
       console.error('Odoo connection check failed:', error);
+      
+      // Type guard for Axios errors
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+        
+        if (axiosError.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error('Error response data:', axiosError.response.data);
+          console.error('Error response status:', axiosError.response.status);
+          console.error('Error response headers:', axiosError.response.headers);
+        } else if (axiosError.request) {
+          // The request was made but no response was received
+          console.error('Error request:', axiosError.request);
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('Error message:', axiosError.message);
+        }
+      } else {
+        // Not an Axios error
+        console.error('Unknown error:', error);
+      }
+      
       return false;
     }
   }
@@ -158,31 +221,32 @@ class OdooAPI {
       throw new Error('Not authenticated');
     }
 
+    // Extract password from kwargs if provided
+    const password = kwargs.password || '';
+    
+    // Remove password from kwargs to avoid sending it twice
+    const { password: _, ...cleanKwargs } = kwargs;
+
     // Always include company_id in context for tenant isolation
     const context = {
-      ...(kwargs.context || {}),
+      ...(cleanKwargs.context || {}),
       company_id: this.companyId,
     };
 
     try {
-      const response = await axios.post(
-        `${this.baseUrl}/jsonrpc`,
+      console.log(`Calling ${model}.${method} with uid:`, this.uid);
+      
+      const response = await odooAxios.post(
+        `/jsonrpc-cors`,
         {
           jsonrpc: '2.0',
           method: 'call',
           params: {
             service: 'object',
             method: 'execute_kw',
-            args: [this.db, this.uid, kwargs.password || '', model, method, args, { ...kwargs, context }],
+            args: [this.db, this.uid, password, model, method, args, { ...cleanKwargs, context }],
           },
           id: new Date().getTime(),
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Cookie: this.sessionId || '',
-          },
-          withCredentials: true
         }
       );
 
@@ -297,15 +361,23 @@ const odooAPI = new OdooAPI();
 export default odooAPI;
 
 // Auth service for login/logout
+// Updated authService in odooService.ts
 export const authService = {
   async login(credentials: OdooCredentials): Promise<OdooSession> {
     const { username, password } = credentials;
-    return odooAPI.authenticate(username, password);
+    
+    // Store the password temporarily in sessionStorage (will be cleared on page close)
+    // This allows for making authenticated requests without storing password permanently
+    sessionStorage.setItem('odoo_temp_pwd', password);
+    
+    const session = await odooAPI.authenticate(username, password);
+    return session;
   },
 
   async logout(): Promise<void> {
-    // Clear local storage and session cookies
+    // Clear all storage
     localStorage.removeItem('odooSession');
+    sessionStorage.removeItem('odoo_temp_pwd');
     // For a real implementation, you might want to call a logout endpoint
   },
 
@@ -327,4 +399,9 @@ export const authService = {
   saveSession(session: OdooSession): void {
     localStorage.setItem('odooSession', JSON.stringify(session));
   },
+  
+  // Add this helper method to get temporary password
+  getTempPassword(): string {
+    return sessionStorage.getItem('odoo_temp_pwd') || '';
+  }
 };

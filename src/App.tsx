@@ -25,10 +25,14 @@ import Home from "./pages/Dashboard/Home";
 import CashFlow from "./pages/CashFlow/CashFlow";
 import OdooInitializer from "./components/common/OdooInitializer";
 
+import TestOdoo from '../testOdoo';
+
+
 export default function App() {
   return (
     <TenantProvider>
       <Router>
+      {/* <TestOdoo /> */}
         <AuthProvider>
           <OdooInitializer>
             <ScrollToTop />

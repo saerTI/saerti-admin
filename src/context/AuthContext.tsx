@@ -1,168 +1,179 @@
-// src/context/AuthContext.tsx
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import odooAPI, { authService } from '../services/odooService';
-import { useTenant } from './TenantContext';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authService } from '../services/odooService';
+import odooAPI from '../services/odooService';
 
-// Types
+// Define the User type
 interface User {
   id: number;
   name: string;
   email: string;
-  companyId: number;
-  companyName: string;
-  role: string;
+  companyId?: number;
+  // Add other user properties as needed
 }
 
-interface AuthContextProps {
+// Define the Auth context type
+interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  updateUser: (data: Partial<User>) => void;
+  error: string | null;
 }
 
-// Create the Auth Context
-export const AuthContext = createContext<AuthContextProps>({
+// Create the context with a default value
+const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  login: async () => {},
+  login: async () => false,
   logout: () => {},
-  updateUser: () => {},
+  error: null,
 });
 
+// Custom hook to use the auth context
+export const useAuth = () => useContext(AuthContext);
+
 // Provider component
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
-  const { currentTenant, setCurrentTenant, availableTenants } = useTenant();
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth state
   useEffect(() => {
-    const initAuth = async () => {
+    // Check if user is already logged in
+    const checkAuth = async () => {
       try {
         const session = authService.getSession();
         if (session) {
-          // Initialize Odoo client with session
+          // Get the temporary password from session storage
+          const tempPassword = sessionStorage.getItem('odoo_temp_pwd');
+          
+          // Initialize Odoo API with the session
           odooAPI.initFromSession(session);
           
-          // Get user info
-          const userResult = await odooAPI.read('res.users', [session.uid], [
-            'name', 
-            'login', 
-            'email', 
-            'company_id',
-            'groups_id',
-          ]);
-          
-          if (userResult && userResult.length > 0) {
-            const userData = userResult[0];
-            
-            // Determine user role based on groups
-            const groups = await odooAPI.read('res.groups', userData.groups_id, ['name']);
-            const groupNames = groups.map((g: any) => g.name);
-            
-            let role = 'user';
-            if (groupNames.includes('Administrator')) {
-              role = 'admin';
-            } else if (groupNames.includes('Manager')) {
-              role = 'manager';
+          if (tempPassword) {
+            try {
+              // Try to fetch user details to confirm session is valid
+              const userDetails = await odooAPI.callMethod(
+                'res.users', 
+                'read', 
+                [[session.uid], ['name', 'login']], 
+                { password: tempPassword }
+              );
+              
+              if (userDetails && userDetails.length > 0) {
+                setUser({
+                  id: session.uid,
+                  name: userDetails[0].name || `User ${session.uid}`,
+                  email: userDetails[0].login,
+                  companyId: session.companyId
+                });
+                console.log('User session restored successfully');
+              } else {
+                // Invalid session - clear it
+                console.warn('Invalid session data, logging out');
+                authService.logout();
+              }
+            } catch (err) {
+              console.error('Error verifying user session:', err);
+              // Session invalid or expired - clear it
+              authService.logout();
             }
-            
-            const user: User = {
-              id: userData.id,
-              name: userData.name,
-              email: userData.email || userData.login,
-              companyId: userData.company_id[0],
-              companyName: userData.company_id[1],
-              role,
-            };
-            
-            setUser(user);
-            
-            // Set current tenant based on company_id
-            const tenantForCompany = availableTenants.find(t => t.companyId === user.companyId);
-            if (tenantForCompany && (!currentTenant || currentTenant.companyId !== user.companyId)) {
-              setCurrentTenant(tenantForCompany);
-            }
+          } else {
+            // No temp password, we can't verify the session
+            console.warn('No temporary password available, session may be limited');
+            // We'll still set the user from the saved session
+            setUser({
+              id: session.uid,
+              name: `User ${session.uid}`, // Placeholder until we can fetch real data
+              email: 'user@example.com',   // Placeholder
+              companyId: session.companyId
+            });
           }
         }
-      } catch (error) {
-        console.error('Error initializing authentication:', error);
-        // Clear session on error
-        authService.logout();
+      } catch (err) {
+        console.error('Error checking authentication:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    initAuth();
-  }, [currentTenant, setCurrentTenant, availableTenants]);
+    checkAuth();
+  }, []);
 
   // Login function
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true);
+    setError(null);
     try {
-      // Use the odooService authService to authenticate
+      console.log(`Attempting login for user: ${username}`);
+      
+      // Store password temporarily for this session
+      sessionStorage.setItem('odoo_temp_pwd', password);
+      
+      // Authenticate with Odoo
       const session = await authService.login({ username, password });
       
-      // Save the session
+      // Save session in local storage
       authService.saveSession(session);
       
-      // Initialize Odoo client with session
-      odooAPI.initFromSession(session);
+      console.log('Login successful, fetching user details...');
       
-      // Get user info
-      const userResult = await odooAPI.read('res.users', [session.uid], [
-        'name', 
-        'login', 
-        'email', 
-        'company_id',
-        'groups_id',
-      ]);
-      
-      if (userResult && userResult.length > 0) {
-        const userData = userResult[0];
+      // Fetch user details
+      try {
+        const userDetails = await odooAPI.callMethod(
+          'res.users', 
+          'read', 
+          [[session.uid], ['name', 'login']], 
+          { password }
+        );
         
-        // Get groups for role determination
-        const groups = await odooAPI.read('res.groups', userData.groups_id, ['name']);
-        const groupNames = groups.map((g: any) => g.name);
-        
-        let role = 'user';
-        if (groupNames.includes('Administrator')) {
-          role = 'admin';
-        } else if (groupNames.includes('Manager')) {
-          role = 'manager';
+        if (userDetails && userDetails.length > 0) {
+          // Set user in state with real data
+          setUser({
+            id: session.uid,
+            name: userDetails[0].name || `User ${session.uid}`,
+            email: userDetails[0].login,
+            companyId: session.companyId
+          });
+        } else {
+          // Fallback if no user details
+          setUser({
+            id: session.uid,
+            name: `User ${session.uid}`,
+            email: username,
+            companyId: session.companyId
+          });
         }
-        
-        const user: User = {
-          id: userData.id,
-          name: userData.name,
-          email: userData.email || userData.login,
-          companyId: userData.company_id[0],
-          companyName: userData.company_id[1],
-          role,
-        };
-        
-        setUser(user);
-        
-        // Set tenant based on company
-        const tenantForCompany = availableTenants.find(t => t.companyId === user.companyId);
-        if (tenantForCompany) {
-          setCurrentTenant(tenantForCompany);
-        }
-        
-        // Let the SignInForm handle navigation instead of doing it here
-        // This avoids conflict when the form tries to navigate to the original requested page
+      } catch (detailsError) {
+        console.error('Error fetching user details:', detailsError);
+        // Still create user with basic info
+        setUser({
+          id: session.uid,
+          name: `User ${session.uid}`,
+          email: username,
+          companyId: session.companyId
+        });
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    } finally {
+      
       setIsLoading(false);
+      return true;
+    } catch (err) {
+      console.error('Login error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('Access Denied')) {
+        setError('Access Denied. Please check your credentials.');
+      } else if (errorMessage.includes('Invalid credentials')) {
+        setError('Invalid username or password.');
+      } else {
+        setError(errorMessage);
+      }
+      
+      setIsLoading(false);
+      return false;
     }
   };
 
@@ -170,31 +181,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     authService.logout();
     setUser(null);
-    navigate('/auth/signin');
+    // Clear any stored passwords
+    sessionStorage.removeItem('odoo_temp_pwd');
   };
 
-  // Update user function
-  const updateUser = (data: Partial<User>) => {
-    if (user) {
-      setUser({ ...user, ...data });
-    }
+  // Create context value object
+  const value = {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    login,
+    logout,
+    error,
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        login,
-        logout,
-        updateUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Hook to use auth context
-export const useAuth = () => useContext(AuthContext);
+// Export the context
+export default AuthContext;
