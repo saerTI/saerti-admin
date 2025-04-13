@@ -1,3 +1,5 @@
+// src/components/auth/SignUpForm.tsx
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";

@@ -19,9 +19,9 @@ export default function AuthLayout({
             <div className="flex flex-col items-center max-w-xs">
               <Link to="/" className="block mb-4">
                 <img
-                  width={231}
+                  width={350}
                   height={48}
-                  src="/images/logo/auth-logo.svg"
+                  src="/images/logo/logo_mpf.svg"
                   alt="Logo"
                 />
               </Link>
