@@ -24,6 +24,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import CashFlow from "./pages/CashFlow/CashFlow";
 import OdooInitializer from "./components/common/OdooInitializer";
+import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
 
 
 
@@ -51,6 +52,28 @@ export default function App() {
                 <Route path="/cash-flow" element={
                   <PrivateRoute>
                     <CashFlow />
+                  </PrivateRoute>
+                } />
+
+                {/* Rutas de Proyectos */}
+                <Route path="/projects" element={
+                  <PrivateRoute>
+                    <ProjectList />
+                  </PrivateRoute>
+                } />
+                <Route path="/projects/new" element={
+                  <PrivateRoute>
+                    <ProjectForm />
+                  </PrivateRoute>
+                } />
+                <Route path="/projects/:id" element={
+                  <PrivateRoute>
+                    <ProjectDetails />
+                  </PrivateRoute>
+                } />
+                <Route path="/projects/:id/edit" element={
+                  <PrivateRoute>
+                    <ProjectForm />
                   </PrivateRoute>
                 } />
                 

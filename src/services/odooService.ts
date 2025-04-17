@@ -361,7 +361,6 @@ const odooAPI = new OdooAPI();
 export default odooAPI;
 
 // Auth service for login/logout
-// Updated authService in odooService.ts
 export const authService = {
   async login(credentials: OdooCredentials): Promise<OdooSession> {
     const { username, password } = credentials;

@@ -33,6 +33,12 @@ export default function OdooInitializer({ children }: { children: React.ReactNod
           // Initialize Odoo API with session
           odooAPI.initFromSession(session);
           console.log('Session restored successfully:', session);
+          
+          // Use the company ID from the authenticated user session
+          if (session.companyId) {
+            console.log(`Setting company ID to ${session.companyId}`);
+            odooAPI.setCompanyId(session.companyId);
+          }
         }
         
         setInitialized(true);
