@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom"; // Fix the import path
+import { Link, useLocation } from "react-router-dom";
 
-// Assume these icons are imported from an icon library
+// Icons
 import {
   BoxCubeIcon,
   CalenderIcon,
@@ -14,7 +14,7 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
-  // Add a cash/money related icon if available
+  DollarLineIcon, // Assuming this exists in your icons folder
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -26,35 +26,56 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-// Add CashFlow to the main nav items
+// Updated navItems with the new Gastos menu
 const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    subItems: [
+      { name: "KPI", path: "/", pro: false },
+      { name: "Flujo de Caja", path: "/cash-flow", pro: false },
+    ],
   },
-
   {
-    // Add CashFlow as a main menu item
-    icon: <PieChartIcon />, // Use an appropriate icon
-    name: "Flujo de Caja",
-    path: "/cash-flow",
+    icon: <DollarLineIcon />,
+    name: "Ingresos/Egresos",
+    subItems: [
+      { name: "Ingresos", path: "/ingresos/index", pro: false },
+      { name: "Egresos", path: "/gastos/index", pro: false },
+    ],
   },
   {
     icon: <UserCircleIcon />,
     name: "Proyectos",
     path: "/projects",
   },
-  // {
-  //   icon: <CalenderIcon />,
-  //   name: "Calendar",
-  //   path: "/calendar",
-  // },
-  // {
-  //   icon: <UserCircleIcon />,
-  //   name: "User Profile",
-  //   path: "/profile",
-  // },
+  {
+    // New Gastos menu with all the required sub-items
+    icon: <ListIcon />,
+    name: "Cuentas Contables",
+    subItems: [
+      { name: "Remuneraciones", path: "/gastos/remuneraciones", pro: false },
+      { name: "OC con crédito", path: "/gastos/oc-credito", pro: false },
+      { name: "Previsionales", path: "/gastos/previsionales", pro: false },
+      { name: "Subcontratos con crédito", path: "/gastos/subcontratos-credito", pro: false },
+      { name: "Subcontratos Contado", path: "/gastos/subcontratos-contado", pro: false },
+      { name: "Cotizaciones", path: "/gastos/cotizaciones", pro: false },
+      { name: "Gastos Imprevistos", path: "/gastos/imprevistos", pro: false },
+
+
+      // { name: "Servicios de Alimentación y Hospedaje", path: "/gastos/servicios-alimentacion-hospedaje", pro: false },
+      // { name: "Leasing y Pagos Maquinaria", path: "/gastos/leasing-pagos-maquinaria", pro: false },
+      // { name: "OC Contado", path: "/gastos/oc-contado", pro: false },
+      // { name: "Contratos Notariales", path: "/gastos/contratos-notariales", pro: false },
+      // { name: "Costos Fijos", path: "/gastos/costos-fijos", pro: false },
+      // { name: "Costos Variables", path: "/gastos/costos-variables", pro: false },
+      // { name: "Pago Rendiciones", path: "/gastos/pago-rendiciones", pro: false },
+      // { name: "Impuestos", path: "/gastos/impuestos", pro: false },
+      // { name: "Seguros y Pólizas", path: "/gastos/seguros-polizas", pro: false },
+      // { name: "Certificaciones y Capacitaciones", path: "/gastos/certificaciones-capacitaciones", pro: false },
+      // { name: "Estudios y Asesorías", path: "/gastos/estudios-asesorias", pro: false },
+    ],
+  },
   {
     name: "Forms",
     icon: <ListIcon />,
@@ -119,7 +140,6 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // const isActive = (path: string) => location.pathname === path;
   const isActive = useCallback(
     (path: string) => location.pathname === path,
     [location.pathname]
@@ -313,9 +333,7 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-2 flex bg-[#3b3378] ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
+        className={`py-2 flex bg-[#3b3378] justify-center`}
       >
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
@@ -324,20 +342,20 @@ const AppSidebar: React.FC = () => {
                 className="dark:hidden"
                 src="/images/logo/logo_mpf.svg"
                 alt="Logo"
-                width={350}
-                height={30}
+                width={180}
+                height={40}
               />
               <img
                 className="hidden dark:block"
                 src="/images/logo/logo_mpf.svg"
                 alt="Logo"
-                width={150}
+                width={180}
                 height={40}
               />
             </>
           ) : (
             <img
-              src="/images/logo/logo-icon.svg"
+              src="/images/logo/logo_mpf-icon.svg"
               alt="Logo"
               width={32}
               height={32}
@@ -349,19 +367,7 @@ const AppSidebar: React.FC = () => {
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <HorizontaLDots className="size-6" />
-                )}
-              </h2>
+              <br/>
               {renderMenuItems(navItems, "main")}
             </div>
             <div className="">

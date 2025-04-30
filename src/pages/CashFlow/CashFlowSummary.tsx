@@ -31,7 +31,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   title, 
   value, 
   change, 
-  textColor = "text-black dark:text-white",
+  textColor = "text-gray-800 dark:text-white/90",
   icon 
 }) => {
   const getChangeColor = () => {
@@ -53,7 +53,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   };
 
   return (
-    <div className="rounded-sm border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-boxdark">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</h4>
         {icon && <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">{icon}</div>}
@@ -134,26 +134,26 @@ const CashFlowSummary: React.FC<CashFlowSummaryProps> = ({ summary, items }) => 
       
       {/* Recent Transactions */}
       <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
-        <div className="rounded-sm border border-stroke bg-white px-5 pb-5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark">
-          <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
+        <div className="rounded-xl border border-gray-200 bg-white px-5 pb-5 pt-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <h4 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
             Transacciones Recientes
           </h4>
           
           <div className="flex flex-col">
-            <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-5">
-              <div className="p-2.5 text-sm font-medium text-black dark:text-white xl:p-5">
+            <div className="grid grid-cols-3 rounded-sm bg-gray-100 dark:bg-gray-800 sm:grid-cols-5">
+              <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
                 Fecha
               </div>
-              <div className="p-2.5 text-sm font-medium text-black dark:text-white xl:p-5">
+              <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
                 Descripción
               </div>
-              <div className="hidden p-2.5 text-sm font-medium text-black dark:text-white sm:block xl:p-5">
+              <div className="hidden p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 sm:block xl:p-5">
                 Categoría
               </div>
-              <div className="hidden p-2.5 text-sm font-medium text-black dark:text-white sm:block xl:p-5">
+              <div className="hidden p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 sm:block xl:p-5">
                 Tipo
               </div>
-              <div className="p-2.5 text-sm font-medium text-black dark:text-white xl:p-5">
+              <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
                 Monto
               </div>
             </div>
@@ -161,20 +161,20 @@ const CashFlowSummary: React.FC<CashFlowSummaryProps> = ({ summary, items }) => 
             {recentTransactions.map((transaction) => (
               <div 
                 key={transaction.id}
-                className="grid grid-cols-3 border-b border-stroke dark:border-strokedark sm:grid-cols-5"
+                className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-700 sm:grid-cols-5"
               >
                 <div className="flex items-center p-2.5 xl:p-5">
-                  <p className="text-black dark:text-white">
+                  <p className="text-gray-800 dark:text-white/90">
                     {new Date(transaction.date).toLocaleDateString()}
                   </p>
                 </div>
                 
                 <div className="flex items-center p-2.5 xl:p-5">
-                  <p className="text-black dark:text-white">{transaction.description}</p>
+                  <p className="text-gray-800 dark:text-white/90">{transaction.description}</p>
                 </div>
                 
                 <div className="hidden items-center p-2.5 sm:flex xl:p-5">
-                  <p className="text-black dark:text-white">{transaction.category}</p>
+                  <p className="text-gray-800 dark:text-white/90">{transaction.category}</p>
                 </div>
                 
                 <div className="hidden items-center p-2.5 sm:flex xl:p-5">

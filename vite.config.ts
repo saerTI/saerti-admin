@@ -17,10 +17,9 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/odoo': {
-        target: 'http://localhost:8069',
+      '/api': {
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/odoo/, ''),
         secure: false,
         ws: true
       }

@@ -1,10 +1,10 @@
-// src/components/projects/ProjectForm.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import projectApiService, { ProjectCreateData } from '../../services/projectService';
 import Input from '../../components/form/input/InputField';
 import Label from '../../components/form/Label';
 import Button from '../../components/ui/button/Button';
+import DatePicker from '../../components/form/date-picker';
 
 // Define interface for clients
 interface Client {
@@ -33,6 +33,12 @@ const ProjectForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [formattedBudget, setFormattedBudget] = useState<string>('');
+  
+  // Code validation state
+  const [codeValidating, setCodeValidating] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeAvailable, setCodeAvailable] = useState<boolean | null>(null);
   
   // Load project data if in edit mode
   useEffect(() => {
@@ -54,6 +60,9 @@ const ProjectForm = () => {
           total_budget: projectData.total_budget,
           description: projectData.description || '',
         });
+        
+        // Format the budget for display
+        setFormattedBudget(formatNumberWithDots(projectData.total_budget));
         
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar los datos del proyecto');
@@ -85,13 +94,181 @@ const ProjectForm = () => {
     fetchProjectData();
     fetchClients();
   }, [id, isEditMode]);
+
+  // Reemplazar en ProjectForm.tsx las líneas 132 y 137 con este código:
+
+  const testBackendConnection = async () => {
+    try {
+      // Intentar diferentes URLs para ver cuál funciona
+      const urls = [
+        '/api/projects',
+        '/odoo/api/projects',
+        '/api/debug/cors',  // Nuevo endpoint de diagnóstico
+        '/jsonrpc',  // Correcto, no /jsonrpc-cors
+        '/web/session/authenticate'
+      ];
+      
+      setError('Probando conexión con el backend...');
+      
+      for (const url of urls) {
+        try {
+          const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Company-ID': '1'  // Agregar este encabezado para probar
+            }
+          });
+          
+          const text = await response.text();
+          let displayText;
+          
+          try {
+            // Intentar parsear como JSON para mostrar mejor
+            const json = JSON.parse(text);
+            displayText = JSON.stringify(json).substring(0, 100);
+          } catch (parseError) {
+            // Si no es JSON, mostrar como texto
+            displayText = text.substring(0, 100);
+          }
+          
+          console.log(`Respuesta de ${url}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries([...response.headers.entries()]),
+            text: displayText + (text.length > 100 ? '...' : '')
+          });
+          
+          setError(prev => `${prev}\nURL: ${url} - Status: ${response.status}`);
+        } catch (e: unknown) {
+          console.error(`Error probando ${url}:`, e);
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          setError(prev => `${prev}\nURL: ${url} - Error: ${errorMessage}`);
+        }
+      }
+    } catch (e: unknown) {
+      console.error('Error general:', e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      setError(prev => `${prev}\nError general: ${errorMessage}`);
+    }
+  };
+    
+  // Código para validar el código del proyecto
+  const validateCode = useCallback(
+    async (code: string) => {
+      if (!code || code.length < 3 || isEditMode) {
+        setCodeError(null);
+        setCodeAvailable(null);
+        return;
+      }
+
+      setCodeValidating(true);
+      try {
+        // Validación local básica
+        const regex = /^[a-zA-Z0-9-_]+$/;
+        if (!regex.test(code)) {
+          setCodeError('El código solo puede contener letras, números, guiones y guiones bajos');
+          setCodeAvailable(false);
+          return;
+        }
+
+        // Validación en el servidor
+        const result = await projectApiService.checkCodeAvailability(code);
+        setCodeAvailable(result.available);
+        if (!result.available) {
+          setCodeError(result.message || 'Este código ya está en uso');
+        } else {
+          setCodeError(null);
+        }
+      } catch (err) {
+        console.error('Error validating code:', err);
+        setCodeError('Error al validar el código');
+        setCodeAvailable(false);
+      } finally {
+        setCodeValidating(false);
+      }
+    },
+    [isEditMode]
+  );
+
+  // Efecto para validar el código cuando cambia
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     if (formData.code && formData.code.length >= 3) {
+  //       validateCode(formData.code);
+  //     } else {
+  //       setCodeError(null);
+  //       setCodeAvailable(null);
+  //     }
+  //   }, 500); // Debounce de 500ms
+
+  //   return () => clearTimeout(timer);
+  // }, [formData.code, validateCode]);
+  
+  // Format a number with dot thousand separators (123456 -> 123.456)
+  const formatNumberWithDots = (number: number): string => {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+  
+  // Remove all non-digit characters and parse to number
+  const parseFormattedNumber = (formattedValue: string): number => {
+    const numericValue = formattedValue.replace(/\D/g, '');
+    return numericValue ? parseInt(numericValue, 10) : 0;
+  };
   
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    if (name === 'total_budget') {
+      // For budget field, handle formatting
+      const numericValue = parseFormattedNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: numericValue
+      }));
+      setFormattedBudget(formatNumberWithDots(numericValue));
+    } else if (name === 'client_id') {
+      // For client_id, parse to number
+      setFormData(prev => ({
+        ...prev,
+        [name]: parseInt(value) || 0
+      }));
+    } else {
+      // For other fields, use value as is
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  // Handle budget input change
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    
+    // Remove all non-digit characters
+    const digitsOnly = rawValue.replace(/\D/g, '');
+    
+    // Parse to number
+    const numericValue = digitsOnly ? parseInt(digitsOnly, 10) : 0;
+    
+    // Update the form data with the numeric value
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'total_budget' || name === 'client_id' ? parseFloat(value) || 0 : value
+      total_budget: numericValue
+    }));
+    
+    // Format for display
+    setFormattedBudget(formatNumberWithDots(numericValue));
+  };
+
+  // Handle date changes
+  const handleDateChange = (name: string) => (selectedDates: Date[], dateStr: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: dateStr
     }));
   };
   
@@ -106,6 +283,12 @@ const ProjectForm = () => {
       return;
     }
     
+    // Evitar envío si el código está siendo validado o no está disponible
+    if (!isEditMode && (codeValidating || codeAvailable === false)) {
+      setError('Por favor corrija los errores del código del proyecto antes de continuar');
+      return;
+    }
+    
     try {
       setSubmitting(true);
       
@@ -114,7 +297,8 @@ const ProjectForm = () => {
         await projectApiService.updateProject(parseInt(id as string), formData);
       } else {
         // Create new project
-        await projectApiService.createProject(formData);
+        const projectId = await projectApiService.createProject(formData);
+        console.log('Project created successfully with ID:', projectId);
       }
       
       // Navigate back to projects list
@@ -141,10 +325,21 @@ const ProjectForm = () => {
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
           {isEditMode ? 'Editar Proyecto' : 'Nuevo Proyecto'}
         </h1>
+
+        <Button
+          onClick={testBackendConnection}
+          className="bg-gray-500 hover:bg-gray-600 text-white"
+          type="button"
+        >
+          Probar Conexión
+        </Button>
         
         {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-            {error}
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg dark:bg-red-900/30 dark:text-red-400 dark:border-red-900/50 flex items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>{error}</span>
           </div>
         )}
         
@@ -170,14 +365,45 @@ const ProjectForm = () => {
               <Label htmlFor="code">
                 Código <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="code"
-                name="code"
-                value={formData.code}
-                onChange={handleInputChange}
-                placeholder="Ej: ERA-2023-01"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="code"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleInputChange}
+                  placeholder="Ej: ERA-2023-01"
+                  className={`${codeError ? "border-red-500" : codeAvailable ? "border-green-500" : ""}`}
+                  required
+                />
+                {codeValidating && (
+                  <div className="absolute right-3 top-3">
+                    <div className="animate-spin h-5 w-5 border-2 border-gray-400 border-t-blue-500 rounded-full"></div>
+                  </div>
+                )}
+                {!codeValidating && codeAvailable && formData.code && (
+                  <div className="absolute right-3 top-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {codeError && (
+                <div className="text-red-500 text-sm mt-1 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>{codeError}</span>
+                </div>
+              )}
+              {!codeValidating && codeAvailable && !codeError && formData.code && (
+                <div className="text-green-500 text-sm mt-1 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Código disponible</span>
+                </div>
+              )}
             </div>
             
             {/* Client */}
@@ -190,7 +416,7 @@ const ProjectForm = () => {
                 name="client_id"
                 value={formData.client_id}
                 onChange={handleInputChange}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="h-11 w-full rounded-lg border border-gray-300 appearance-none px-4 py-2.5 text-sm shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:bg-gray-900 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-800"
                 required
               >
                 <option value="">Seleccione un cliente</option>
@@ -204,29 +430,23 @@ const ProjectForm = () => {
             
             {/* Start Date */}
             <div>
-              <Label htmlFor="start_date">
-                Fecha de Inicio
-              </Label>
-              <Input
-                type="date"
+              <DatePicker
                 id="start_date"
-                name="start_date"
-                value={formData.start_date}
-                onChange={handleInputChange}
+                label="Fecha de Inicio"
+                placeholder="Seleccione fecha de inicio"
+                defaultDate={formData.start_date ? new Date(formData.start_date) : undefined}
+                onChange={handleDateChange('start_date')}
               />
             </div>
             
             {/* Expected End Date */}
             <div>
-              <Label htmlFor="expected_end_date">
-                Fecha de Finalización Esperada
-              </Label>
-              <Input
-                type="date"
+              <DatePicker
                 id="expected_end_date"
-                name="expected_end_date"
-                value={formData.expected_end_date}
-                onChange={handleInputChange}
+                label="Fecha de Finalización Esperada"
+                placeholder="Seleccione fecha de finalización"
+                defaultDate={formData.expected_end_date ? new Date(formData.expected_end_date) : undefined}
+                onChange={handleDateChange('expected_end_date')}
               />
             </div>
             
@@ -236,13 +456,12 @@ const ProjectForm = () => {
                 Presupuesto Total <span className="text-red-500">*</span>
               </Label>
               <Input
-                type="number"
+                type="text"
                 id="total_budget"
                 name="total_budget"
-                value={formData.total_budget}
-                onChange={handleInputChange}
-                min="0"
-                step={1000}
+                value={formattedBudget}
+                onChange={handleBudgetChange}
+                placeholder="Ej: 50.000.000"
                 required
               />
             </div>
@@ -258,7 +477,7 @@ const ProjectForm = () => {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={4}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full rounded-lg border border-gray-300 appearance-none px-4 py-2.5 text-sm shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:bg-gray-900 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-800"
                 placeholder="Descripción detallada del proyecto"
               />
             </div>
@@ -268,15 +487,15 @@ const ProjectForm = () => {
           <div className="mt-8 flex justify-end space-x-4">
             <Button
               onClick={() => navigate('/projects')}
-              variant="outline"  // Change from "secondary" to "outline"
+              variant="outline"
               disabled={submitting}
-              >
+            >
               Cancelar
             </Button>
             <Button
               type="submit"
               className="bg-brand-500 hover:bg-brand-600 text-white"
-              disabled={submitting}
+              disabled={submitting || (!isEditMode && (codeValidating || codeAvailable === false))}
             >
               {submitting ? (
                 <>

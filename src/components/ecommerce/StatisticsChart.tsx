@@ -1,8 +1,54 @@
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import ChartTab from "../common/ChartTab";
+import { useState, useMemo } from "react";
 
 export default function StatisticsChart() {
+  // Define possible time periods as tabs
+  const tabOptions = [
+    { id: "diario", label: "Diario" },
+    { id: "semanal", label: "Semanal" },
+    { id: "mensual", label: "Mensual" },
+    { id: "anual", label: "Anual" },
+  ];
+
+  // State to track the active tab
+  const [activeTab, setActiveTab] = useState<string>(tabOptions[2].id); // Default to monthly view
+
+  // Define different data series based on the selected tab
+  const tabData = useMemo(() => {
+    switch (activeTab) {
+      case "diario":
+        return {
+          categories: ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"],
+          sales: [68, 65, 75, 60, 80, 58, 50],
+          revenue: [40, 30, 45, 35, 50, 25, 20],
+        };
+      case "semanal":
+        return {
+          categories: ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
+          sales: [160, 175, 180, 190],
+          revenue: [80, 95, 105, 110],
+        };
+      case "anual":
+        return {
+          categories: ["2020", "2021", "2022", "2023", "2024"],
+          sales: [800, 950, 1100, 1250, 1350],
+          revenue: [450, 550, 650, 750, 900],
+        };
+      case "mensual":
+      default:
+        return {
+          categories: [
+            "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+            "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+          ],
+          sales: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
+          revenue: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+        };
+    }
+  }, [activeTab]);
+
   const options: ApexOptions = {
     legend: {
       show: false, // Hide legend
@@ -61,20 +107,7 @@ export default function StatisticsChart() {
     },
     xaxis: {
       type: "category", // Category-based x-axis
-      categories: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
+      categories: tabData.categories,
       axisBorder: {
         show: false, // Hide x-axis border
       },
@@ -103,27 +136,32 @@ export default function StatisticsChart() {
 
   const series = [
     {
-      name: "Sales",
-      data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
+      name: "Ventas",
+      data: tabData.sales,
     },
     {
-      name: "Revenue",
-      data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+      name: "Ingresos",
+      data: tabData.revenue,
     },
   ];
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
       <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
         <div className="w-full">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Statistics
+            Estadísticas
           </h3>
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Target you’ve set for each month
+            Objetivos establecidos para cada período
           </p>
         </div>
         <div className="flex items-start w-full gap-3 sm:justify-end">
-          <ChartTab />
+          <ChartTab 
+            tabs={tabOptions} 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+          />
         </div>
       </div>
 

@@ -1,9 +1,19 @@
+// src/pages/CashFlow/CashFlowForm.tsx
 import React, { useState, useEffect } from 'react';
 import Label from '../../components/form/Label';
 import Input from '../../components/form/input/InputField';
 import Button from '../../components/ui/button/Button';
 import { fetchCashFlowCategories } from './CashFlowData';
-import cashFlowService, { CreateCashFlowItemData } from '../../services/cashFlowService';
+import cashFlowService from '../../services/cashFlowService';
+
+// Define the interface for form data
+export interface CreateCashFlowItemData {
+  date: string;
+  description: string;
+  category_id: number;
+  amount: number;
+  type: 'income' | 'expense';
+}
 
 interface CashFlowFormProps {
   onSuccess: () => void;
@@ -53,12 +63,12 @@ const CashFlowForm: React.FC<CashFlowFormProps> = ({ onSuccess, onCancel, initia
     
     // Handle number inputs separately
     if (type === 'number') {
-      setFormData(prev => ({
+      setFormData((prev: CreateCashFlowItemData) => ({
         ...prev,
         [name]: parseFloat(value) || 0,
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev: CreateCashFlowItemData) => ({
         ...prev,
         [name]: value,
       }));

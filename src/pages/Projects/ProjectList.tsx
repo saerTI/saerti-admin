@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import projectApiService, { Project, ProjectFilter } from '../../services/projectService';
-import Button from '../../components/ui/button/Button';
+import projectApiService, { getProjects } from '../../services/projectService';
+import { Project, ProjectFilter } from '../../types/project';import Button from '../../components/ui/button/Button';
+import Label from '../../components/form/Label';
+import Select from '../../components/form/Select';
+import { formatCurrency } from '../../utils/formatters';
+import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../context/AuthContext';
 
 // Status translation and styling
 const PROJECT_STATUS_MAP: Record<string, { label: string, color: string }> = {
@@ -18,27 +23,48 @@ const ProjectList = () => {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ProjectFilter>({});
   const navigate = useNavigate();
+  
+  // Get tenant and auth context
+  const { currentTenant } = useTenant();
+  const { user, isAuthenticated } = useAuth();
+
+  // Create status options for the filter
+  const statusOptions = [
+    { value: '', label: 'Todos' },
+    { value: 'draft', label: 'Borrador' },
+    { value: 'in_progress', label: 'En Progreso' },
+    { value: 'on_hold', label: 'En Pausa' },
+    { value: 'completed', label: 'Completado' },
+    { value: 'cancelled', label: 'Cancelado' },
+  ];
+
+  // Verify tenant and user company alignment
+  useEffect(() => {
+    if (currentTenant?.companyId && user?.companyId && 
+        currentTenant.companyId !== user.companyId) {
+      console.warn("Warning: Tenant company ID and user session company ID don't match", {
+        tenantCompanyId: currentTenant.companyId,
+        userSessionCompanyId: user.companyId
+      });
+    }
+  }, [currentTenant, user]);
 
   // Load projects on component mount and when filters change
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        setLoading(true);
-        const data = await projectApiService.getProjects(filters);
-        setProjects(data || []); // Ensure we always have an array even if data is undefined
-        setError(null);
+        const data = await getProjects();
+        setProjects(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido al cargar proyectos');
-        console.error('Error fetching projects:', err);
-        // Initialize with empty array to prevent rendering errors
-        setProjects([]);
+        setError('Error loading projects');
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProjects();
-  }, [filters]);
+  }, []);
 
   // Delete project handler
   const handleDeleteProject = async (id: number) => {
@@ -48,7 +74,7 @@ const ProjectList = () => {
 
     try {
       await projectApiService.deleteProject(id);
-      // Remove the deleted project from the state
+      // Remove the deleted project from the status
       setProjects(projects.filter(project => project.id !== id));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al eliminar el proyecto');
@@ -68,9 +94,12 @@ const ProjectList = () => {
     }
   };
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
+  // Retry fetching if there was an error
+  const handleRetry = () => {
+    setError(null);
+    setLoading(true);
+    // Force re-fetch by triggering the useEffect
+    setFilters({...filters});
   };
 
   return (
@@ -85,35 +114,47 @@ const ProjectList = () => {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Estado
-            </label>
-            <select
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.state || ''}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
-            >
-              <option value="">Todos</option>
-              <option value="draft">Borrador</option>
-              <option value="in_progress">En Progreso</option>
-              <option value="on_hold">En Pausa</option>
-              <option value="completed">Completado</option>
-              <option value="cancelled">Cancelado</option>
-            </select>
+      {/* Filters - Improved implementation */}
+      <div className="flex flex-wrap gap-6 mb-6 bg-white dark:bg-gray-800 p-5 rounded-lg shadow">
+        <div className="flex-1 min-w-[200px]">
+          <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Filtros</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="statusFilter">Estado</Label>
+              <Select
+                options={statusOptions}
+                defaultValue={filters.status || ''}
+                onChange={(value) => handleFilterChange('status', value)}
+                placeholder="Seleccione estado"
+              />
+            </div>
+            
+            {/* Add more filters as needed */}
           </div>
-          
-          {/* Add more filters as needed */}
         </div>
       </div>
 
-      {/* Error message */}
+      {/* Session/tenant debug info (only in development) */}
+      {import.meta.env.DEV && (
+        <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-700 text-xs rounded">
+          <div><strong>Tenant:</strong> {currentTenant?.name} (Company ID: {currentTenant?.companyId})</div>
+          <div><strong>User:</strong> {user?.name} (ID: {user?.id}, Company ID: {user?.companyId})</div>
+        </div>
+      )}
+
+      {/* Error message with retry button */}
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
+          <div className="flex justify-between items-center">
+            <div>{error}</div>
+            <Button 
+              onClick={handleRetry}
+              className="bg-red-500 hover:bg-red-600 text-white text-sm"
+              size="sm"
+            >
+              Reintentar
+            </Button>
+          </div>
         </div>
       )}
 
@@ -174,8 +215,8 @@ const ProjectList = () => {
                       {project.client?.name || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${PROJECT_STATUS_MAP[project.state]?.color || 'bg-gray-100 text-gray-800'}`}>
-                        {PROJECT_STATUS_MAP[project.state]?.label || project.state}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${PROJECT_STATUS_MAP[project.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                        {PROJECT_STATUS_MAP[project.status]?.label || project.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -188,7 +229,7 @@ const ProjectList = () => {
                       <span className="text-xs text-gray-500 dark:text-gray-400">{project.progress || 0}%</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {formatCurrency(project.total_budget || 0)}
+                      {formatCurrency(project.budget || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">

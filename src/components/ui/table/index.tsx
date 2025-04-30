@@ -1,3 +1,4 @@
+// components/ui/table/index.tsx
 import { ReactNode } from "react";
 
 // Props for Table

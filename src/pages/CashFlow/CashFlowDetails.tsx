@@ -90,9 +90,9 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
     item.type === 'expense' ? sum + item.amount : sum, 0);
   
   return (
-    <div className="rounded-sm border border-stroke bg-white px-5 pb-5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark">
+    <div className="rounded-xl border border-gray-200 bg-white px-5 pb-5 pt-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h4 className="text-xl font-semibold text-black dark:text-white">
+        <h4 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           Detalle de Transacciones
         </h4>
         
@@ -103,14 +103,14 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
               type="date"
               value={dateRange.startDate}
               onChange={(e) => onDateChange({ ...dateRange, startDate: e.target.value })}
-              className="rounded-l-md border border-stroke bg-transparent px-4 py-2 focus:border-primary focus:outline-none dark:border-strokedark"
+              className="rounded-l-md border border-gray-200 bg-transparent px-4 py-2 focus:border-primary focus:outline-none dark:border-gray-700 dark:text-white/90"
             />
-            <span className="bg-gray-100 px-2 py-2 dark:bg-meta-4">a</span>
+            <span className="bg-gray-100 px-2 py-2 dark:bg-gray-800 dark:text-white/90">a</span>
             <input
               type="date"
               value={dateRange.endDate}
               onChange={(e) => onDateChange({ ...dateRange, endDate: e.target.value })}
-              className="rounded-r-md border border-stroke bg-transparent px-4 py-2 focus:border-primary focus:outline-none dark:border-strokedark"
+              className="rounded-r-md border border-gray-200 bg-transparent px-4 py-2 focus:border-primary focus:outline-none dark:border-gray-700 dark:text-white/90"
             />
           </div>
           
@@ -118,7 +118,7 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="rounded-md border border-stroke bg-transparent px-4 py-2 focus:border-primary focus:outline-none dark:border-strokedark"
+            className="rounded-md border border-gray-200 bg-transparent px-4 py-2 focus:border-primary focus:outline-none dark:border-gray-700 dark:text-white/90"
           >
             <option value="all">Todos</option>
             <option value="income">Ingresos</option>
@@ -132,7 +132,7 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
               placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="rounded-md border border-stroke bg-transparent px-4 py-2 pl-10 focus:border-primary focus:outline-none dark:border-strokedark"
+              className="rounded-md border border-gray-200 bg-transparent px-4 py-2 pl-10 focus:border-primary focus:outline-none dark:border-gray-700 dark:text-white/90"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2">
               <svg
@@ -156,9 +156,9 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
       <div className="max-w-full overflow-x-auto">
         <table className="w-full table-auto">
           <thead>
-            <tr className="bg-gray-2 text-left dark:bg-meta-4">
+            <tr className="bg-gray-100 text-left dark:bg-gray-800">
               <th 
-                className="px-4 py-4 font-medium text-black dark:text-white cursor-pointer"
+                className="px-4 py-4 font-medium text-gray-800 dark:text-white/90 cursor-pointer"
                 onClick={() => handleSort('date')}
               >
                 <div className="flex items-center gap-1">
@@ -169,7 +169,7 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
                 </div>
               </th>
               <th 
-                className="px-4 py-4 font-medium text-black dark:text-white cursor-pointer"
+                className="px-4 py-4 font-medium text-gray-800 dark:text-white/90 cursor-pointer"
                 onClick={() => handleSort('description')}
               >
                 <div className="flex items-center gap-1">
@@ -180,7 +180,7 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
                 </div>
               </th>
               <th 
-                className="px-4 py-4 font-medium text-black dark:text-white cursor-pointer"
+                className="px-4 py-4 font-medium text-gray-800 dark:text-white/90 cursor-pointer"
                 onClick={() => handleSort('category')}
               >
                 <div className="flex items-center gap-1">
@@ -190,11 +190,11 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
                   )}
                 </div>
               </th>
-              <th className="px-4 py-4 font-medium text-black dark:text-white">
+              <th className="px-4 py-4 font-medium text-gray-800 dark:text-white/90">
                 Tipo
               </th>
               <th 
-                className="px-4 py-4 font-medium text-black dark:text-white cursor-pointer"
+                className="px-4 py-4 font-medium text-gray-800 dark:text-white/90 cursor-pointer"
                 onClick={() => handleSort('amount')}
               >
                 <div className="flex items-center gap-1">
@@ -210,16 +210,16 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
           <tbody>
             {sortedItems.map((item) => (
               <tr key={item.id}>
-                <td className="border-b border-[#eee] px-4 py-3 dark:border-strokedark">
+                <td className="border-b border-gray-200 px-4 py-3 dark:text-white/90 dark:border-gray-700">
                   {new Date(item.date).toLocaleDateString()}
                 </td>
-                <td className="border-b border-[#eee] px-4 py-3 dark:border-strokedark">
+                <td className="border-b border-gray-200 px-4 py-3 dark:text-white/90 dark:border-gray-700">
                   {item.description}
                 </td>
-                <td className="border-b border-[#eee] px-4 py-3 dark:border-strokedark">
+                <td className="border-b border-gray-200 px-4 py-3 dark:text-white/90 dark:border-gray-700">
                   {item.category}
                 </td>
-                <td className="border-b border-[#eee] px-4 py-3 dark:border-strokedark">
+                <td className="border-b border-gray-200 px-4 py-3 dark:text-white/90 dark:border-gray-700">
                   <span
                     className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
                       item.type === 'income'
@@ -230,7 +230,7 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
                     {item.type === 'income' ? 'Ingreso' : 'Gasto'}
                   </span>
                 </td>
-                <td className="border-b border-[#eee] px-4 py-3 dark:border-strokedark">
+                <td className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
                   <span
                     className={
                       item.type === 'income' ? 'text-green-500' : 'text-red-500'
@@ -243,12 +243,12 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
             ))}
             
             {/* Table Footer with Totals */}
-            <tr className="bg-gray-50 font-medium dark:bg-gray-700/50">
+            <tr className="bg-gray-50 font-medium dark:bg-gray-800/50">
               <td className="px-4 py-3" colSpan={3}>
-                <span className="font-bold">Totales</span>
+                <span className="font-bold text-gray-800 dark:text-white/90">Totales</span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-bold">Neto</span>
+                <span className="font-bold text-gray-800 dark:text-white/90">Neto</span>
               </td>
               <td className="px-4 py-3">
                 <span className={totalIncome - totalExpense >= 0 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
@@ -262,17 +262,17 @@ const CashFlowDetails: React.FC<CashFlowDetailsProps> = ({
       
       {/* Summary Cards */}
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-sm border border-stroke bg-white p-4 shadow-sm dark:border-strokedark dark:bg-boxdark">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
           <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400">Ingresos Totales</h5>
           <h3 className="mt-2 text-xl font-bold text-green-500">{formatCurrency(totalIncome)}</h3>
         </div>
         
-        <div className="rounded-sm border border-stroke bg-white p-4 shadow-sm dark:border-strokedark dark:bg-boxdark">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
           <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400">Gastos Totales</h5>
           <h3 className="mt-2 text-xl font-bold text-red-500">{formatCurrency(totalExpense)}</h3>
         </div>
         
-        <div className="rounded-sm border border-stroke bg-white p-4 shadow-sm dark:border-strokedark dark:bg-boxdark">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
           <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400">Balance Neto</h5>
           <h3 className={`mt-2 text-xl font-bold ${totalIncome - totalExpense >= 0 ? 'text-green-500' : 'text-red-500'}`}>
             {formatCurrency(totalIncome - totalExpense)}

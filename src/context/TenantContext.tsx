@@ -1,7 +1,7 @@
 // src/context/TenantContext.tsx
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 
-// Types
+// Keep the types the same so components using them don't break
 interface TenantTheme {
   primaryColor: string;
   secondaryColor: string;
@@ -18,83 +18,58 @@ interface TenantConfig {
 }
 
 interface TenantContextType {
-  currentTenant: TenantConfig | null;
+  currentTenant: TenantConfig;  // Changed to non-nullable
   setCurrentTenant: (tenant: TenantConfig) => void;
   availableTenants: TenantConfig[];
   isLoading: boolean;
 }
 
-// Default tenant configurations
-const defaultTenants: TenantConfig[] = [
-  {
-    id: 'company1',
-    name: 'Construction Company 1',
-    companyId: 1,
-    theme: {
-      primaryColor: '#3C50E0',
-      secondaryColor: '#80CAEE',
-      accentColor: '#10B981',
-      logoUrl: '/images/logo/logo.svg',
-    },
-    features: ['cashflow', 'dashboard', 'projects'],
+// Single default tenant configuration
+const defaultTenant: TenantConfig = {
+  id: 'default',
+  name: 'Construction Company',
+  companyId: 1,
+  theme: {
+    primaryColor: '#3C50E0',
+    secondaryColor: '#80CAEE',
+    accentColor: '#10B981',
+    logoUrl: '/images/logo/logo.svg',
   },
-  {
-    id: 'company2',
-    name: 'Construction Company 2',
-    companyId: 2,
-    theme: {
-      primaryColor: '#FF6B35',
-      secondaryColor: '#4E8098',
-      accentColor: '#1D4657',
-      logoUrl: '/images/logo/logo-dark.svg',
-    },
-    features: ['cashflow', 'dashboard'],
-  },
-];
+  // Include all features for the MVP
+  features: ['cashflow', 'dashboard', 'projects', 'expenses', 'income'],
+};
 
-// Create the context
+// Create the context with the default tenant
 const TenantContext = createContext<TenantContextType>({
-  currentTenant: null,
+  currentTenant: defaultTenant,
   setCurrentTenant: () => {},
-  availableTenants: [],
-  isLoading: true,
+  availableTenants: [defaultTenant],
+  isLoading: false,
 });
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentTenant, setCurrentTenant] = useState<TenantConfig | null>(null);
-  const [availableTenants, _setAvailableTenants] = useState<TenantConfig[]>(defaultTenants);
-  const [isLoading, setIsLoading] = useState(true);
+  // Always use the default tenant, non-nullable
+  const [currentTenant, setCurrentTenant] = useState<TenantConfig>(defaultTenant);
+  // Only include the default tenant in available tenants
+  const [availableTenants] = useState<TenantConfig[]>([defaultTenant]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    // In a real app, you would fetch tenants from an API
-    // For now, we use the static list
-    setIsLoading(false);
-
-    // Try to restore from localStorage
-    const storedTenant = localStorage.getItem('currentTenant');
-    if (storedTenant) {
-      try {
-        const tenant = JSON.parse(storedTenant) as TenantConfig;
-        setCurrentTenant(tenant);
-      } catch (e) {
-        console.error('Error parsing stored tenant', e);
-        // Use the first tenant as default if there's an error
-        if (defaultTenants.length > 0) {
-          setCurrentTenant(defaultTenants[0]);
-        }
-      }
-    } else if (defaultTenants.length > 0) {
-      // Use the first tenant as default
-      setCurrentTenant(defaultTenants[0]);
-    }
+  // Apply theme on mount
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--color-primary', defaultTenant.theme.primaryColor);
+    document.documentElement.style.setProperty('--color-secondary', defaultTenant.theme.secondaryColor);
+    document.documentElement.style.setProperty('--color-accent', defaultTenant.theme.accentColor);
+    
+    // Store default tenant in localStorage to maintain compatibility
+    localStorage.setItem('currentTenant', JSON.stringify(defaultTenant));
   }, []);
 
-  // Update tenant
+  // Keep the update function for compatibility
   const updateTenant = (tenant: TenantConfig) => {
     setCurrentTenant(tenant);
     localStorage.setItem('currentTenant', JSON.stringify(tenant));
 
-    // Apply tenant theme
+    // Apply theme changes
     document.documentElement.style.setProperty('--color-primary', tenant.theme.primaryColor);
     document.documentElement.style.setProperty('--color-secondary', tenant.theme.secondaryColor);
     document.documentElement.style.setProperty('--color-accent', tenant.theme.accentColor);
@@ -114,5 +89,5 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
-// Hook to use the tenant context
+// Keep the same hook for components that use it
 export const useTenant = () => useContext(TenantContext);

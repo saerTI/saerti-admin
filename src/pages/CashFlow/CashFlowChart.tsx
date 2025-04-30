@@ -117,16 +117,16 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
     <div className="space-y-6">
       {/* Chart Type Selector */}
       <div className="flex items-center justify-between">
-        <h4 className="text-xl font-semibold text-black dark:text-white">
+        <h4 className="text-xl font-semibold text-gray-800 dark:text-white/90">
           Gráfico de Flujo de Caja
         </h4>
         
-        <div className="inline-flex items-center rounded-md border border-stroke p-1.5 dark:border-strokedark">
+        <div className="inline-flex items-center rounded-md border border-gray-200 p-1.5 dark:border-gray-800">
           <button
             className={`rounded px-3 py-1 text-sm font-medium ${
               chartType === 'area'
                 ? 'bg-primary text-white'
-                : 'text-black dark:text-white'
+                : 'text-gray-800 dark:text-white/90'
             }`}
             onClick={() => setChartType('area')}
           >
@@ -136,7 +136,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
             className={`rounded px-3 py-1 text-sm font-medium ${
               chartType === 'bar'
                 ? 'bg-primary text-white'
-                : 'text-black dark:text-white'
+                : 'text-gray-800 dark:text-white/90'
             }`}
             onClick={() => setChartType('bar')}
           >
@@ -146,7 +146,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
       </div>
       
       {/* Chart */}
-      <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
+      <div className="rounded-xl border border-gray-200 bg-white px-5 pt-6 pb-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03] sm:px-7.5">
         <div className="max-w-full overflow-x-auto custom-scrollbar">
           <div className="min-w-[1000px]">
             <Chart 
@@ -161,8 +161,8 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-sm border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-boxdark">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-meta-2 dark:bg-meta-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -185,14 +185,14 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
             <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Ingresos Totales
             </h4>
-            <h3 className="mt-1 text-xl font-bold text-black dark:text-white">
+            <h3 className="mt-1 text-xl font-bold text-gray-800 dark:text-white/90">
               {formatCurrency(totalIncome)}
             </h3>
           </div>
         </div>
         
-        <div className="rounded-sm border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-boxdark">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-meta-2 dark:bg-meta-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
             <svg
               className="fill-primary dark:fill-white"
               width="20"
@@ -215,14 +215,14 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
             <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Gastos Totales
             </h4>
-            <h3 className="mt-1 text-xl font-bold text-black dark:text-white">
+            <h3 className="mt-1 text-xl font-bold text-gray-800 dark:text-white/90">
               {formatCurrency(totalExpense)}
             </h3>
           </div>
         </div>
         
-        <div className="rounded-sm border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-boxdark">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-meta-2 dark:bg-meta-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -253,20 +253,20 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
       </div>
       
       {/* Trend Analysis */}
-      <div className="rounded-sm border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-boxdark">
-        <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+        <h4 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
           Análisis de Tendencias
         </h4>
         
         <div className="flex flex-col">
-          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4">
-            <div className="p-2.5 text-sm font-medium text-black dark:text-white xl:p-5">
+          <div className="grid grid-cols-3 rounded-sm bg-gray-100 dark:bg-gray-800">
+            <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
               Periodo
             </div>
-            <div className="p-2.5 text-sm font-medium text-black dark:text-white xl:p-5">
+            <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
               Ingresos vs Gastos
             </div>
-            <div className="p-2.5 text-sm font-medium text-black dark:text-white xl:p-5">
+            <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
               Balance
             </div>
           </div>
@@ -274,10 +274,10 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
           {data.map((item, index) => (
             <div 
               key={index}
-              className="grid grid-cols-3 border-b border-stroke dark:border-strokedark"
+              className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-700"
             >
               <div className="flex items-center p-2.5 xl:p-5">
-                <p className="text-black dark:text-white">{item.name}</p>
+                <p className="text-gray-800 dark:text-white/90">{item.name}</p>
               </div>
               
               <div className="flex items-center p-2.5 xl:p-5">
@@ -289,7 +289,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
                     }}
                   ></div>
                 </div>
-                <span className="ml-2 text-xs">
+                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                   {formatCurrency(item.income)} / {formatCurrency(item.expense)}
                 </span>
               </div>

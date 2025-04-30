@@ -118,7 +118,7 @@ const CashFlow: React.FC = () => {
       
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-black dark:text-white">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white/90">
             {getTitle()}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
