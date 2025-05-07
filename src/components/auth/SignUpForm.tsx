@@ -8,7 +8,6 @@ import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import { useAuth } from "../../context/AuthContext";
-import odooAPI from "../../services/odooService";
 
 export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);

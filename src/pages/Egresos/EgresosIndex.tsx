@@ -253,7 +253,7 @@ const GastosIndex = () => {
   }));
 
   return (
-    <div className="container px-4 py-6 mx-auto">
+    <div className="w-full px-4 py-6">
       <PageBreadcrumb pageTitle="Gestión de Gastos" />
 
       <div className="flex justify-between items-center mb-6">
@@ -301,7 +301,7 @@ const GastosIndex = () => {
       <div className="flex flex-wrap gap-6 mb-6 bg-white dark:bg-gray-800 p-5 rounded-lg shadow">
         <div className="flex-1 min-w-[200px]">
           <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Filtros</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="periodType">Tipo de Período</Label>
               <Select

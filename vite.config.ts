@@ -1,10 +1,9 @@
-// vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
 
-// https://vite.dev/config/
 export default defineConfig({
+  base: './', // 👈 clave para que los chunks .js se resuelvan bien desde ngrok
   plugins: [
     react(),
     svgr({
@@ -16,13 +15,16 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true, // 👈 asegura que el host sea accesible desde la red
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
         ws: true
       }
-    }
+    },
+    allowedHosts: ['.ngrok-free.app'], // útil pero no esencial con host: true
   }
 });

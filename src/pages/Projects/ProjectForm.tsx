@@ -22,6 +22,7 @@ const ProjectForm = () => {
     name: '',
     code: '',
     client_id: 0,
+    status: 'draft', // Añadido valor por defecto
     start_date: '',
     expected_end_date: '',
     total_budget: 0,
@@ -59,6 +60,7 @@ const ProjectForm = () => {
           expected_end_date: projectData.expected_end_date || '',
           total_budget: projectData.total_budget,
           description: projectData.description || '',
+          status: projectData.status || 'draft' // Add this line
         });
         
         // Format the budget for display
@@ -95,64 +97,6 @@ const ProjectForm = () => {
     fetchClients();
   }, [id, isEditMode]);
 
-  // Reemplazar en ProjectForm.tsx las líneas 132 y 137 con este código:
-
-  const testBackendConnection = async () => {
-    try {
-      // Intentar diferentes URLs para ver cuál funciona
-      const urls = [
-        '/api/projects',
-        '/odoo/api/projects',
-        '/api/debug/cors',  // Nuevo endpoint de diagnóstico
-        '/jsonrpc',  // Correcto, no /jsonrpc-cors
-        '/web/session/authenticate'
-      ];
-      
-      setError('Probando conexión con el backend...');
-      
-      for (const url of urls) {
-        try {
-          const response = await fetch(url, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Company-ID': '1'  // Agregar este encabezado para probar
-            }
-          });
-          
-          const text = await response.text();
-          let displayText;
-          
-          try {
-            // Intentar parsear como JSON para mostrar mejor
-            const json = JSON.parse(text);
-            displayText = JSON.stringify(json).substring(0, 100);
-          } catch (parseError) {
-            // Si no es JSON, mostrar como texto
-            displayText = text.substring(0, 100);
-          }
-          
-          console.log(`Respuesta de ${url}:`, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries([...response.headers.entries()]),
-            text: displayText + (text.length > 100 ? '...' : '')
-          });
-          
-          setError(prev => `${prev}\nURL: ${url} - Status: ${response.status}`);
-        } catch (e: unknown) {
-          console.error(`Error probando ${url}:`, e);
-          const errorMessage = e instanceof Error ? e.message : String(e);
-          setError(prev => `${prev}\nURL: ${url} - Error: ${errorMessage}`);
-        }
-      }
-    } catch (e: unknown) {
-      console.error('Error general:', e);
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      setError(prev => `${prev}\nError general: ${errorMessage}`);
-    }
-  };
     
   // Código para validar el código del proyecto
   const validateCode = useCallback(
@@ -325,14 +269,6 @@ const ProjectForm = () => {
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
           {isEditMode ? 'Editar Proyecto' : 'Nuevo Proyecto'}
         </h1>
-
-        <Button
-          onClick={testBackendConnection}
-          className="bg-gray-500 hover:bg-gray-600 text-white"
-          type="button"
-        >
-          Probar Conexión
-        </Button>
         
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg dark:bg-red-900/30 dark:text-red-400 dark:border-red-900/50 flex items-start">

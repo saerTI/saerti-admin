@@ -1,400 +1,108 @@
 // src/hooks/useApi.ts
-import { useState, useCallback, useEffect } from 'react';
-import { apiMiddleware, ApiErrorResponse, syncCompanyIds } from '../services/apiService';
-import { useTenant } from '../context/TenantContext';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState, useRef } from 'react';
 
-interface ApiState<T> {
+// Caché simple a nivel de aplicación
+const apiCache = new Map();
+
+// Tipo para la respuesta del hook
+export interface ApiResponse<T> {
   data: T | null;
   loading: boolean;
-  error: ApiErrorResponse | null;
+  error: Error | null;
+  refresh: () => Promise<void>; // Función para refrescar los datos
 }
 
-interface ApiHookOptions {
-  onSuccess?: (data: any) => void;
-  onError?: (error: ApiErrorResponse) => void;
-  autoSyncCompanyIds?: boolean;
-}
-
-// Hook for making API requests with proper tenant context
-export function useApi<T = any>(options: ApiHookOptions = {}) {
-  const [state, setState] = useState<ApiState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  });
+/**
+ * Hook para realizar llamadas a la API con caché para evitar duplicación
+ * @param apiCall - Función que realiza la llamada a la API
+ * @param cacheKey - Clave única para almacenar en caché
+ * @param dependencies - Dependencias que provocan una recarga
+ * @param skipCache - Si es true, ignora la caché y realiza una nueva llamada
+ */
+export function useApi<T>(
+  apiCall: () => Promise<T>, 
+  cacheKey: string, 
+  dependencies: any[] = [],
+  skipCache: boolean = false
+): ApiResponse<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   
-  const { currentTenant } = useTenant();
-  const { user } = useAuth();
-
-  // Sync company IDs between tenant and session whenever tenant changes
-  useEffect(() => {
-    if (options.autoSyncCompanyIds !== false && currentTenant) {
-      syncCompanyIds();
+  // Usamos un ref para rastrear si el componente sigue montado
+  const isMounted = useRef(true);
+  
+  // Función para realizar la llamada a la API
+  const fetchData = async (ignoreCache: boolean = false) => {
+    // Si hay datos en caché y no se debe ignorar la caché, usar esos datos
+    if (!ignoreCache && apiCache.has(cacheKey)) {
+      setData(apiCache.get(cacheKey));
+      setLoading(false);
+      return;
     }
-  }, [currentTenant, options.autoSyncCompanyIds]);
-
-  // Function to make GET request
-  const get = useCallback(async (url: string, params?: Record<string, string>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
-      // Add tenant company ID to headers
-      const headers: Record<string, string> = {};
-      if (currentTenant?.companyId) {
-        headers['X-Company-ID'] = currentTenant.companyId.toString();
+      setLoading(true);
+      const result = await apiCall();
+      
+      // Solo actualizar estado y caché si el componente sigue montado
+      if (isMounted.current) {
+        apiCache.set(cacheKey, result);
+        setData(result);
+        setError(null);
       }
-      
-      const response = await apiMiddleware(url, { 
-        method: 'GET',
-        params,
-        headers
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        setState(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: errorData
-        }));
-        
-        if (options.onError) {
-          options.onError(errorData);
-        }
-        
-        return null;
+    } catch (err) {
+      if (isMounted.current) {
+        console.error('Error in useApi hook:', err);
+        setError(err instanceof Error ? err : new Error('Unknown error'));
       }
-      
-      const data = await response.json();
-      const result = data.data || data; // Handle both ApiSuccessResponse and direct data
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        data: result
-      }));
-      
-      if (options.onSuccess) {
-        options.onSuccess(result);
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
       }
-      
-      return result;
-    } catch (error) {
-      console.error('API request failed:', error);
-      
-      const errorResponse: ApiErrorResponse = {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      };
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: errorResponse
-      }));
-      
-      if (options.onError) {
-        options.onError(errorResponse);
-      }
-      
-      return null;
     }
-  }, [currentTenant, options.onError, options.onSuccess]);
-
-  // Function to make POST request
-  const post = useCallback(async (url: string, data?: any, params?: Record<string, string>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      // Add tenant company ID to headers
-      const headers: Record<string, string> = {};
-      if (currentTenant?.companyId) {
-        headers['X-Company-ID'] = currentTenant.companyId.toString();
-      }
-      
-      const response = await apiMiddleware(url, { 
-        method: 'POST',
-        body: data ? JSON.stringify(data) : undefined,
-        params,
-        headers
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        setState(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: errorData
-        }));
-        
-        if (options.onError) {
-          options.onError(errorData);
-        }
-        
-        return null;
-      }
-      
-      const responseData = await response.json();
-      const result = responseData.data || responseData; // Handle both ApiSuccessResponse and direct data
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        data: result
-      }));
-      
-      if (options.onSuccess) {
-        options.onSuccess(result);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('API request failed:', error);
-      
-      const errorResponse: ApiErrorResponse = {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      };
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: errorResponse
-      }));
-      
-      if (options.onError) {
-        options.onError(errorResponse);
-      }
-      
-      return null;
-    }
-  }, [currentTenant, options.onError, options.onSuccess]);
-
-  // Function to make PUT request
-  const put = useCallback(async (url: string, data?: any, params?: Record<string, string>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      // Add tenant company ID to headers
-      const headers: Record<string, string> = {};
-      if (currentTenant?.companyId) {
-        headers['X-Company-ID'] = currentTenant.companyId.toString();
-      }
-      
-      const response = await apiMiddleware(url, { 
-        method: 'PUT',
-        body: data ? JSON.stringify(data) : undefined,
-        params,
-        headers
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        setState(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: errorData
-        }));
-        
-        if (options.onError) {
-          options.onError(errorData);
-        }
-        
-        return null;
-      }
-      
-      const responseData = await response.json();
-      const result = responseData.data || responseData; // Handle both ApiSuccessResponse and direct data
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        data: result
-      }));
-      
-      if (options.onSuccess) {
-        options.onSuccess(result);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('API request failed:', error);
-      
-      const errorResponse: ApiErrorResponse = {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      };
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: errorResponse
-      }));
-      
-      if (options.onError) {
-        options.onError(errorResponse);
-      }
-      
-      return null;
-    }
-  }, [currentTenant, options.onError, options.onSuccess]);
-
-  // Function to make PATCH request
-  const patch = useCallback(async (url: string, data?: any, params?: Record<string, string>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      // Add tenant company ID to headers
-      const headers: Record<string, string> = {};
-      if (currentTenant?.companyId) {
-        headers['X-Company-ID'] = currentTenant.companyId.toString();
-      }
-      
-      const response = await apiMiddleware(url, { 
-        method: 'PATCH',
-        body: data ? JSON.stringify(data) : undefined,
-        params,
-        headers
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        setState(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: errorData
-        }));
-        
-        if (options.onError) {
-          options.onError(errorData);
-        }
-        
-        return null;
-      }
-      
-      const responseData = await response.json();
-      const result = responseData.data || responseData; // Handle both ApiSuccessResponse and direct data
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        data: result
-      }));
-      
-      if (options.onSuccess) {
-        options.onSuccess(result);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('API request failed:', error);
-      
-      const errorResponse: ApiErrorResponse = {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      };
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: errorResponse
-      }));
-      
-      if (options.onError) {
-        options.onError(errorResponse);
-      }
-      
-      return null;
-    }
-  }, [currentTenant, options.onError, options.onSuccess]);
-
-  // Function to make DELETE request
-  const del = useCallback(async (url: string, params?: Record<string, string>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      // Add tenant company ID to headers
-      const headers: Record<string, string> = {};
-      if (currentTenant?.companyId) {
-        headers['X-Company-ID'] = currentTenant.companyId.toString();
-      }
-      
-      const response = await apiMiddleware(url, { 
-        method: 'DELETE',
-        params,
-        headers
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        setState(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: errorData
-        }));
-        
-        if (options.onError) {
-          options.onError(errorData);
-        }
-        
-        return null;
-      }
-      
-      const responseData = await response.json();
-      const result = responseData.data || responseData; // Handle both ApiSuccessResponse and direct data
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        data: result
-      }));
-      
-      if (options.onSuccess) {
-        options.onSuccess(result);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('API request failed:', error);
-      
-      const errorResponse: ApiErrorResponse = {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      };
-      
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: errorResponse
-      }));
-      
-      if (options.onError) {
-        options.onError(errorResponse);
-      }
-      
-      return null;
-    }
-  }, [currentTenant, options.onError, options.onSuccess]);
-
-  // Reset the state
-  const reset = useCallback(() => {
-    setState({
-      data: null,
-      loading: false,
-      error: null,
-    });
-  }, []);
-
-  return {
-    ...state,
-    get,
-    post,
-    put,
-    patch,
-    delete: del, // 'delete' is a reserved word
-    reset,
   };
+  
+  // Función para refrescar los datos (ignorando la caché)
+  const refresh = async () => {
+    await fetchData(true);
+  };
+  
+  // Efecto para cargar los datos
+  useEffect(() => {
+    // Restablecer el montado a true cuando cambian las dependencias
+    isMounted.current = true;
+    
+    // Cargar datos con o sin caché según skipCache
+    fetchData(skipCache);
+    
+    // Limpieza: marcar como desmontado cuando el componente se desmonta
+    return () => {
+      isMounted.current = false;
+    };
+  }, dependencies);  // eslint-disable-line react-hooks/exhaustive-deps
+  
+  return { data, loading, error, refresh };
 }
+
+// Función para limpiar la caché (útil para logout, por ejemplo)
+export const clearApiCache = () => {
+  apiCache.clear();
+};
+
+// Función para eliminar entradas específicas de la caché
+export const removeFromApiCache = (keyPattern: string | RegExp) => {
+  if (typeof keyPattern === 'string') {
+    // Si es una cadena exacta, eliminar esa entrada
+    apiCache.delete(keyPattern);
+  } else {
+    // Si es un RegExp, eliminar todas las entradas que coincidan
+    const keysToRemove = Array.from(apiCache.keys()).filter(key => 
+      keyPattern.test(key.toString())
+    );
+    
+    keysToRemove.forEach(key => apiCache.delete(key));
+  }
+};
 
 export default useApi;

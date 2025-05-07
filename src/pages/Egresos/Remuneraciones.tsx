@@ -304,11 +304,12 @@ const Remuneraciones = () => {
           
           <div>
             <MultiSelect
-              label="Períodos"
-              options={periodOptions}
-              defaultSelected={[]}
-              onChange={(values) => setSelectedPeriods(values)}
-            />
+            label="Períodos"
+            placeholder="Seleccione períodos"
+            options={periodOptions}
+            defaultSelected={[]}
+            onChange={(values) => setSelectedPeriods(values)}
+          />
           </div>
 
           <div>

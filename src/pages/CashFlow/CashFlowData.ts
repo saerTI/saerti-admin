@@ -115,15 +115,15 @@ export const generateCashFlowReport = async (
 // Mock data function to provide development fallback
 const getMockCashFlowData = (): CashFlowData => {
   const items = [
-    { id: 1, date: '2023-05-01', description: 'Client Payment - Project A', category: 'Sales', amount: 25000, type: 'income' as const },
-    { id: 2, date: '2023-05-03', description: 'Materials Purchase', category: 'Materials', amount: 12000, type: 'expense' as const },
-    { id: 3, date: '2023-05-05', description: 'Contractor Payment', category: 'Labor', amount: 15000, type: 'expense' as const },
-    { id: 4, date: '2023-05-10', description: 'Client Payment - Project B', category: 'Sales', amount: 30000, type: 'income' as const },
-    { id: 5, date: '2023-05-15', description: 'Equipment Rental', category: 'Equipment', amount: 8000, type: 'expense' as const },
-    { id: 6, date: '2023-05-20', description: 'Client Payment - Project C', category: 'Sales', amount: 30000, type: 'income' as const },
-    { id: 7, date: '2023-05-25', description: 'Utilities', category: 'Office', amount: 5000, type: 'expense' as const },
-    { id: 8, date: '2023-05-28', description: 'Permit Fees', category: 'Permits', amount: 10000, type: 'expense' as const },
-    { id: 9, date: '2023-05-30', description: 'Insurance Payment', category: 'Insurance', amount: 15000, type: 'expense' as const },
+    { id: 1, date: '2023-05-01', description: 'Pago de Cliente - Project A', category: 'Ventas', amount: 25000, type: 'income' as const },
+    { id: 2, date: '2023-05-03', description: 'Compra de materiales', category: 'Materiales', amount: 12000, type: 'expense' as const },
+    { id: 3, date: '2023-05-05', description: 'Pago a Contratista', category: 'Mano de Obra', amount: 15000, type: 'expense' as const },
+    { id: 4, date: '2023-05-10', description: 'Pago de Cliente - Project B', category: 'Ventas', amount: 30000, type: 'income' as const },
+    { id: 5, date: '2023-05-15', description: 'Renta de Maquinaria', category: 'Equipamiento', amount: 8000, type: 'expense' as const },
+    { id: 6, date: '2023-05-20', description: 'Pago de Cliente - Project C', category: 'Ventas', amount: 30000, type: 'income' as const },
+    { id: 7, date: '2023-05-25', description: 'Utilidades', category: 'Oficina', amount: 5000, type: 'expense' as const },
+    { id: 8, date: '2023-05-28', description: 'Gastos Trámites', category: 'Permisos', amount: 10000, type: 'expense' as const },
+    { id: 9, date: '2023-05-30', description: 'Pago de Seguros', category: 'Seguros', amount: 15000, type: 'expense' as const },
   ];
   
   const totalIncome = items.filter(i => i.type === 'income').reduce((sum, i) => sum + i.amount, 0);

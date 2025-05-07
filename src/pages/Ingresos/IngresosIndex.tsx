@@ -244,7 +244,7 @@ const IngresosIndex = () => {
   };
 
   return (
-    <div className="container px-4 py-6 mx-auto">
+    <div className="w-full px-4 py-6">
       <PageBreadcrumb pageTitle="Gestión de Ingresos" />
 
       <div className="flex justify-between items-center mb-6">
@@ -260,7 +260,7 @@ const IngresosIndex = () => {
 
       {/* Summary Overview */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 mb-6">
-        <ComponentCard title="Total de Ingresos" className="bg-white dark:bg-gray-800 h-48">
+        <ComponentCard title="Total de Ingresos" className="bg-white dark:bg-gray-800">
           <div className="flex flex-col items-center justify-center h-full">
             <p className="text-3xl font-bold text-green-500">{formatCurrency(stats.totalIngresos)}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">Monto total registrado</p>

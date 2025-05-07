@@ -1,9 +1,10 @@
 // src/services/apiService.ts
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import config from '../utils/config';
 
-// Base API configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
+// Usar la configuración del archivo config.ts
+const API_BASE_URL = config.apiUrl;
+const API_TIMEOUT = config.apiTimeout;
 
 // Create axios instance
 const apiClient = axios.create({
@@ -22,6 +23,11 @@ apiClient.interceptors.request.use(
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Ensure path starts with /api, but doesn't duplicate it
+    if (config.url && !config.url.startsWith('/api') && !config.url.startsWith('http')) {
+      config.url = `/api${config.url}`;
     }
     
     return config;
@@ -44,7 +50,9 @@ apiClient.interceptors.response.use(
         const refreshToken = localStorage.getItem('refresh_token');
         
         if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          // Ensure proper path for refresh token endpoint
+          const refreshUrl = `/api/auth/refresh`;
+          const response = await axios.post(`${API_BASE_URL}${refreshUrl}`, {
             refreshToken
           });
           

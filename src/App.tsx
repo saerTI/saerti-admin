@@ -28,14 +28,14 @@ import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
 
 // Import placeholder components for Gastos pages
 // These will need to be created
-import Cotizaciones from "./pages/Gastos/Cotizaciones";
-import Previsionales from "./pages/Gastos/Previsionales";
-import SubcontratosCredito from "./pages/Gastos/SubcontratosCredito";
-import SubcontratosContado from "./pages/Gastos/SubcontratosContado";
-import Remuneraciones from "./pages/Gastos/Remuneraciones";
-import GastosImprevistos from "./pages/Gastos/GastosImprevistos";
-import OCCredito from "./pages/Gastos/OCCredito";
-import GastosIndex from "./pages/Gastos/GastosIndex";
+import Cotizaciones from "./pages/Egresos/Cotizaciones";
+import Previsionales from "./pages/Egresos/Previsionales";
+import SubcontratosCredito from "./pages/Egresos/SubcontratosCredito";
+import SubcontratosContado from "./pages/Egresos/SubcontratosContado";
+import Remuneraciones from "./pages/Egresos/Remuneraciones";
+import GastosImprevistos from "./pages/Egresos/GastosImprevistos";
+import OCCredito from "./pages/Egresos/OCCredito";
+import EgresossIndex from "./pages/Egresos/EgresosIndex";
 import IngresosIndex from "./pages/Ingresos/IngresosIndex";
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
@@ -104,7 +104,7 @@ export default function App() {
               {/* Rutas de Gastos */}
               <Route path="/gastos/index" element={
                 <PrivateRoute>
-                  <GastosIndex />
+                  <EgresossIndex />
                 </PrivateRoute>
               } />
 

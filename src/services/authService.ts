@@ -39,6 +39,7 @@ export const authService = {
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
+      // Sin /api al principio para evitar duplicación
       const response = await api.post<AuthResponse>('/auth/login', credentials);
       
       // Store token in localStorage

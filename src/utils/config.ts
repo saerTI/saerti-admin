@@ -3,10 +3,10 @@ const isDevelopment = import.meta.env.MODE === 'development';
 
 // Environment-specific configuration
 const config = {
-  // API base URL
+  // API base URL - Corregido para apuntar al puerto correcto
   apiUrl: import.meta.env.VITE_API_URL || (isDevelopment 
-    ? 'http://localhost:5000/api' 
-    : '/api'),
+    ? 'http://localhost:3001' 
+    : ''),
   
   // Default timeout in milliseconds
   apiTimeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10),
