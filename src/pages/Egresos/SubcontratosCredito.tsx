@@ -55,16 +55,16 @@ const SubcontratosCredito = () => {
       contractor_id: 200 + index,
       contractor_name: `Contratista ${200 + index}`,
       contract_number: `SC-${2023}-${1000 + index}`,
-      start_date: new Date(2023, Math.floor(Math.random() * 6), Math.floor(Math.random() * 28) + 1).toISOString(),
-      end_date: new Date(2023, 6 + Math.floor(Math.random() * 6), Math.floor(Math.random() * 28) + 1).toISOString(),
-      payment_type: 'credit', // All credit for this page
-      payment_terms: `${Math.floor(Math.random() * 3) + 1}0 días`,
+      startDate: new Date(2023, Math.floor(Math.random() * 6), Math.floor(Math.random() * 28) + 1).toISOString(),
+      endDate: new Date(2023, 6 + Math.floor(Math.random() * 6), Math.floor(Math.random() * 28) + 1).toISOString(),
+      paymentType: 'credit', // All credit for this page
+      paymentTerms: `${Math.floor(Math.random() * 3) + 1}0 días`,
       date: new Date(2023, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
       amount: Math.floor(Math.random() * 50000000) + 5000000,
       state: ['draft', 'pending', 'approved', 'paid'][Math.floor(Math.random() * 4)],
-      project_id: Math.floor(Math.random() * 5) + 1,
-      project_name: `Proyecto ${Math.floor(Math.random() * 5) + 1}`,
-      company_id: 1,
+      projectId: Math.floor(Math.random() * 5) + 1,
+      projectName: `Proyecto ${Math.floor(Math.random() * 5) + 1}`,
+      companyId: 1,
       notes: Math.random() > 0.7 ? `Notas para subcontrato ${index + 1}` : undefined
     }));
   };
@@ -139,8 +139,8 @@ const SubcontratosCredito = () => {
             <input
               type="date"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.start_date || ''}
-              onChange={(e) => handleFilterChange('start_date', e.target.value)}
+              value={filters.startDate || ''}
+              onChange={(e) => handleFilterChange('startDate', e.target.value)}
             />
           </div>
           
@@ -151,8 +151,8 @@ const SubcontratosCredito = () => {
             <input
               type="date"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.end_date || ''}
-              onChange={(e) => handleFilterChange('end_date', e.target.value)}
+              value={filters.endDate || ''}
+              onChange={(e) => handleFilterChange('endDate', e.target.value)}
             />
           </div>
         </div>
@@ -229,13 +229,13 @@ const SubcontratosCredito = () => {
                         {subcontrato.contract_number}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {subcontrato.project_name}
+                        {subcontrato.projectName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {formatDate(subcontrato.start_date)} - {formatDate(subcontrato.end_date)}
+                        {formatDate(subcontrato.startDate)} - {formatDate(subcontrato.endDate)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {subcontrato.payment_terms}
+                        {subcontrato.paymentTerms}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${GASTO_STATUS_MAP[subcontrato.state]?.color || 'bg-gray-100 text-gray-800'}`}>

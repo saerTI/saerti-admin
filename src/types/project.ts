@@ -6,31 +6,31 @@ export interface Project {
   description: string;
   status: string; // Mantenemos status como estaba
   state: string; // Añadido para solucionar el error de los PROJECT_STATUS_MAP
-  start_date: string;
-  expected_end_date?: string;
-  actual_end_date?: string;
+  startDate: string;
+  expectedEndDate?: string;
+  actualEndDate?: string;
   code: string;
-  client_id: number;
+  clientId: number;
   client: {
     id: number;
     name: string;
   };
-  total_budget: number;
+  totalBudget: number;
   budget: number; // Mantenemos budget como estaba
   progress: number;
   balance: number;
-  total_income: number;
-  total_expense: number;
-  created_at: string;
-  updated_at: string;
+  totalIncome: number;
+  totalExpense: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Milestone {
   id: number;
   name: string;
-  planned_date: string;
-  actual_date?: string;
-  is_completed: boolean;
+  plannedDate: string;
+  actualDate?: string;
+  isCompleted: boolean;
   amount: number;
   notes?: string;
 }
@@ -44,8 +44,8 @@ export interface CashFlowLine {
   id: number;
   name: string;
   category: CashFlowCategory;
-  planned_date: string;
-  actual_date?: string;
+  plannedDate: string;
+  actualDate?: string;
   amount: number;
   state: 'forecast' | 'actual' | 'realized'; // Añadido 'realized' para compatibilidad
   notes?: string;
@@ -58,27 +58,27 @@ export interface CashFlow {
 
 export interface ProjectDetail extends Project {
   milestones: Milestone[];
-  cash_flow: CashFlow;
+  cashFlow: CashFlow;
 }
 
 export interface ProjectFilter {
   status?: string;
-  client_id?: number;
-  start_date_from?: string;
-  start_date_to?: string;
+  clientId?: number;
+  startDateFrom?: string;
+  startDateTo?: string;
   search?: string;
 }
 
-// Actualizado para incluir tanto budget como total_budget
+// Actualizado para incluir tanto budget como totalBudget
 export interface ProjectCreateData {
   name: string;
   description?: string;
   status: string;
-  start_date: string;
-  expected_end_date?: string;
+  startDate: string;
+  expectedEndDate?: string;
   budget?: number; // Opcional para compatibilidad
-  total_budget: number; // Para compatibilidad con ProjectForm
-  client_id: number;
+  totalBudget: number; // Para compatibilidad con ProjectForm
+  clientId: number;
   code: string;
 }
 
@@ -95,18 +95,18 @@ export interface ProjectsResponse {
 
 export interface MilestoneUpdateData {
   name?: string;
-  planned_date?: string;
-  actual_date?: string;
-  is_completed?: boolean;
+  plannedDate?: string;
+  actualDate?: string;
+  isCompleted?: boolean;
   amount?: number;
   notes?: string;
 }
 
 export interface CashFlowLineCreateData {
   name: string;
-  category_id: number;
-  planned_date: string;
-  actual_date?: string;
+  categoryId: number;
+  plannedDate: string;
+  actualDate?: string;
   amount: number;
   state: 'forecast' | 'actual' | 'realized';
   notes?: string;

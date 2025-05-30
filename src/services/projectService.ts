@@ -52,10 +52,10 @@ export const getProjectById = async (id: number): Promise<ProjectDetail> => {
 // Create new project
 export const createProject = async (data: ProjectCreateData): Promise<number> => {
   try {
-    // Mapear de total_budget a budget si es necesario para el backend
+    // Mapear de totalBudget a budget si es necesario para el backend
     const backendData = {
       ...data,
-      budget: data.budget || data.total_budget,
+      budget: data.budget || data.totalBudget,
     };
 
     // Añadir el prefijo /api aquí
@@ -74,10 +74,10 @@ export const createProject = async (data: ProjectCreateData): Promise<number> =>
 // Update project
 export const updateProject = async (id: number, data: Partial<ProjectCreateData>): Promise<boolean> => {
   try {
-    // Mapear de total_budget a budget si es necesario para el backend
+    // Mapear de totalBudget a budget si es necesario para el backend
     const backendData: any = { ...data };
-    if (data.total_budget !== undefined && !data.budget) {
-      backendData.budget = data.total_budget;
+    if (data.totalBudget !== undefined && !data.budget) {
+      backendData.budget = data.totalBudget;
     }
 
     // Añadir el prefijo /api aquí

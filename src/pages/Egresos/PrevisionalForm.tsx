@@ -9,13 +9,13 @@ import TextArea from '../../components/form/input/TextArea';
 import Select from '../../components/form/Select';
 
 // Default empty previsional
-const emptyPrevisional: Omit<Previsional, 'id' | 'company_id'> = {
+const emptyPrevisional: Omit<Previsional, 'id' | 'companyId'> = {
   name: '',
   date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
   amount: 0,
   state: 'draft',
   employee_id: 0,
-  employee_name: '',
+  employeeName: '',
   period: new Date().getMonth() + 1 + '/' + new Date().getFullYear(),
   type: '',
   notes: ''
@@ -62,15 +62,15 @@ const PrevisionalForm = () => {
       id,
       name: `Previsional ${id}`,
       employee_id: 100 + id,
-      employee_name: `Empleado ${100 + id}`,
+      employeeName: `Empleado ${100 + id}`,
       period: `${Math.floor(Math.random() * 12) + 1}/2023`,
       type: ['AFP', 'Isapre', 'Seguro Cesantía', 'Mutual'][Math.floor(Math.random() * 4)],
       date: new Date(2023, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
       amount: Math.floor(Math.random() * 500000) + 100000,
       state: ['draft', 'pending', 'approved', 'paid', 'rejected'][Math.floor(Math.random() * 5)],
-      project_id: Math.random() > 0.3 ? Math.floor(Math.random() * 5) + 1 : undefined,
-      project_name: Math.random() > 0.3 ? `Proyecto ${Math.floor(Math.random() * 5) + 1}` : undefined,
-      company_id: 1,
+      projectId: Math.random() > 0.3 ? Math.floor(Math.random() * 5) + 1 : undefined,
+      projectName: Math.random() > 0.3 ? `Proyecto ${Math.floor(Math.random() * 5) + 1}` : undefined,
+      companyId: 1,
       notes: Math.random() > 0.7 ? `Notas para previsional ${id}` : ''
     };
   };
@@ -129,8 +129,8 @@ const PrevisionalForm = () => {
 
   // Adapter for Select onChange (expects string, not event)
   const handleSelectChange = (name: string) => (value: string) => {
-    if (name === 'project_id' && value) {
-      // For project_id, convert to number if not empty
+    if (name === 'projectId' && value) {
+      // For projectId, convert to number if not empty
       setPrevisional({ ...previsional, [name]: parseInt(value) });
     } else {
       setPrevisional({ ...previsional, [name]: value });
@@ -145,7 +145,7 @@ const PrevisionalForm = () => {
     setPrevisional({
       ...previsional,
       employee_id: employeeId,
-      employee_name: selectedEmployee?.name || ''
+      employeeName: selectedEmployee?.name || ''
     });
   };
 
@@ -316,11 +316,11 @@ const PrevisionalForm = () => {
             </div>
 
             <div>
-              <Label htmlFor="project_id">Proyecto (Opcional)</Label>
+              <Label htmlFor="projectId">Proyecto (Opcional)</Label>
               <Select
                 options={projectOptions}
-                defaultValue={previsional.project_id ? String(previsional.project_id) : ''}
-                onChange={handleSelectChange('project_id')}
+                defaultValue={previsional.projectId ? String(previsional.projectId) : ''}
+                onChange={handleSelectChange('projectId')}
                 placeholder="Sin proyecto"
               />
             </div>

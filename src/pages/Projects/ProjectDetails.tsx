@@ -83,13 +83,13 @@ const ProjectDetailView = () => {
     
     try {
       await projectApiService.updateMilestone(milestoneId, {
-        is_completed: true,
-        actual_date: new Date().toISOString().split('T')[0]
+        isCompleted: true,
+        actualDate: new Date().toISOString().split('T')[0]
       });
       
       // Update the milestone in local state
       const updatedMilestones = project.milestones.map((m: Milestone) => 
-        m.id === milestoneId ? { ...m, is_completed: true, actual_date: new Date().toISOString().split('T')[0] } : m
+        m.id === milestoneId ? { ...m, isCompleted: true, actualDate: new Date().toISOString().split('T')[0] } : m
       );
       
       setProject({
@@ -193,9 +193,9 @@ const ProjectDetailView = () => {
     progress: project.progress || 0,
     state: project.state || 'draft',
     balance: project.balance || 0,
-    total_budget: project.total_budget || 0,
-    total_income: project.total_income || 0,
-    total_expense: project.total_expense || 0
+    totalBudget: project.totalBudget || 0,
+    totalIncome: project.totalIncome || 0,
+    totalExpense: project.totalExpense || 0
   };
   
   return (
@@ -255,7 +255,7 @@ const ProjectDetailView = () => {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Presupuesto</p>
               <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-white">
-                {formatCurrency(safeProject.total_budget)}
+                {formatCurrency(safeProject.totalBudget)}
               </p>
             </div>
             
@@ -321,18 +321,18 @@ const ProjectDetailView = () => {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Fecha de Inicio</p>
-                      <p className="font-medium text-gray-800 dark:text-white">{formatDate(safeProject.start_date)}</p>
+                      <p className="font-medium text-gray-800 dark:text-white">{formatDate(safeProject.startDate)}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Fecha de Finalización Esperada</p>
                       <p className="font-medium text-gray-800 dark:text-white">
-                        {formatDate(safeProject.expected_end_date)}
+                        {formatDate(safeProject.expectedEndDate)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Fecha de Finalización Real</p>
                       <p className="font-medium text-gray-800 dark:text-white">
-                        {formatDate(safeProject.actual_end_date)}
+                        {formatDate(safeProject.actualEndDate)}
                       </p>
                     </div>
                   </div>
@@ -344,19 +344,19 @@ const ProjectDetailView = () => {
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Presupuesto Total</p>
                       <p className="font-medium text-gray-800 dark:text-white">
-                        {formatCurrency(safeProject.total_budget)}
+                        {formatCurrency(safeProject.totalBudget)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Ingresos Totales</p>
                       <p className="font-medium text-green-600 dark:text-green-400">
-                        {formatCurrency(safeProject.total_income)}
+                        {formatCurrency(safeProject.totalIncome)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Gastos Totales</p>
                       <p className="font-medium text-red-600 dark:text-red-400">
-                        {formatCurrency(safeProject.total_expense)}
+                        {formatCurrency(safeProject.totalExpense)}
                       </p>
                     </div>
                     <div>
@@ -430,16 +430,16 @@ const ProjectDetailView = () => {
                               )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                              {formatDate(milestone.planned_date)}
+                              {formatDate(milestone.plannedDate)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                              {formatDate(milestone.actual_date)}
+                              {formatDate(milestone.actualDate)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                               {formatCurrency(milestone.amount)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              {milestone.is_completed ? (
+                              {milestone.isCompleted ? (
                                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                                   Completado
                                 </span>
@@ -451,7 +451,7 @@ const ProjectDetailView = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex justify-end space-x-2">
-                                {!milestone.is_completed && (
+                                {!milestone.isCompleted && (
                                   <button
                                     onClick={() => handleCompleteMilestone(milestone.id)}
                                     className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
@@ -512,13 +512,13 @@ const ProjectDetailView = () => {
                   <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
                     <p className="text-sm text-green-600 dark:text-green-400">Ingresos Totales</p>
                     <p className="text-xl font-bold text-green-700 dark:text-green-300">
-                      {formatCurrency(safeProject.total_income)}
+                      {formatCurrency(safeProject.totalIncome)}
                     </p>
                   </div>
                   <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg">
                     <p className="text-sm text-red-600 dark:text-red-400">Gastos Totales</p>
                     <p className="text-xl font-bold text-red-700 dark:text-red-300">
-                      {formatCurrency(safeProject.total_expense)}
+                      {formatCurrency(safeProject.totalExpense)}
                     </p>
                   </div>
                   <div className={`p-4 rounded-lg ${safeProject.balance >= 0 ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-orange-50 dark:bg-orange-900/30'}`}>
@@ -578,10 +578,10 @@ const ProjectDetailView = () => {
                                 {income.category?.name || 'No categorizado'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                {formatDate(income.planned_date)}
+                                {formatDate(income.plannedDate)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                {formatDate(income.actual_date)}
+                                {formatDate(income.actualDate)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 dark:text-green-400">
                                 {formatCurrency(income.amount)}
@@ -667,10 +667,10 @@ const ProjectDetailView = () => {
                                 {expense.category?.name || 'No categorizado'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                {formatDate(expense.planned_date)}
+                                {formatDate(expense.plannedDate)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                {formatDate(expense.actual_date)}
+                                {formatDate(expense.actualDate)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400">
                                 {formatCurrency(expense.amount)}

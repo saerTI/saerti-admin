@@ -1,38 +1,45 @@
+import { useCallback } from "react";
 import { SidebarProvider, useSidebar } from "../context/SidebarContext";
 import { Outlet } from "react-router";
 import AppHeader from "./AppHeader";
-import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
 
-// AppLayout.tsx - Solución completa
 const LayoutContent: React.FC = () => {
-  const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const { isExpanded, isHovered, isMobileOpen, setIsMobileOpen } = useSidebar();
+
+  // Manejador para cerrar el sidebar al hacer clic en el backdrop
+  const handleBackdropClick = useCallback(() => {
+    setIsMobileOpen(false);
+  }, [setIsMobileOpen]);
 
   return (
-    <div className="flex min-h-screen relative">
-      {/* Sidebar fijo - fuera del flujo normal */}
-      <div className="fixed top-0 left-0 z-40 h-screen">
-        <AppSidebar />
-      </div>
+    <div className="flex min-h-screen">
+      {/* Sidebar - debe mantenerse como componente separado */}
+      <AppSidebar />
       
-      {/* Contenedor principal - con ancho calculado correctamente */}
+      {/* Contenedor principal - con margen ajustado */}
       <div 
-        className={`w-full transition-all duration-300 ease-in-out
+        className={`w-full min-h-screen transition-all duration-300 ease-in-out
           ${isExpanded || isHovered ? "lg:pl-[290px]" : "lg:pl-[90px]"}`}
       >
-        {/* Header - anclado al contenedor principal */}
+        {/* Header */}
         <div className="sticky top-0 w-full z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <AppHeader />
         </div>
         
-        {/* Contenido - con ancho limitado al espacio disponible */}
+        {/* Contenido principal */}
         <div className="w-full p-4 md:p-6">
           <Outlet />
         </div>
       </div>
       
-      {/* Backdrop para móviles */}
-      {isMobileOpen && <Backdrop />}
+      {/* Backdrop - sólo visible cuando el sidebar móvil está abierto */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={handleBackdropClick}
+        />
+      )}
     </div>
   );
 };

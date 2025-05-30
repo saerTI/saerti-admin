@@ -114,8 +114,8 @@ const Cotizaciones = () => {
             <input
               type="date"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.start_date || ''}
-              onChange={(e) => handleFilterChange('start_date', e.target.value)}
+              value={filters.startDate || ''}
+              onChange={(e) => handleFilterChange('startDate', e.target.value)}
             />
           </div>
           
@@ -126,8 +126,8 @@ const Cotizaciones = () => {
             <input
               type="date"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.end_date || ''}
-              onChange={(e) => handleFilterChange('end_date', e.target.value)}
+              value={filters.endDate || ''}
+              onChange={(e) => handleFilterChange('endDate', e.target.value)}
             />
           </div>
         </div>
@@ -191,7 +191,7 @@ const Cotizaciones = () => {
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {cotizacion.provider_name}
+                      {cotizacion.providerName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {formatDate(cotizacion.date)}
@@ -202,7 +202,7 @@ const Cotizaciones = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {cotizacion.project_name || 'N/A'}
+                      {cotizacion.projectName || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {formatCurrency(cotizacion.amount || 0)}

@@ -16,7 +16,7 @@ const GASTO_STATUS_MAP: Record<string, { label: string, color: string }> = {
 };
 
 // Emergency level styling
-const EMERGENCY_LEVEL_MAP: Record<string, { label: string, color: string }> = {
+const emergencyLevel_MAP: Record<string, { label: string, color: string }> = {
   'low': { label: 'Baja', color: 'bg-green-200 text-green-800' },
   'medium': { label: 'Media', color: 'bg-yellow-200 text-yellow-800' },
   'high': { label: 'Alta', color: 'bg-red-200 text-red-800' }
@@ -83,17 +83,17 @@ const GastosImprevistos = () => {
       return {
         id: index + 1,
         name: `Imprevisto - ${category.name} ${index + 1}`,
-        category_id: category.id,
-        category_name: category.name,
-        authorization_id: Math.random() > 0.3 ? approver.id : undefined,
-        authorization_name: Math.random() > 0.3 ? approver.name : undefined,
-        emergency_level: emergencyLevel[Math.floor(Math.random() * emergencyLevel.length)],
+        categoryId: category.id,
+        categoryName: category.name,
+        authorizationId: Math.random() > 0.3 ? approver.id : undefined,
+        authorizationName: Math.random() > 0.3 ? approver.name : undefined,
+        emergencyLevel: emergencyLevel[Math.floor(Math.random() * emergencyLevel.length)],
         date: new Date(2023, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
         amount: Math.floor(Math.random() * 5000000) + 200000,
         state: ['draft', 'pending', 'approved', 'paid', 'rejected'][Math.floor(Math.random() * 5)],
-        project_id: Math.floor(Math.random() * 5) + 1,
-        project_name: `Proyecto ${Math.floor(Math.random() * 5) + 1}`,
-        company_id: 1,
+        projectId: Math.floor(Math.random() * 5) + 1,
+        projectName: `Proyecto ${Math.floor(Math.random() * 5) + 1}`,
+        companyId: 1,
         notes: `Gasto imprevisto por ${category.name.toLowerCase()}.${
           Math.random() > 0.5 ? ' Requiere atención inmediata.' : ''
         }${
@@ -190,8 +190,8 @@ const GastosImprevistos = () => {
             <input
               type="date"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.start_date || ''}
-              onChange={(e) => handleFilterChange('start_date', e.target.value)}
+              value={filters.startDate || ''}
+              onChange={(e) => handleFilterChange('startDate', e.target.value)}
             />
           </div>
           
@@ -202,8 +202,8 @@ const GastosImprevistos = () => {
             <input
               type="date"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.end_date || ''}
-              onChange={(e) => handleFilterChange('end_date', e.target.value)}
+              value={filters.endDate || ''}
+              onChange={(e) => handleFilterChange('endDate', e.target.value)}
             />
           </div>
         </div>
@@ -274,22 +274,22 @@ const GastosImprevistos = () => {
                         </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {gasto.category_name}
+                        {gasto.categoryName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {gasto.emergency_level && (
+                        {gasto.emergencyLevel && (
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            EMERGENCY_LEVEL_MAP[gasto.emergency_level]?.color || 'bg-gray-100 text-gray-800'
+                            emergencyLevel_MAP[gasto.emergencyLevel]?.color || 'bg-gray-100 text-gray-800'
                           }`}>
-                            {EMERGENCY_LEVEL_MAP[gasto.emergency_level]?.label || gasto.emergency_level}
+                            {emergencyLevel_MAP[gasto.emergencyLevel]?.label || gasto.emergencyLevel}
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {gasto.project_name}
+                        {gasto.projectName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {gasto.authorization_name || 'Pendiente'}
+                        {gasto.authorizationName || 'Pendiente'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         {formatDate(gasto.date)}

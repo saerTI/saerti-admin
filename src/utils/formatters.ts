@@ -158,3 +158,36 @@ export const formatRelativeTime = (
     return '';
   }
 };
+
+
+/**
+ * Formatea un número como porcentaje en formato chileno
+ * @param value - Valor decimal a formatear (por ejemplo, 0.05 para 5%)
+ * @returns String formateado como porcentaje (ejemplo: "5%")
+ */
+export const formatPercent = (value: number): string => {
+  return new Intl.NumberFormat('es-CL', {
+    style: 'percent',
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2
+  }).format(value);
+};
+
+export const formatAvatarName = (fullName: string): string => {
+  const nameParts = fullName.trim().split(' ');
+  if (nameParts.length >= 2) {
+    // Obtener el primer nombre y el primer apellido
+    return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
+  }
+  return fullName;
+};
+
+
+// Función para formatear nombre de visualización (primer nombre + apellido)
+export const formatDisplayName = (fullName: string): string => {
+  const nameParts = fullName.split(' ').filter(part => part.length > 0);
+  if (nameParts.length <= 1) return fullName;
+  
+  // Primer nombre + último apellido
+  return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
+};

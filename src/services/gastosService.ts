@@ -21,155 +21,159 @@ export interface GastoBase {
   name: string;
   date: string;
   amount: number;
-  project_id?: number;
-  project_name?: string;
-  currency_id?: number;
-  currency_symbol?: string;
+  projectId?: number;
+  projectName?: string;
+  currencyId?: number;
+  currencySymbol?: string;
   state: string;
-  company_id: number;
+  companyId: number;
   notes?: string;
 }
 
 export interface Cotizacion extends GastoBase {
-  provider_id: number;
-  provider_name: string;
-  valid_until: string;
-  is_approved: boolean;
+  providerId: number;
+  providerName: string;
+  validUntil: string;
+  isApproved: boolean;
 }
 
 export interface Previsional extends GastoBase {
-  employee_id: number;
-  employee_name: string;
+  employeeId: number;
+  employeeName: string;
   period: string;
   type: string;
+  area?: string;
+  centroCosto?: string;
 }
 
 export interface ServicioAlimentacionHospedaje extends GastoBase {
-  provider_id: number;
-  provider_name: string;
-  start_date: string;
-  end_date: string;
-  num_people: number;
-  service_type: string;
+  providerId: number;
+  providerName: string;
+  startDate: string;
+  endDate: string;
+  numPeople: number;
+  serviceType: string;
 }
 
 export interface LeasingPagoMaquinaria extends GastoBase {
-  provider_id: number;
-  provider_name: string;
-  equipment_id?: number;
-  equipment_name?: string;
-  payment_type: 'leasing' | 'payment';
-  start_date?: string;
-  end_date?: string;
-  contract_number?: string;
+  providerId: number;
+  providerName: string;
+  equipmentId?: number;
+  equipmentName?: string;
+  paymentType: 'leasing' | 'payment';
+  startDate?: string;
+  endDate?: string;
+  contractNumber?: string;
 }
 
 export interface Subcontrato extends GastoBase {
-  contractor_id: number;
-  contractor_name: string;
-  contract_number: string;
-  start_date: string;
-  end_date: string;
-  payment_type: 'credit' | 'cash';
-  payment_terms?: string;
+  contractorId: number;
+  contractorName: string;
+  contractNumber: string;
+  startDate: string;
+  endDate: string;
+  paymentType: 'credit' | 'cash';
+  paymentTerms?: string;
 }
 
 export interface OrdenCompra extends GastoBase {
-  provider_id: number;
-  provider_name: string;
-  order_number: string;
-  payment_type: 'credit' | 'cash';
-  delivery_date?: string;
-  payment_terms?: string;
+  providerId: number;
+  providerName: string;
+  orderNumber: string;
+  paymentType: 'credit' | 'cash';
+  deliveryDate?: string;
+  paymentTerms?: string;
 }
 
 export interface ContratoNotarial extends GastoBase {
-  notary_id: number;
-  notary_name: string;
-  contract_type: string;
-  document_number: string;
-  signing_date: string;
+  notaryId: number;
+  notaryName: string;
+  contractType: string;
+  documentNumber: string;
+  signingDate: string;
 }
 
 export interface CostoFijo extends GastoBase {
-  category_id: number;
-  category_name: string;
+  categoryId: number;
+  categoryName: string;
   period: string;
-  is_recurring: boolean;
+  isRecurring: boolean;
   frequency?: string;
 }
 
 export interface CostoVariable extends GastoBase {
-  category_id: number;
-  category_name: string;
-  unit_amount: number;
+  categoryId: number;
+  categoryName: string;
+  unitAmount: number;
   quantity: number;
-  unit_name?: string;
+  unitName?: string;
 }
 
 export interface PagoRendicion extends GastoBase {
-  employee_id: number;
-  employee_name: string;
-  expense_date: string;
-  approval_date?: string;
-  category_id: number;
-  category_name: string;
+  employeeId: number;
+  employeeName: string;
+  expenseDate: string;
+  approvalDate?: string;
+  categoryId: number;
+  categoryName: string;
 }
 
 export interface Impuesto extends GastoBase {
-  tax_type: string;
+  taxType: string;
   period: string;
-  due_date: string;
-  is_paid: boolean;
-  payment_date?: string;
+  dueDate: string;
+  isPaid: boolean;
+  paymentDate?: string;
 }
 
 export interface SeguroPoliza extends GastoBase {
-  insurance_company_id: number;
-  insurance_company_name: string;
-  policy_number: string;
-  policy_type: string;
-  start_date: string;
-  end_date: string;
-  coverage_amount?: number;
+  insuranceCompanyId: number;
+  insuranceCompanyName: string;
+  policyNumber: string;
+  policyType: string;
+  startDate: string;
+  endDate: string;
+  coverageAmount?: number;
 }
 
 export interface CertificacionCapacitacion extends GastoBase {
-  provider_id: number;
-  provider_name: string;
-  certification_type: string;
-  start_date?: string;
-  end_date?: string;
-  num_participants?: number;
-  is_mandatory: boolean;
+  providerId: number;
+  providerName: string;
+  certificationType: string;
+  startDate?: string;
+  endDate?: string;
+  numParticipants?: number;
+  isMandatory: boolean;
 }
 
 export interface EstudioAsesoria extends GastoBase {
-  provider_id: number;
-  provider_name: string;
-  service_type: string;
-  start_date: string;
-  end_date?: string;
+  providerId: number;
+  providerName: string;
+  serviceType: string;
+  startDate: string;
+  endDate?: string;
   deliverable?: string;
 }
 
 export interface GastoImprevisto extends GastoBase {
-  category_id: number;
-  category_name: string;
-  authorization_id?: number;
-  authorization_name?: string;
-  emergency_level?: 'low' | 'medium' | 'high';
+  categoryId: number;
+  categoryName: string;
+  authorizationId?: number;
+  authorizationName?: string;
+  emergencyLevel?: 'low' | 'medium' | 'high';
 }
 
 // Filter interfaces
 export interface GastoFilter {
-  project_id?: number;
-  start_date?: string;
-  end_date?: string;
-  min_amount?: number;
-  max_amount?: number;
+  projectId?: number;
+  startDate?: string;
+  endDate?: string;
+  minAmount?: number;
+  maxAmount?: number;
   state?: string;
   category?: string;
+  area?: string;
+  centroCosto?: string;
 }
 
 // Helper function to extract data from JSON-RPC or direct API responses
@@ -231,7 +235,7 @@ const gastosApiService = {
     }
   },
 
-  async createCotizacion(data: Omit<Cotizacion, 'id' | 'company_id'>): Promise<number> {
+  async createCotizacion(data: Omit<Cotizacion, 'id' | 'companyId'>): Promise<number> {
     try {
       const response = await apiClient.post('/api/gastos/cotizaciones', JSON.stringify(data));
       const result = extractResponseData(response.data);
@@ -309,7 +313,7 @@ const gastosApiService = {
   // ...
 
   // Generic method to get expense categories
-  async getExpenseCategories(type?: string): Promise<{ id: number; name: string; type: string; parent_id: number | null }[]> {
+  async getExpenseCategories(type?: string): Promise<{ id: number; name: string; type: string; parentId: number | null }[]> {
     try {
       const params = new URLSearchParams();
       if (type) {
@@ -332,7 +336,7 @@ const gastosApiService = {
   async getExpenseStats(projectId?: number, period?: string): Promise<any> {
     try {
       const params = new URLSearchParams();
-      if (projectId) params.append('project_id', String(projectId));
+      if (projectId) params.append('projectId', String(projectId));
       if (period) params.append('period', period);
 
       const response = await apiClient.get(`/api/gastos/stats${params.toString() ? '?' + params.toString() : ''}`);

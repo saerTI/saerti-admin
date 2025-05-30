@@ -10,13 +10,13 @@ import TextArea from '../../components/form/input/TextArea';
 import Select from '../../components/form/Select';
 
 // Default empty cotizacion
-const emptyCotizacion: Omit<Cotizacion, 'id' | 'company_id'> = {
+const emptyCotizacion: Omit<Cotizacion, 'id' | 'companyId'> = {
   name: '',
   date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
   amount: 0,
   state: 'draft',
-  provider_id: 0,
-  provider_name: '',
+  providerId: 0,
+  providerName: '',
   valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
   is_approved: false,
   notes: ''
@@ -99,8 +99,8 @@ const CotizacionForm = () => {
 
   // Adapter for Select onChange (expects string, not event)
   const handleSelectChange = (name: string) => (value: string) => {
-    if (name === 'project_id' && value) {
-      // For project_id, convert to number if not empty
+    if (name === 'projectId' && value) {
+      // For projectId, convert to number if not empty
       setCotizacion({ ...cotizacion, [name]: parseInt(value) });
     } else {
       setCotizacion({ ...cotizacion, [name]: value });
@@ -114,8 +114,8 @@ const CotizacionForm = () => {
     
     setCotizacion({
       ...cotizacion,
-      provider_id: providerId,
-      provider_name: selectedProvider?.name || ''
+      providerId: providerId,
+      providerName: selectedProvider?.name || ''
     });
   };
 
@@ -213,10 +213,10 @@ const CotizacionForm = () => {
             </div>
 
             <div>
-              <Label htmlFor="provider_id">Proveedor</Label>
+              <Label htmlFor="providerId">Proveedor</Label>
               <Select
                 options={providerOptions}
-                defaultValue={String(cotizacion.provider_id) || ''}
+                defaultValue={String(cotizacion.providerId) || ''}
                 onChange={handleProviderChange}
                 placeholder="Seleccione un proveedor"
               />
@@ -261,11 +261,11 @@ const CotizacionForm = () => {
             </div>
 
             <div>
-              <Label htmlFor="project_id">Proyecto (Opcional)</Label>
+              <Label htmlFor="projectId">Proyecto (Opcional)</Label>
               <Select
                 options={projectOptions}
-                defaultValue={cotizacion.project_id ? String(cotizacion.project_id) : ''}
-                onChange={handleSelectChange('project_id')}
+                defaultValue={cotizacion.projectId ? String(cotizacion.projectId) : ''}
+                onChange={handleSelectChange('projectId')}
                 placeholder="Sin proyecto"
               />
             </div>

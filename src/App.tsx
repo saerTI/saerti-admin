@@ -37,6 +37,8 @@ import GastosImprevistos from "./pages/Egresos/GastosImprevistos";
 import OCCredito from "./pages/Egresos/OCCredito";
 import EgresossIndex from "./pages/Egresos/EgresosIndex";
 import IngresosIndex from "./pages/Ingresos/IngresosIndex";
+import Factoring from "./pages/Egresos/Factoring";
+import CostosFijos from "./pages/Egresos/CostosFijos";
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
 // import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";
@@ -143,7 +145,18 @@ export default function App() {
                   <OCCredito />
                 </PrivateRoute>
               } />
+              <Route path="/gastos/factoring" element={
+                <PrivateRoute>
+                  <Factoring />
+                </PrivateRoute>
+              } />
               
+
+              <Route path="/gastos/costos-fijos" element={
+                <PrivateRoute>
+                  <CostosFijos />
+                </PrivateRoute>
+              } />
 
               {/* <Route path="/gastos/oc-contado" element={
                 <PrivateRoute>
@@ -165,11 +178,7 @@ export default function App() {
                   <ContratosNotariales />
                 </PrivateRoute>
               } />
-              <Route path="/gastos/costos-fijos" element={
-                <PrivateRoute>
-                  <CostosFijos />
-                </PrivateRoute>
-              } />
+              
               <Route path="/gastos/costos-variables" element={
                 <PrivateRoute>
                   <CostosVariables />

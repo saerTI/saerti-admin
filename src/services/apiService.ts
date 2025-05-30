@@ -95,6 +95,11 @@ export const api = {
     return response.data;
   },
   
+  patch: async <T>(url: string, data = {}, config = {}) => {
+    const response = await apiClient.patch<T>(url, data, config);
+    return response.data;
+  },
+  
   delete: async <T>(url: string, config = {}) => {
     const response = await apiClient.delete<T>(url, config);
     return response.data;

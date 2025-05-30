@@ -21,11 +21,11 @@ const ProjectForm = () => {
   const [formData, setFormData] = useState<ProjectCreateData>({
     name: '',
     code: '',
-    client_id: 0,
+    clientId: 0,
     status: 'draft', // Añadido valor por defecto
-    start_date: '',
-    expected_end_date: '',
-    total_budget: 0,
+    startDate: '',
+    expectedEndDate: '',
+    totalBudget: 0,
     description: '',
   });
   
@@ -55,16 +55,16 @@ const ProjectForm = () => {
         setFormData({
           name: projectData.name,
           code: projectData.code,
-          client_id: projectData.client.id,
-          start_date: projectData.start_date || '',
-          expected_end_date: projectData.expected_end_date || '',
-          total_budget: projectData.total_budget,
+          clientId: projectData.client.id,
+          startDate: projectData.startDate || '',
+          expectedEndDate: projectData.expectedEndDate || '',
+          totalBudget: projectData.totalBudget,
           description: projectData.description || '',
           status: projectData.status || 'draft' // Add this line
         });
         
         // Format the budget for display
-        setFormattedBudget(formatNumberWithDots(projectData.total_budget));
+        setFormattedBudget(formatNumberWithDots(projectData.totalBudget));
         
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar los datos del proyecto');
@@ -165,7 +165,7 @@ const ProjectForm = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    if (name === 'total_budget') {
+    if (name === 'totalBudget') {
       // For budget field, handle formatting
       const numericValue = parseFormattedNumber(value);
       setFormData(prev => ({
@@ -173,8 +173,8 @@ const ProjectForm = () => {
         [name]: numericValue
       }));
       setFormattedBudget(formatNumberWithDots(numericValue));
-    } else if (name === 'client_id') {
-      // For client_id, parse to number
+    } else if (name === 'clientId') {
+      // For clientId, parse to number
       setFormData(prev => ({
         ...prev,
         [name]: parseInt(value) || 0
@@ -201,7 +201,7 @@ const ProjectForm = () => {
     // Update the form data with the numeric value
     setFormData(prev => ({
       ...prev,
-      total_budget: numericValue
+      totalBudget: numericValue
     }));
     
     // Format for display
@@ -222,7 +222,7 @@ const ProjectForm = () => {
     setError(null);
     
     // Validate form data
-    if (!formData.name || !formData.code || !formData.client_id || formData.total_budget <= 0) {
+    if (!formData.name || !formData.code || !formData.clientId || formData.totalBudget <= 0) {
       setError('Por favor complete todos los campos obligatorios');
       return;
     }
@@ -344,13 +344,13 @@ const ProjectForm = () => {
             
             {/* Client */}
             <div>
-              <Label htmlFor="client_id">
+              <Label htmlFor="clientId">
                 Cliente <span className="text-red-500">*</span>
               </Label>
               <select
-                id="client_id"
-                name="client_id"
-                value={formData.client_id}
+                id="clientId"
+                name="clientId"
+                value={formData.clientId}
                 onChange={handleInputChange}
                 className="h-11 w-full rounded-lg border border-gray-300 appearance-none px-4 py-2.5 text-sm shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:bg-gray-900 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-800"
                 required
@@ -367,34 +367,34 @@ const ProjectForm = () => {
             {/* Start Date */}
             <div>
               <DatePicker
-                id="start_date"
+                id="startDate"
                 label="Fecha de Inicio"
                 placeholder="Seleccione fecha de inicio"
-                defaultDate={formData.start_date ? new Date(formData.start_date) : undefined}
-                onChange={handleDateChange('start_date')}
+                defaultDate={formData.startDate ? new Date(formData.startDate) : undefined}
+                onChange={handleDateChange('startDate')}
               />
             </div>
             
             {/* Expected End Date */}
             <div>
               <DatePicker
-                id="expected_end_date"
+                id="expectedEndDate"
                 label="Fecha de Finalización Esperada"
                 placeholder="Seleccione fecha de finalización"
-                defaultDate={formData.expected_end_date ? new Date(formData.expected_end_date) : undefined}
-                onChange={handleDateChange('expected_end_date')}
+                defaultDate={formData.expectedEndDate ? new Date(formData.expectedEndDate) : undefined}
+                onChange={handleDateChange('expectedEndDate')}
               />
             </div>
             
             {/* Budget */}
             <div>
-              <Label htmlFor="total_budget">
+              <Label htmlFor="totalBudget">
                 Presupuesto Total <span className="text-red-500">*</span>
               </Label>
               <Input
                 type="text"
-                id="total_budget"
-                name="total_budget"
+                id="totalBudget"
+                name="totalBudget"
                 value={formattedBudget}
                 onChange={handleBudgetChange}
                 placeholder="Ej: 50.000.000"

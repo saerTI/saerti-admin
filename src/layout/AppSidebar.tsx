@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 // Icons
 import {
@@ -14,7 +14,7 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
-  DollarLineIcon, // Assuming this exists in your icons folder
+  DollarLineIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -56,44 +56,25 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Remuneraciones", path: "/gastos/remuneraciones", pro: false },
       { name: "OC con crédito", path: "/gastos/oc-credito", pro: false },
+      { name: "Factoring", path: "/gastos/factoring", pro: false },
+      { name: "Costos Fijos", path: "/gastos/costos-fijos", pro: false },
       { name: "Previsionales", path: "/gastos/previsionales", pro: false },
       { name: "Subcontratos con crédito", path: "/gastos/subcontratos-credito", pro: false },
       { name: "Subcontratos Contado", path: "/gastos/subcontratos-contado", pro: false },
       { name: "Cotizaciones", path: "/gastos/cotizaciones", pro: false },
       { name: "Gastos Imprevistos", path: "/gastos/imprevistos", pro: false },
-
-
-      // { name: "Servicios de Alimentación y Hospedaje", path: "/gastos/servicios-alimentacion-hospedaje", pro: false },
-      // { name: "Leasing y Pagos Maquinaria", path: "/gastos/leasing-pagos-maquinaria", pro: false },
-      // { name: "OC Contado", path: "/gastos/oc-contado", pro: false },
-      // { name: "Contratos Notariales", path: "/gastos/contratos-notariales", pro: false },
-      // { name: "Costos Fijos", path: "/gastos/costos-fijos", pro: false },
-      // { name: "Costos Variables", path: "/gastos/costos-variables", pro: false },
-      // { name: "Pago Rendiciones", path: "/gastos/pago-rendiciones", pro: false },
-      // { name: "Impuestos", path: "/gastos/impuestos", pro: false },
-      // { name: "Seguros y Pólizas", path: "/gastos/seguros-polizas", pro: false },
-      // { name: "Certificaciones y Capacitaciones", path: "/gastos/certificaciones-capacitaciones", pro: false },
-      // { name: "Estudios y Asesorías", path: "/gastos/estudios-asesorias", pro: false },
     ],
   },
-  // {
-  //   name: "Forms",
-  //   icon: <ListIcon />,
-  //   subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
-  // },
-  // {
-  //   name: "Tables",
-  //   icon: <TableIcon />,
-  //   subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  // },
-  // {
-  //   name: "Pages",
-  //   icon: <PageIcon />,
-  //   subItems: [
-  //     { name: "Blank Page", path: "/blank", pro: false },
-  //     { name: "404 Error", path: "/error-404", pro: false },
-  //   ],
-  // },
+  {
+    name: "Forms",
+    icon: <ListIcon />,
+    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
+  },
+  {
+    name: "Tables",
+    icon: <TableIcon />,
+    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+  },
 ];
 
 const othersItems: NavItem[] = [
@@ -128,22 +109,37 @@ const othersItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, setIsMobileOpen } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
     index: number;
   } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
-  );
+  
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const isActive = useCallback(
     (path: string) => location.pathname === path,
     [location.pathname]
   );
+
+  // Handler for navigation item clicks
+  const handleNavItemClick = useCallback((path: string, e: React.MouseEvent<HTMLElement>) => {
+    // Check if we're on mobile
+    if (window.innerWidth < 768) {
+      e.preventDefault(); // Prevent default link behavior
+      setIsMobileOpen(false); // Close the sidebar
+      
+      // Navigate after a short delay to allow sidebar animation
+      setTimeout(() => {
+        navigate(path);
+      }, 300); // Match your transition duration
+    }
+    // On desktop, the default link behavior will work normally
+  }, [setIsMobileOpen, navigate]);
 
   useEffect(() => {
     let submenuMatched = false;
@@ -212,7 +208,7 @@ const AppSidebar: React.FC = () => {
               }`}
             >
               <span
-                className={`menu-item-icon-size  ${
+                className={`menu-item-icon-size ${
                   openSubmenu?.type === menuType && openSubmenu?.index === index
                     ? "menu-item-icon-active"
                     : "menu-item-icon-inactive"
@@ -238,6 +234,7 @@ const AppSidebar: React.FC = () => {
             nav.path && (
               <Link
                 to={nav.path}
+                onClick={(e) => handleNavItemClick(nav.path!, e)}
                 className={`menu-item group ${
                   isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
                 }`}
@@ -275,6 +272,7 @@ const AppSidebar: React.FC = () => {
                   <li key={subItem.name}>
                     <Link
                       to={subItem.path}
+                      onClick={(e) => handleNavItemClick(subItem.path, e)}
                       className={`menu-dropdown-item ${
                         isActive(subItem.path)
                           ? "menu-dropdown-item-active"
@@ -317,15 +315,22 @@ const AppSidebar: React.FC = () => {
     </ul>
   );
 
+  // Prevent click propagation within sidebar
+  const handleSidebarClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+  }, []);
+
   return (
     <aside
-      className={`fixed top-0 flex flex-col px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-40 border-r border-gray-200 
+      onClick={handleSidebarClick}
+      className={`fixed top-0 flex flex-col px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen
             ? "w-[290px]"
             : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
+              ? "w-[290px]"
+              : "w-[90px]"
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -368,7 +373,8 @@ const AppSidebar: React.FC = () => {
               <br/>
               {renderMenuItems(navItems, "main")}
             </div>
-            {/* <div className="">
+            {/* Commented out "Others" section - keeping it in code for future reference
+            <div className="">
               <h2
                 className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
                   !isExpanded && !isHovered

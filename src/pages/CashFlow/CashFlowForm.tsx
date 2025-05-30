@@ -10,7 +10,7 @@ import cashFlowService from '../../services/cashFlowService';
 export interface CreateCashFlowItemData {
   date: string;
   description: string;
-  category_id: number;
+  categoryId: number;
   amount: number;
   type: 'income' | 'expense';
 }
@@ -28,7 +28,7 @@ const CashFlowForm: React.FC<CashFlowFormProps> = ({ onSuccess, onCancel, initia
   const [formData, setFormData] = useState<CreateCashFlowItemData>({
     date: new Date().toISOString().split('T')[0],
     description: '',
-    category_id: 0,
+    categoryId: 0,
     amount: 0,
     type: 'expense',
   });
@@ -45,7 +45,7 @@ const CashFlowForm: React.FC<CashFlowFormProps> = ({ onSuccess, onCancel, initia
           setFormData({
             date: initialData.date || formData.date,
             description: initialData.description || '',
-            category_id: initialData.category_id || 0,
+            categoryId: initialData.categoryId || 0,
             amount: initialData.amount || 0,
             type: initialData.type || 'expense',
           });
@@ -82,7 +82,7 @@ const CashFlowForm: React.FC<CashFlowFormProps> = ({ onSuccess, onCancel, initia
     
     try {
       // Validate form
-      if (!formData.description || !formData.category_id || !formData.amount) {
+      if (!formData.description || !formData.categoryId || !formData.amount) {
         setError('Todos los campos son obligatorios');
         setIsSubmitting(false);
         return;
@@ -158,8 +158,8 @@ const CashFlowForm: React.FC<CashFlowFormProps> = ({ onSuccess, onCancel, initia
           <div>
             <Label>Categoría</Label>
             <select
-              name="category_id"
-              value={formData.category_id}
+              name="categoryId"
+              value={formData.categoryId}
               onChange={handleChange}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >

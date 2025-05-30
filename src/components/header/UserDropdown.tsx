@@ -121,7 +121,7 @@ export default function UserDropdown() {
                   fill=""
                 />
               </svg>
-              COnfiguración
+              Configuración
             </DropdownItem>
           </li>
           <li>

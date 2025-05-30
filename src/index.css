@@ -542,6 +542,18 @@ span.flatpickr-weekday,
   @apply right-0;
 }
 
+/* Agregar al final de tus estilos actuales */
+.modal-open .flatpickr-calendar {
+  z-index: 9999 !important;
+  position: fixed !important;
+}
+
+/* Desactivar el modo estático cuando se usa en modales */
+.modal-open .flatpickr-calendar.static {
+  position: absolute !important;
+  top: auto !important;
+}
+
 .fc .fc-view-harness {
   @apply max-w-full overflow-x-auto custom-scrollbar;
 }

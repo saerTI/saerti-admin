@@ -135,14 +135,6 @@ const ProjectList = () => {
         </div>
       </div>
 
-      {/* Session/tenant debug info (only in development) */}
-      {/* {import.meta.env.DEV && (
-        <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-700 text-xs rounded">
-          <div><strong>Tenant:</strong> {currentTenant?.name} (Company ID: {currentTenant?.companyId})</div>
-          <div><strong>User:</strong> {user?.name} (ID: {user?.id}, Company ID: {user?.companyId})</div>
-        </div>
-      )} */}
-
       {/* Error message with retry button */}
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">

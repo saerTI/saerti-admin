@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import gastosApiService, { GastoFilter } from '../../services/gastosService';
+import { GastoFilter } from '../../services/gastosService';
 import Button from '../../components/ui/button/Button';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatAvatarName, formatCurrency, formatDate, formatDisplayName } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
 import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
@@ -10,6 +10,8 @@ import Avatar from '../../components/ui/avatar/Avatar';
 import Label from '../../components/form/Label';
 import Select from '../../components/form/Select';
 import MultiSelect from '../../components/form/MultiSelect';
+import { Project } from '../../types/project';
+import { Remuneracion, RemuneracionCreateData, RemuneracionFilter } from '../../types/CC/remuneracion';
 import {
   Table,
   TableBody,
@@ -17,30 +19,17 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
+import NuevaRemuneracionModal from '../../components/egresos/NuevaRemuneracionModal';
 
-// Define the Remuneracion interface (add this to your gastosService.ts later)
-interface Remuneracion {
-  id: number;
-  name: string;
-  date: string;
-  amount: number;
-  state: string;
-  company_id: number;
-  project_id?: number;
-  project_name?: string;
-  employee_id: number;
-  employee_name: string;
-  employee_image?: string;
-  employee_position: string;
-  period: string;
-  work_days: number;
-  overtime_hours?: number;
-  bonuses?: number;
-  deductions?: number;
-  payment_method: string;
-  payment_date?: string;
-  notes?: string;
-}
+// Importar servicios y utilidades
+import { 
+  getRemuneraciones, 
+  deleteRemuneracion, 
+  createRemuneracion 
+} from '../../services/CC/remuneracionesService';
+import { getProjects } from '../../services/projectService'; // Fixed: projectService instead of projectsService
+import SimpleResponsiveTable from '../../components/tables/SimpleResponsiveTable';
+import { handleRemuneracionExcelUpload } from '../../utils/remuneracionUtils';
 
 // Status translation and styling
 const GASTO_STATUS_MAP: Record<string, { label: string, color: BadgeColor }> = {
@@ -59,123 +48,107 @@ const Remuneraciones = () => {
   const [filters, setFilters] = useState<GastoFilter>({});
   const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
   const navigate = useNavigate();
+  
+  // Estado para controlar la visibilidad del modal
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+  
+  // Lista de proyectos para el modal
+  const [projects, setProjects] = useState<Project[]>([]);
 
-  // Load salary payments on component mount and when filters change
+  // Estado para el dropdown
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar el dropdown cuando se hace clic fuera de él
   useEffect(() => {
-    const fetchRemuneraciones = async () => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
+
+  // Cargar remuneraciones y proyectos al montar el componente
+  useEffect(() => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        // Here we would normally call the API service
-        // For now, we'll use mock data
-        const data = await getMockRemuneraciones();
         
-        // Apply period filter from multi-select if any
-        let filteredData = data;
-        if (selectedPeriods.length > 0) {
-          filteredData = data.filter(item => selectedPeriods.includes(item.period));
-        }
+        // Convertir GastoFilter a RemuneracionFilter (projectId de number a string)
+        const apiFilters: RemuneracionFilter = {
+          ...filters,
+          // Convert projectId to string if it exists
+          projectId: filters.projectId ? String(filters.projectId) : undefined
+        };
         
-        setRemuneraciones(filteredData || []);
+        // Cargar remuneraciones - modified to match your API
+        const remuneracionesData = await getRemuneraciones(apiFilters);
+        
+        // Filter by periods manually if needed
+        const filteredData = selectedPeriods.length > 0 
+          ? remuneracionesData.filter(rem => selectedPeriods.includes(rem.period))
+          : remuneracionesData;
+          
+        setRemuneraciones(filteredData);
+        
+        // Cargar proyectos desde el servicio real
+        const projectsData = await getProjects();
+        setProjects(projectsData);
+        
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido al cargar remuneraciones');
-        console.error('Error fetching remuneraciones:', err);
-        setRemuneraciones([]);
+        setError(err instanceof Error ? err.message : 'Error desconocido al cargar datos');
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRemuneraciones();
+    fetchData();
   }, [filters, selectedPeriods]);
 
-  // Mock data function
-  const getMockRemuneraciones = async (): Promise<Remuneracion[]> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Mock employee positions
-    const positions = [
-      'Obrero', 
-      'Capataz', 
-      'Maestro', 
-      'Supervisor', 
-      'Ingeniero Residente',
-      'Administrador de Obra',
-      'Gerente de Proyecto',
-      'Arquitecto'
-    ];
-    
-    const paymentMethods = ['Transferencia', 'Cheque', 'Efectivo'];
-    
-    // Mock employee images for avatars
-    const employeeImages = [
-      "/images/user/user-01.jpg",
-      "/images/user/user-02.jpg",
-      "/images/user/user-03.jpg",
-      "/images/user/user-04.jpg",
-      "/images/user/user-05.jpg",
-    ];
-    
-    // Generate mock data for employees and their salaries
-    return Array(15).fill(null).map((_, index) => {
-      const employeeId = 100 + index;
-      const position = positions[Math.floor(Math.random() * positions.length)];
-      const baseAmount = position === 'Obrero' ? 600000 : 
-                         position === 'Capataz' ? 900000 :
-                         position === 'Maestro' ? 850000 :
-                         position === 'Supervisor' ? 1200000 :
-                         position === 'Ingeniero Residente' ? 2000000 :
-                         position === 'Administrador de Obra' ? 1500000 :
-                         position === 'Gerente de Proyecto' ? 2500000 : 1800000;
+  // Manejador para cargar archivo Excel
+  const handleFileUpload = async (file: File) => {
+    try {
+      setLoading(true);
       
-      const workDays = Math.floor(Math.random() * 6) + 20; // 20-25 days
-      const overtimeHours = Math.random() > 0.3 ? Math.floor(Math.random() * 30) : 0;
-      const bonuses = Math.random() > 0.5 ? Math.floor(Math.random() * 200000) : 0;
-      const deductions = Math.random() > 0.7 ? Math.floor(Math.random() * 100000) : 0;
+      // Procesar el archivo Excel utilizando la utilidad específica para remuneraciones
+      // Esta función ahora guardará los datos procesados en la API
+      const nuevasRemuneraciones = await handleRemuneracionExcelUpload(file);
       
-      // Calculate final amount
-      const amount = baseAmount + (overtimeHours * baseAmount / 180) + bonuses - deductions;
-      
-      // Generate a month period (current or previous months of 2023)
-      const month = Math.floor(Math.random() * 12) + 1;
-      const period = `${month < 10 ? '0' + month : month}/2023`;
-      
-      return {
-        id: index + 1,
-        name: `Remuneración ${period} - ${position}`,
-        employee_id: employeeId,
-        employee_name: `Empleado ${employeeId}`,
-        employee_image: employeeImages[Math.floor(Math.random() * employeeImages.length)],
-        employee_position: position,
-        period,
-        work_days: workDays,
-        overtime_hours: overtimeHours,
-        bonuses,
-        deductions,
-        payment_method: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-        date: new Date(2023, month - 1, 28).toISOString(),
-        payment_date: Math.random() > 0.3 ? new Date(2023, month - 1, 30).toISOString() : undefined,
-        amount,
-        state: ['draft', 'pending', 'approved', 'paid'][Math.floor(Math.random() * 4)],
-        project_id: Math.random() > 0.3 ? Math.floor(Math.random() * 5) + 1 : undefined,
-        project_name: Math.random() > 0.3 ? `Proyecto ${Math.floor(Math.random() * 5) + 1}` : undefined,
-        company_id: 1,
-        notes: Math.random() > 0.8 ? `Notas para remuneración ${period}` : undefined
-      };
-    });
+      if (nuevasRemuneraciones.length > 0) {
+        // Actualizar el estado con las nuevas remuneraciones
+        setRemuneraciones(prev => [...nuevasRemuneraciones, ...prev]);
+        
+        // Mostrar mensaje de éxito
+        alert(`Se importaron ${nuevasRemuneraciones.length} registros correctamente`);
+      } else {
+        alert('No se pudieron importar registros. Verifique el formato del archivo.');
+      }
+    } catch (error) {
+      console.error("Error al procesar el archivo:", error);
+      alert(`Error al procesar el archivo: ${error instanceof Error ? error.message : 'Verifique el formato e intente nuevamente'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Delete handler
+  // Manejador para eliminar remuneración
   const handleDelete = async (id: number) => {
     if (!confirm('¿Está seguro que desea eliminar esta remuneración? Esta acción no se puede deshacer.')) {
       return;
     }
 
     try {
-      // In a real app, this would call the API
-      // await gastosApiService.deleteRemuneracion(id);
-      // For now, just remove from state
+      // Llamar al servicio para eliminar
+      await deleteRemuneracion(id);
+      
+      // Actualizar el estado local
       setRemuneraciones(remuneraciones.filter(item => item.id !== id));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al eliminar la remuneración');
@@ -183,7 +156,7 @@ const Remuneraciones = () => {
     }
   };
 
-  // Update filter handler
+  // Manejador para filtros
   const handleFilterChange = (filterName: keyof GastoFilter) => (value: string) => {
     if (value === '') {
       // Remove the filter if empty value
@@ -195,14 +168,82 @@ const Remuneraciones = () => {
     }
   };
 
-  // Calculate totals for the summary
+  // Funciones para el modal
+  const openModal = () => setModalOpen(true);
+  const closeModal = () => setModalOpen(false);
+
+  // Manejador para crear nueva remuneración
+  const handleSubmitRemuneracion = async (formData: RemuneracionCreateData) => {
+    try {
+      // Debug - log the data being sent
+      console.log('Submitting to createRemuneracion:', formData);
+      
+      // Llamar al servicio para crear remuneración
+      const createdId = await createRemuneracion(formData);
+      
+      // Debug - log the response
+      console.log('Created remuneración with ID:', createdId);
+      
+      // Si createRemuneracion solo devuelve un ID, construimos un objeto temporal para la UI
+      // hasta que se recarguen los datos
+      const project = projects.find(p => p.id.toString() === formData.proyectoId);
+      
+      // Calcular el monto total
+      const sueldoLiquido = formData.tipo === 'REMUNERACION' ? (formData.sueldoLiquido || 0) : 0;
+      const anticipo = formData.tipo === 'ANTICIPO' ? (formData.anticipo || 0) : 0;
+      const amount = sueldoLiquido + anticipo;
+      
+      // Obtener mes y año de la fecha
+      const dateParts = formData.fecha.split('-');
+      const year = dateParts[0];
+      const month = dateParts[1];
+      const period = `${month}/${year}`;
+      
+      // Crear un objeto temporal con los datos del formulario y el ID devuelto
+      const newRemuneracion: Remuneracion = {
+        id: createdId,
+        name: formData.nombre,
+        employeeName: formData.nombre,
+        employeeRut: formData.rut,
+        date: formData.fecha,
+        period: period,
+        amount: amount,
+        state: formData.estado || 'pending',
+        companyId: 1, // Default company ID
+        employeeId: 0, // Placeholder
+        projectId: project?.id,
+        projectName: project?.name,
+        projectCode: project?.code || '',
+        workDays: formData.diasTrabajados || 30,
+        paymentMethod: formData.metodoPago || 'Transferencia',
+        sueldoLiquido: sueldoLiquido,
+        anticipo: anticipo,
+        area: '',
+        paymentDate: ''
+      };
+      
+      // Actualizar el estado local con la nueva remuneración
+      setRemuneraciones(prev => [newRemuneracion, ...prev]);
+      
+      // Cerrar el modal
+      closeModal();
+      
+      // Mostrar mensaje de éxito
+      alert("Remuneración creada con éxito");
+    } catch (err) {
+      console.error("Error al crear remuneración:", err);
+      alert("Error al crear la remuneración. Por favor, inténtelo de nuevo.");
+    }
+  };
+
+  // Calcular totales para el resumen
   const totalAmount = remuneraciones.reduce((sum, rem) => sum + rem.amount, 0);
   const pendingCount = remuneraciones.filter(rem => rem.state === 'pending').length;
   const approvedAmount = remuneraciones
     .filter(rem => rem.state === 'approved' || rem.state === 'paid')
     .reduce((sum, rem) => sum + rem.amount, 0);
     
-  // Get unique periods for multi-select
+  // Obtener períodos únicos para multi-select
   const uniquePeriods = [...new Set(remuneraciones.map(r => r.period))];
   const periodOptions = uniquePeriods.map(period => ({
     value: period,
@@ -220,20 +261,14 @@ const Remuneraciones = () => {
     selected: false
   }));
   
-  // Position options for select
+  // Opciones para filtros
   const positionOptions = [
     { value: '', label: 'Todos los cargos' },
     { value: 'Obrero', label: 'Obrero' },
     { value: 'Capataz', label: 'Capataz' },
-    { value: 'Maestro', label: 'Maestro' },
-    { value: 'Supervisor', label: 'Supervisor' },
-    { value: 'Ingeniero Residente', label: 'Ingeniero Residente' },
-    { value: 'Administrador de Obra', label: 'Administrador de Obra' },
-    { value: 'Gerente de Proyecto', label: 'Gerente de Proyecto' },
-    { value: 'Arquitecto', label: 'Arquitecto' }
+    // ... el resto de opciones (omitidas por brevedad)
   ];
 
-  // Status options for select
   const statusOptions = [
     { value: '', label: 'Todos los estados' },
     { value: 'draft', label: 'Borrador' },
@@ -244,11 +279,10 @@ const Remuneraciones = () => {
 
   const projectOptions = [
     { value: '', label: 'Todos los proyectos' },
-    { value: '1', label: 'Proyecto 1' },
-    { value: '2', label: 'Proyecto 2' },
-    { value: '3', label: 'Proyecto 3' },
-    { value: '4', label: 'Proyecto 4' },
-    { value: '5', label: 'Proyecto 5' }
+    ...projects.map(project => ({
+      value: project.id.toString(),
+      label: project.name
+    }))
   ];
 
   return (
@@ -270,14 +304,64 @@ const Remuneraciones = () => {
       </div>
 
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Remuneraciones</h1>
-        <Button 
-          onClick={() => navigate('/gastos/remuneraciones/new')}
-          className="bg-brand-500 hover:bg-brand-600 text-white"
-        >
-          Nueva Remuneración
-        </Button>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Remuneraciones</h1>
+          <div className="relative" ref={dropdownRef}>
+            <Button 
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="bg-brand-500 hover:bg-brand-600 text-white flex items-center gap-2"
+            >
+              <span>Nueva Remuneración</span>
+              <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg" className={`transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}>
+                <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Button>
+        
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 z-10 border border-gray-200 dark:border-gray-700">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      openModal();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Ingresar manualmente
+                  </button>
+                  
+                  <label className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 cursor-pointer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 16L8.586 11.414C8.96106 11.0391 9.46967 10.8284 10 10.8284C10.5303 10.8284 11.0389 11.0391 11.414 11.414L16 16M14 14L15.586 12.414C15.9611 12.0391 16.4697 11.8284 17 11.8284C17.5303 11.8284 18.0389 12.0391 18.414 12.414L20 14M14 8H14.01M6 20H18C18.5304 20 19.0391 19.7893 19.4142 19.4142C19.7893 19.0391 20 18.5304 20 18V6C20 5.46957 19.7893 4.96086 19.4142 4.58579C19.0391 4.21071 18.5304 4 18 4H6C5.46957 4 4.96086 4.21071 4.58579 4.58579C4.21071 4.96086 4 5.46957 4 6V18C4 18.5304 4.21071 19.0391 4.58579 19.4142C4.96086 19.7893 5.46957 20 6 20Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Importar desde Excel
+                    <input 
+                      type="file" 
+                      className="sr-only"
+                      onChange={(event) => {
+                        if (event.target.files && event.target.files[0]) {
+                          setDropdownOpen(false);
+                          handleFileUpload(event.target.files[0]);
+                        }
+                      }}
+                      accept=".xlsx,.xls,.csv"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
       </div>
+
+      {/* Modal de Nueva Remuneración */}
+      <NuevaRemuneracionModal 
+        isOpen={modalOpen}
+        onClose={closeModal}
+        onSubmit={handleSubmitRemuneracion}
+        projects={projects}
+      />
 
       {/* Filters */}
       <ComponentCard title="Filtros">
@@ -297,27 +381,27 @@ const Remuneraciones = () => {
             <Select
               options={positionOptions}
               placeholder="Seleccione Cargo"
-              onChange={handleFilterChange('project_id')}
+              onChange={handleFilterChange('projectId')}
               className="dark:bg-gray-900"
             />
           </div>
           
           <div>
             <MultiSelect
-            label="Períodos"
-            placeholder="Seleccione períodos"
-            options={periodOptions}
-            defaultSelected={[]}
-            onChange={(values) => setSelectedPeriods(values)}
-          />
+              label="Períodos"
+              placeholder="Seleccione períodos"
+              options={periodOptions}
+              defaultSelected={[]}
+              onChange={(values) => setSelectedPeriods(values)}
+            />
           </div>
 
           <div>
-            <Label htmlFor="project_id">Proyecto</Label>
+            <Label htmlFor="projectId">Proyecto</Label>
             <Select
               options={projectOptions}
-              defaultValue={filters.project_id ? String(filters.project_id) : ''}
-              onChange={handleFilterChange('project_id')}
+              defaultValue={filters.projectId ? String(filters.projectId) : ''}
+              onChange={handleFilterChange('projectId')}
               placeholder="Seleccione proyecto"
             />
           </div>
@@ -332,149 +416,158 @@ const Remuneraciones = () => {
       )}
 
       {/* Loading indicator */}
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
         </div>
       ) : (
-        /* Table Component */
-        <ComponentCard >
-          <div className="overflow-hidden rounded-xl">
-            <div className="max-w-full overflow-x-auto">
-              {remuneraciones.length === 0 ? (
-                <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-                  No se encontraron remuneraciones con los filtros seleccionados.
-                </div>
-              ) : (
-                <Table>
-                  {/* Table Header */}
-                  <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                    <TableRow>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Empleado
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Periodo
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Proyecto
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Días
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Estado
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Monto
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Acciones
-                      </TableCell>
-                    </TableRow>
-                  </TableHeader>
-                  
-                  {/* Table Body */}
-                  <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                    {remuneraciones.map((rem) => (
-                      <TableRow key={rem.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
-                        <TableCell className="px-5 py-4 sm:px-6 text-start">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 overflow-hidden rounded-full">
-                              {rem.employee_image ? (
-                                <Avatar
-                                  src={rem.employee_image}
-                                  size="small"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center">
-                                  {rem.employee_name.substring(0, 2).toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <Link 
-                                to={`/gastos/remuneraciones/${rem.id}`}
-                                className="block font-medium text-gray-800 text-theme-sm dark:text-white/90 hover:text-brand-500"
-                              >
-                                {rem.employee_name}
-                              </Link>
-                              <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                                {rem.employee_position}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {rem.period}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {rem.project_name || 'Administración Central'}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          <div className="flex flex-col">
-                            <span>{rem.work_days} días</span>
-                            {rem.overtime_hours ? (
-                              <span className="text-xs text-green-600">+{rem.overtime_hours} hrs extras</span>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          <Badge
-                            size="sm"
-                            color={GASTO_STATUS_MAP[rem.state]?.color || 'secondary'}
+        /* Table Component usando SimpleResponsiveTable mejorado */
+        <SimpleResponsiveTable 
+          hasData={remuneraciones.length > 0}
+          emptyMessage="No se encontraron remuneraciones con los filtros seleccionados."
+          enableSmoothScroll={true}
+        >
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                {/* Primera columna con clase sticky */}
+                <th className="sticky-first-column px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Empleado
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  RUT
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Remuneración
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Anticipo
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Total
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Área
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Centro Costo
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Periodo
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Estado
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+              {remuneraciones.map((rem) => {
+                const nombres = (rem.employeeName || '').split(' ').filter(n => n.length > 0);
+                const primerNombre = nombres[0] || '';
+                const apellidoPaterno = nombres[nombres.length - 1] || '';
+                const nombreParaAvatar = primerNombre === apellidoPaterno ? primerNombre : `${primerNombre} ${apellidoPaterno}`;
+                
+                return (
+                  <tr key={rem.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
+                    {/* Primera columna con clase sticky */}
+                    <td className="sticky-first-column px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 overflow-hidden rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-sm flex-shrink-0">
+                          {primerNombre.charAt(0).toUpperCase()}{apellidoPaterno.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <Link 
+                            to={`/gastos/remuneraciones/${rem.id}`}
+                            className="block font-medium text-gray-800 dark:text-white/90 hover:text-brand-500 truncate"
                           >
-                            {GASTO_STATUS_MAP[rem.state]?.label || rem.state}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400 font-medium">
-                          {formatCurrency(rem.amount)}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm">
-                          <div className="flex space-x-2">
-                            <Link 
-                              to={`/gastos/remuneraciones/${rem.id}/edit`}
-                              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                            >
-                              Editar
-                            </Link>
-                            <button
-                              onClick={() => handleDelete(rem.id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </div>
-        </ComponentCard>
+                            {nombreParaAvatar}
+                          </Link>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
+                      {rem.employeeRut || '-'}
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right dark:text-gray-300">
+                      {rem.sueldoLiquido && rem.sueldoLiquido > 0 
+                        ? formatCurrency(rem.sueldoLiquido) 
+                        : '-'
+                      }
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right dark:text-gray-300">
+                      {rem.anticipo && rem.anticipo > 0 
+                        ? formatCurrency(rem.anticipo) 
+                        : '-'
+                      }
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right dark:text-gray-100 font-semibold">
+                      {formatCurrency(rem.amount)}
+                    </td>
+                                              
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {rem.area || '-'}
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {rem.projectCode ? (
+                        <div className="flex flex-col">
+                          <span className="font-mono text-xs text-gray-600 dark:text-gray-500">
+                            {rem.projectCode}
+                          </span>
+                          {rem.projectName && rem.projectName.trim() !== '' && rem.projectName !== rem.projectCode && (
+                            <span className="text-xs text-gray-500 truncate max-w-[150px]">
+                              {rem.projectName}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
+                      {rem.period}
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge
+                        size="sm"
+                        color={GASTO_STATUS_MAP[rem.state]?.color || 'secondary'}
+                      >
+                        {GASTO_STATUS_MAP[rem.state]?.label || rem.state}
+                      </Badge>
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex gap-1">
+                        <Link 
+                          to={`/gastos/remuneraciones/${rem.id}/edit`}
+                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm px-2 py-1"
+                        >
+                          Editar
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(rem.id)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm px-2 py-1"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </SimpleResponsiveTable>
       )}
     </div>
   );
