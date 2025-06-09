@@ -1,307 +1,196 @@
-import api from '../apiService';
+// src/services/CC/remuneracionesService.ts
+import { api } from '../apiService';
 import { 
   Remuneracion, 
-  RemuneracionFilter, 
   RemuneracionCreateData, 
-  RemuneracionUpdateData,
-  RemuneracionesResponse
+  RemuneracionUpdateData, 
+  RemuneracionFilter
 } from '../../types/CC/remuneracion';
-import { removeFromApiCache } from '../../hooks/useApi';
 
-// Interface for API responses
+// ✅ Interfaz para datos que vienen de la API (snake_case)
+interface ApiRemuneracion {
+  id: number;
+  employee_id?: number;
+  employee_name?: string;
+  employee_rut?: string;
+  employee_position?: string;
+  sueldo_liquido?: number;
+  anticipo?: number;
+  amount: number;
+  area?: string;
+  project_id?: number;
+  project_code?: string;
+  project_name?: string;
+  period: string;
+  date: string;
+  state: string;
+  work_days?: number;
+  payment_method?: string;
+  payment_date?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
-  message?: string;
+  message: string;
+}
+
+interface BatchCreateResponse {
+  success: boolean;
+  message: string;
+  data: {
+    ids: number[];
+    created: number;
+    errors: Array<{ index: number; item: any; error: string }>;
+    total: number;
+  };
 }
 
 /**
- * Convierte campos de snake_case a camelCase para la interfaz Remuneracion
+ * 🔧 FUNCIÓN CLAVE: Transformar datos de API (snake_case) a Frontend (camelCase)
  */
-const transformRemuneracionData = (data: any): Remuneracion => {
+const transformApiRemuneracion = (apiRem: ApiRemuneracion): Remuneracion => {
   return {
-    id: data.id,
-    name: data.name || data.employee_name || '',
-    date: data.date || '',
-    amount: data.amount || 0,
-    state: data.state || 'pending',
-    companyId: data.company_id || 1,
-    projectId: data.project_id || undefined,
-    projectName: data.project_name || '',
-    projectCode: data.project_code || '',
-    employeeId: data.employee_id || 0,
-    employeeName: data.employee_name || '',
-    employeeRut: data.employee_rut || '',
-    employeePosition: data.employee_position || '',
-    area: data.area || '',
-    period: data.period || '',
-    workDays: data.work_days || 30,
-    sueldoLiquido: data.sueldo_liquido || 0,
-    anticipo: data.anticipo || 0,
-    paymentMethod: data.payment_method || 'Transferencia',
-    paymentDate: data.payment_date || '',
-    notes: data.notes || ''
+    id: apiRem.id,
+    name: apiRem.employee_name || `Empleado ${apiRem.id}`,
+    
+    // ✅ MAPEO CORRECTO: snake_case → camelCase
+    employeeId: apiRem.employee_id || 0,
+    employeeName: apiRem.employee_name,
+    employeeRut: apiRem.employee_rut,
+    employeePosition: apiRem.employee_position,
+    
+    // Campos financieros
+    sueldoLiquido: apiRem.sueldo_liquido,
+    anticipo: apiRem.anticipo,
+    amount: apiRem.amount || 0,
+    
+    // Información de proyecto
+    projectId: apiRem.project_id,
+    projectCode: apiRem.project_code,
+    projectName: apiRem.project_name,
+    
+    // Campos temporales
+    period: apiRem.period || '',
+    date: apiRem.date || '',
+    state: apiRem.state || 'pending',
+    
+    // Información adicional
+    area: apiRem.area,
+    workDays: apiRem.work_days || 30,
+    paymentMethod: apiRem.payment_method || 'transfer',
+    paymentDate: apiRem.payment_date,
+    
+    // Requerido
+    companyId: 1
   };
 };
 
 /**
- * Transforma un array de remuneraciones de snake_case a camelCase
+ * ✅ FUNCIÓN PRINCIPAL: Obtener remuneraciones con transformación
  */
-const transformRemuneracionList = (dataList: any[]): Remuneracion[] => {
-  if (!Array.isArray(dataList)) {
-    console.error('transformRemuneracionList: input is not an array', dataList);
-    return [];
-  }
-  return dataList.map(item => transformRemuneracionData(item));
-};
-
-// Get remuneraciones with optional filters
 export const getRemuneraciones = async (filters: RemuneracionFilter = {}): Promise<Remuneracion[]> => {
   try {
-    const queryParams = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (Array.isArray(value)) {
-          value.forEach(val => queryParams.append(`${key}[]`, val.toString()));
-        } else {
-          queryParams.append(key, value.toString());
-        }
-      }
-    });
-
-    const queryString = queryParams.toString();
-    const endpoint = `/api/remuneraciones${queryString ? `?${queryString}` : ''}`;
-
-    // Obtener datos con tipo correcto
-    const response = await api.get<RemuneracionesResponse>(endpoint);
+    const params = new URLSearchParams();
     
-    // Verificar respuesta
-    if (!response || typeof response.success !== 'boolean') {
-      console.error('Invalid API response format:', response);
-      throw new Error('Formato de respuesta inválido del servidor');
+    if (filters.state) params.append('state', filters.state);
+    if (filters.employeePosition) params.append('employeePosition', filters.employeePosition);
+    if (filters.projectId) params.append('projectId', filters.projectId);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.area) params.append('area', filters.area);
+    if (filters.type) params.append('type', filters.type);
+    if (filters.rut) params.append('rut', filters.rut);
+    
+    if (filters.period && filters.period.length > 0) {
+      filters.period.forEach(period => params.append('period', period));
     }
     
-    if (!response.success) {
+    const queryString = params.toString();
+    const url = queryString ? `/remuneraciones?${queryString}` : '/remuneraciones';
+    
+    const response = await api.get<ApiResponse<ApiRemuneracion[]>>(url);
+    
+    if (response.success) {
+      // 🔧 TRANSFORMACIÓN APLICADA AQUÍ
+      const transformedData = response.data.map(transformApiRemuneracion);
+      
+      console.log('✅ Datos transformados correctamente:', {
+        original: response.data.length,
+        transformed: transformedData.length,
+        sample: transformedData[0] ? {
+          employeeName: transformedData[0].employeeName,
+          employeeRut: transformedData[0].employeeRut,
+          sueldoLiquido: transformedData[0].sueldoLiquido
+        } : null
+      });
+      
+      return transformedData;
+    } else {
       throw new Error(response.message || 'Error al obtener remuneraciones');
     }
-    
-    // Transformar los datos de snake_case a camelCase
-    const transformedData = transformRemuneracionList(response.data || []);
-    
-    // Return transformed data
-    return transformedData;
   } catch (error) {
     console.error('Error fetching remuneraciones:', error);
-    throw new Error('Failed to fetch remuneraciones');
-  }
-};
-
-// Get remuneracion by ID
-export const getRemuneracionById = async (id: number): Promise<Remuneracion> => {
-  try {
-    // Definir el tipo de la respuesta correctamente
-    type ApiSingleResponse = ApiResponse<any>; // Cambio para manejar cualquier formato
-    
-    // api.get already returns the data part of the axios response
-    const response = await api.get<ApiSingleResponse>(`/api/remuneraciones/${id}`);
-    
-    // Verificar respuesta
-    if (!response || typeof response.success !== 'boolean') {
-      console.error('Invalid API response format:', response);
-      throw new Error('Formato de respuesta inválido del servidor');
-    }
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Error al obtener detalles de remuneración');
-    }
-    
-    // Transformar los datos de snake_case a camelCase
-    const transformedData = transformRemuneracionData(response.data);
-    
-    // Return transformed data
-    return transformedData;
-  } catch (error) {
-    console.error(`Error fetching remuneracion ${id}:`, error);
-    throw new Error('Failed to fetch remuneracion details');
-  }
-};
-
-// Create new remuneracion
-export const createRemuneracion = async (data: RemuneracionCreateData): Promise<number> => {
-  try {
-    console.log('Enviando datos a API:', data);
-    
-    // Asegurarse de que la fecha tenga el formato correcto para la API
-    const apiData = {
-      ...data,
-      // Si fecha no tiene formato YYYY-MM-DD, convertirla
-      fecha: data.fecha && !data.fecha.match(/^\d{4}-\d{2}-\d{2}$/) 
-        ? formatDateForAPI(data.fecha)
-        : data.fecha
-    };
-    
-    // api.post debe usar la ruta correcta
-    const response = await api.post<ApiResponse<{id: number}>>('/api/remuneraciones', apiData);
-    
-    console.log('Respuesta de API:', response);
-    
-    // Verificar si la respuesta tiene el formato esperado
-    if (!response || !response.success) {
-      console.error('Formato de respuesta inválido:', response);
-      throw new Error(response.message || 'Error al crear remuneración');
-    }
-    
-    // Devolver el ID creado
-    return response.data.id;
-  } catch (error) {
-    console.error('Error creating remuneracion:', error);
-    throw new Error('Failed to create remuneracion');
+    throw error;
   }
 };
 
 /**
- * Crea múltiples remuneraciones en un solo pedido
- * @param data Array de datos para crear remuneraciones
- * @returns Array con los IDs de las remuneraciones creadas
+ * Crear nueva remuneración
+ */
+export const createRemuneracion = async (data: RemuneracionCreateData): Promise<number> => {
+  try {
+    const response = await api.post<ApiResponse<{ id: number }>>('/remuneraciones', data);
+    
+    if (response.success) {
+      return response.data.id;
+    } else {
+      throw new Error(response.message || 'Error al crear remuneración');
+    }
+  } catch (error) {
+    console.error('Error creating remuneración:', error);
+    throw error;
+  }
+};
+
+/**
+ * Crear múltiples remuneraciones
  */
 export const createRemuneracionesBatch = async (data: RemuneracionCreateData[]): Promise<number[]> => {
   try {
-    console.log(`Enviando lote de ${data.length} remuneraciones a API`);
+    const response = await api.post<BatchCreateResponse>('/remuneraciones/batch', data);
     
-    // api.post con tipo de respuesta esperada
-    const response = await api.post<ApiResponse<{ids: number[]}>>('/api/remuneraciones/batch', data);
-    
-    if (!response || !response.success) {
-      console.error('Formato de respuesta inválido:', response);
+    if (response.success) {
+      return response.data.ids;
+    } else {
       throw new Error(response.message || 'Error al crear remuneraciones en lote');
     }
-    
-    console.log('Respuesta de API batch:', response);
-    
-    // Devolver los IDs creados
-    return response.data.ids;
   } catch (error) {
     console.error('Error creating remuneraciones batch:', error);
-    throw new Error('Failed to create remuneraciones batch');
+    throw error;
   }
 };
 
-// Función auxiliar para formatear fechas
-function formatDateForAPI(dateStr: string): string {
-  // Si tiene formato MM/YYYY
-  if (/^\d{2}\/\d{4}$/.test(dateStr)) {
-    const [month, year] = dateStr.split('/');
-    return `${year}-${month}-01`;
-  }
-  
-  // Devolver tal cual si no se puede analizar
-  return dateStr;
-}
-
-// Update remuneracion
-export const updateRemuneracion = async (id: number, data: RemuneracionUpdateData): Promise<boolean> => {
+/**
+ * Eliminar remuneración
+ */
+export const deleteRemuneracion = async (id: number): Promise<void> => {
   try {
-    // Prepare the data for API - Convert date format if needed
-    const apiData = {
-      ...data,
-      // If fecha doesn't match the YYYY-MM-DD format, convert it
-      fecha: data.fecha && !data.fecha.match(/^\d{4}-\d{2}-\d{2}$/) 
-        ? formatDateForAPI(data.fecha)
-        : data.fecha
-    };
-    
-    const response = await api.put<ApiResponse<any>>(`/api/remuneraciones/${id}`, apiData);
-    
-    // Verificar respuesta
-    if (!response || typeof response.success !== 'boolean') {
-      console.error('Invalid API response format:', response);
-      throw new Error('Formato de respuesta inválido del servidor');
-    }
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Error al actualizar remuneración');
-    }
-    
-    // Invalidar cachés relacionadas con esta remuneracion
-    removeFromApiCache(`remuneracion-detail-${id}`);
-    removeFromApiCache(/remuneraciones-list/);
-    
-    return true;
-  } catch (error) {
-    console.error(`Error updating remuneracion ${id}:`, error);
-    throw new Error('Failed to update remuneracion');
-  }
-};
-
-// Delete remuneracion
-export const deleteRemuneracion = async (id: number): Promise<boolean> => {
-  try {
-    const response = await api.delete<ApiResponse<any>>(`/api/remuneraciones/${id}`);
-    
-    // Verificar respuesta
-    if (!response || typeof response.success !== 'boolean') {
-      console.error('Invalid API response format:', response);
-      throw new Error('Formato de respuesta inválido del servidor');
-    }
+    const response = await api.delete<ApiResponse<null>>(`/remuneraciones/${id}`);
     
     if (!response.success) {
       throw new Error(response.message || 'Error al eliminar remuneración');
     }
-    
-    // Invalidar cachés relacionadas con esta remuneracion
-    removeFromApiCache(`remuneracion-detail-${id}`);
-    removeFromApiCache(/remuneraciones-list/);
-    
-    return true;
   } catch (error) {
-    console.error(`Error deleting remuneracion ${id}:`, error);
-    throw new Error('Failed to delete remuneracion');
+    console.error('Error deleting remuneración:', error);
+    throw error;
   }
 };
 
-// Update remuneracion status
-export const updateRemuneracionStatus = async (id: number, status: string): Promise<boolean> => {
-  try {
-    // Use put instead of patch since patch doesn't exist in your api object
-    const response = await api.put<ApiResponse<any>>(`/api/remuneraciones/${id}/state`, { state: status });
-    
-    // Verificar respuesta
-    if (!response || typeof response.success !== 'boolean') {
-      console.error('Invalid API response format:', response);
-      throw new Error('Formato de respuesta inválido del servidor');
-    }
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Error al actualizar estado de remuneración');
-    }
-    
-    // Invalidar cachés relacionadas con esta remuneracion
-    removeFromApiCache(`remuneracion-detail-${id}`);
-    removeFromApiCache(/remuneraciones-list/);
-    
-    return true;
-  } catch (error) {
-    console.error(`Error updating remuneracion status ${id}:`, error);
-    throw new Error('Failed to update remuneracion status');
-  }
-};
-
-// Export types for individual use
-export {
-  type Remuneracion,
-  type RemuneracionFilter,
-  type RemuneracionCreateData,
-  type RemuneracionUpdateData,
-  type RemuneracionesResponse
-};
-
-// Export as default object
 export default {
   getRemuneraciones,
-  getRemuneracionById,
   createRemuneracion,
   createRemuneracionesBatch,
-  updateRemuneracion,
-  deleteRemuneracion,
-  updateRemuneracionStatus
+  deleteRemuneracion
 };

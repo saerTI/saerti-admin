@@ -2,10 +2,34 @@ import * as XLSX from 'xlsx';
 import { Remuneracion, RemuneracionCreateData } from '../types/CC/remuneracion';
 import { createRemuneracionesBatch } from '../services/CC/remuneracionesService';
 
+// Definir el tipo de respuesta esperada de la API
+interface BatchCreateResponse {
+  success: boolean;
+  message: string;
+  data: {
+    ids: number[];
+    created: number;
+    errors: Array<{ index: number; item: any; error: string }>;
+    total: number;
+  };
+}
+
+// 🔧 También permitir que el servicio devuelva solo un array de IDs (para compatibilidad)
+type BatchServiceResponse = BatchCreateResponse | number[];
+
 /**
  * Procesa un archivo Excel de remuneraciones
  * @param file Archivo Excel a procesar
  * @returns Array de objetos Remuneracion guardados
+ */
+// Parte corregida del archivo remuneracionUtils.ts - función handleRemuneracionExcelUpload
+
+/**
+ * Procesa un archivo Excel de remuneraciones con manejo robusto de datos faltantes
+ * 
+ * Esta función ahora maneja elegantemente los casos donde los datos del Excel
+ * pueden estar incompletos o mal formateados, proporcionando valores predeterminados
+ * sensatos en lugar de fallar.
  */
 export const handleRemuneracionExcelUpload = async (file: File): Promise<Remuneracion[]> => {
   try {
@@ -17,36 +41,124 @@ export const handleRemuneracionExcelUpload = async (file: File): Promise<Remuner
     
     console.log(`Procesados ${remuneracionesTemp.length} registros, enviando a API...`);
     
-    // Preparar array de objetos RemuneracionCreateData
-    const batchData: RemuneracionCreateData[] = remuneracionesTemp.map(remuneracion => ({
-      rut: remuneracion.employeeRut || '',
-      nombre: remuneracion.employeeName,
-      cargo: remuneracion.employeePosition || '',
-      tipo: remuneracion.sueldoLiquido && remuneracion.sueldoLiquido > 0 ? 'REMUNERACION' : 'ANTICIPO',
-      sueldoLiquido: remuneracion.sueldoLiquido || 0,
-      anticipo: remuneracion.anticipo || 0,
-      proyectoId: remuneracion.projectId?.toString() || '',
-      fecha: remuneracion.date,
-      estado: remuneracion.state,
-      diasTrabajados: remuneracion.workDays,
-      metodoPago: remuneracion.paymentMethod,
-      // Agregar información de centro de costo y área
-      centroCosto: remuneracion.projectCode || '',
-      centroCostoNombre: remuneracion.projectName || '',
-      area: remuneracion.area || '',
-      // Añadir el monto total calculado
-      montoTotal: remuneracion.amount || 0
-    }));
+    // ✅ CLAVE: Preparar array con manejo defensivo de datos faltantes
+    const batchData: RemuneracionCreateData[] = remuneracionesTemp.map((remuneracion, index) => {
+      
+      // 🔧 Estrategia: Crear valores predeterminados inteligentes para datos críticos
+      
+      // Para el nombre, crear un valor predeterminado basado en información disponible
+      const nombreFinal = remuneracion.employeeName || 
+                         (remuneracion.employeeRut ? `Empleado ${remuneracion.employeeRut}` : '') || 
+                         `Empleado ${index + 1}`;
+      
+      // Para el RUT, asegurar que siempre tengamos algo, aunque sea vacío
+      const rutFinal = remuneracion.employeeRut || '';
+      
+      // Para el cargo, proporcionar un valor predeterminado profesional
+      const cargoFinal = remuneracion.employeePosition || 'No especificado';
+      
+      // Debug para verificar transformación en casos problemáticos
+      if (!remuneracion.employeeName || !remuneracion.employeeRut) {
+        console.warn(`⚠️ Datos incompletos en registro ${index + 1}:`, {
+          original: {
+            employeeName: remuneracion.employeeName,
+            employeeRut: remuneracion.employeeRut
+          },
+          corregido: {
+            nombre: nombreFinal,
+            rut: rutFinal
+          }
+        });
+      }
+      
+      return {
+        // ✅ CORREGIDO: Usar valores con garantía de no ser undefined
+        rut: rutFinal,                    // ✅ Siempre string, nunca undefined
+        nombre: nombreFinal,              // ✅ Siempre string, nunca undefined - ESTO RESUELVE EL ERROR
+        cargo: cargoFinal,                // ✅ Siempre string, nunca undefined
+        
+        // Determinar tipo basado en los valores monetarios
+        tipo: remuneracion.sueldoLiquido && remuneracion.sueldoLiquido > 0 ? 'REMUNERACION' : 'ANTICIPO',
+        
+        // Campos monetarios con valores predeterminados seguros
+        sueldoLiquido: remuneracion.sueldoLiquido || 0,
+        anticipo: remuneracion.anticipo || 0,
+        
+        // TODO: Implementar funcionalidad de proyectos
+        // Cuando se implemente, descomentar:
+        // proyectoId: remuneracion.projectId?.toString() || '',
+        proyectoId: '', // TEMPORAL: Siempre vacío hasta implementar proyectos
+        
+        // Campos de fecha y estado con valores predeterminados
+        fecha: remuneracion.date || new Date().toISOString().split('T')[0],
+        estado: remuneracion.state || 'pending',
+        diasTrabajados: remuneracion.workDays || 30,
+        metodoPago: remuneracion.paymentMethod || 'Transferencia',
+        
+        // TEMPORAL: Usar estos campos para guardar info de centro de costo
+        centroCosto: remuneracion.projectCode || '',
+        centroCostoNombre: remuneracion.projectName || '',
+        area: remuneracion.area || '',
+        
+        // Monto total con validación adicional
+        montoTotal: remuneracion.amount || 0
+      };
+    });
     
-    // Enviar datos a la API
-    const createdIds = await createRemuneracionesBatch(batchData);
+    // ✅ Validación adicional: verificar que tenemos datos válidos antes de enviar
+    const validRecords = batchData.filter(record => {
+      const hasValidAmount = (record.montoTotal ?? 0) > 0 || 
+      (record.sueldoLiquido ?? 0) > 0 || 
+      (record.anticipo ?? 0) > 0;
+      const hasValidName = record.nombre.trim().length > 0;
+      
+      if (!hasValidAmount || !hasValidName) {
+        console.warn('⚠️ Registro inválido filtrado:', record);
+        return false;
+      }
+      
+      return true;
+    });
     
-    console.log(`Creadas ${createdIds.length} remuneraciones con IDs:`, createdIds);
+    if (validRecords.length === 0) {
+      throw new Error('No se encontraron registros válidos para importar. Verifique que el archivo contenga datos de empleados con montos mayores a cero.');
+    }
     
-    // Asignar IDs a los objetos remuneracion y devolver
-    const savedRemuneraciones: Remuneracion[] = remuneracionesTemp.map((remuneracion, index) => ({
-      ...remuneracion,
-      id: createdIds[index] || -1
+    if (validRecords.length < batchData.length) {
+      console.warn(`⚠️ Se filtraron ${batchData.length - validRecords.length} registros inválidos de ${batchData.length} total.`);
+    }
+    
+    // Enviar datos a la API - manejar ambos formatos de respuesta
+    const response: BatchServiceResponse = await createRemuneracionesBatch(validRecords);
+    
+    console.log(`Resultado API:`, response);
+    
+    // 🔧 Manejar diferentes formatos de respuesta con type guards
+    let ids: number[] = [];
+    
+    if (Array.isArray(response)) {
+      // Respuesta simple: array de IDs
+      ids = response;
+    } else if (response && typeof response === 'object' && 'data' in response) {
+      // Respuesta completa: objeto con metadata
+      const batchResponse = response as BatchCreateResponse;
+      if (batchResponse.data && Array.isArray(batchResponse.data.ids)) {
+        ids = batchResponse.data.ids;
+      } else {
+        throw new Error('Respuesta de API inválida: estructura de datos incorrecta');
+      }
+    } else {
+      throw new Error('Respuesta de API inválida: formato no reconocido');
+    }
+    
+    if (ids.length === 0) {
+      throw new Error('No se crearon registros en el servidor');
+    }
+    
+    // Crear objetos Remuneracion con IDs reales para devolver
+    const savedRemuneraciones: Remuneracion[] = ids.map((id: number, index: number) => ({
+      ...remuneracionesTemp[index],
+      id: id
     }));
     
     return savedRemuneraciones;
@@ -195,6 +307,9 @@ export const processRemuneracionesData = (data: any[], fileName: string, existin
   // Extraer periodo del nombre del archivo o la fecha actual
   const periodoPredeterminado = extractPeriodFromFileName(fileName) || getCurrentPeriod();
   
+  // ✅ Timestamp base para IDs únicos
+  const baseTimestamp = Date.now();
+  
   // Procesar filas de datos
   const remuneraciones: Remuneracion[] = [];
   
@@ -224,10 +339,10 @@ export const processRemuneracionesData = (data: any[], fileName: string, existin
     const sueldoLiquido = extractNumber(sueldoLiquidoIndex !== -1 ? row[sueldoLiquidoIndex] : null);
     const anticipo = extractNumber(anticipoIndex !== -1 ? row[anticipoIndex] : null);
     
-    // Calcular total - usar el valor directo si existe, de lo contrario sumar sueldo + anticipo
+    // ✅ Calcular total - usar el valor directo si existe, de lo contrario sumar sueldo + anticipo
     let total = 0;
     if (totalIndex !== -1 && row[totalIndex] !== undefined && row[totalIndex] !== null) {
-      total = extractNumber(row[totalIndex]);
+      total = extractNumber(row[totalIndex]);      
     } else {
       total = sueldoLiquido + anticipo;
     }
@@ -264,9 +379,12 @@ export const processRemuneracionesData = (data: any[], fileName: string, existin
       // Crear fecha en formato YYYY-MM-DD para la API
       const fecha = formatDateFromPeriod(periodo);
       
+      // ✅ ID único temporal basado en timestamp + índice
+      const uniqueId = -(baseTimestamp + i);
+      
       // Crear remuneración
       const remuneracion: Remuneracion = {
-        id: -(i), // ID temporal negativo
+        id: uniqueId, // ✅ ID único temporal
         name: nombre || "Empleado",
         employeeId: 0,
         employeeName: nombre || "Empleado",
@@ -277,12 +395,12 @@ export const processRemuneracionesData = (data: any[], fileName: string, existin
         date: fecha,
         sueldoLiquido: sueldoLiquido,
         anticipo: anticipo,
-        amount: total,
+        amount: total, // ✅ Usar total calculado correctamente
         state: 'pending',
         companyId: 1,
-        projectId: undefined,
+        projectId: undefined, // ✅ No usar centroCosto como projectId
         projectName: centroCosto, // Guardar el centro de costo en projectName
-        projectCode: centroCostoCodigo, // Guardar el código en projectCode
+        projectCode: centroCostoCodigo || centroCosto, // Guardar el código en projectCode
         workDays: 30,
         paymentMethod: 'Transferencia',
         paymentDate: ''

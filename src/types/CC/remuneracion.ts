@@ -11,20 +11,27 @@ export interface Remuneracion {
   projectId?: number;
   projectName?: string;
   employeeId: number;
-  employeeName: string;
-  employeeRut?: string;
-  employeePosition?: string;
-  area?: string;
+  
+  // ✅ CORREGIDO: Hacer estos campos opcionales porque pueden no estar presentes
+  employeeName?: string;        // Cambié de 'string' a 'string?' - Puede ser undefined si hay problemas de mapeo
+  employeeRut?: string;         // Ya era opcional - correcto
+  employeePosition?: string;    // Ya era opcional - correcto
+  
+  area?: string;                // Ya era opcional - correcto
   period: string;
   workDays: number;
-  sueldoLiquido?: number;
-  anticipo?: number;
+  sueldoLiquido?: number;       // Ya era opcional - correcto
+  anticipo?: number;            // Ya era opcional - correcto
   paymentMethod: string;
-  projectCode: string;
-  paymentDate?: string;
-  notes?: string;
+  
+  // ✅ CORREGIDO: Hacer este campo opcional porque puede no estar presente
+  projectCode?: string;         // Cambié de 'string' a 'string?' - Los centros de costo pueden no existir
+  
+  paymentDate?: string;         // Ya era opcional - correcto
+  notes?: string;               // Ya era opcional - correcto
 }
 
+// ✅ También voy a agregar algunos campos opcionales que podrían ser útiles
 export interface RemuneracionCreateData {
   rut: string;
   nombre: string;
@@ -38,12 +45,17 @@ export interface RemuneracionCreateData {
   cargo?: string;
   diasTrabajados?: number;
   metodoPago?: string;
-  // Nuevos campos
+  
+  // Campos de centro de costo
   centroCosto?: string;
   centroCostoNombre?: string;
   area?: string;
-  // Campo para el monto total
+  
+  // Campo para el monto total calculado
   montoTotal?: number;
+  
+  // Campo para ID de empleado si está disponible
+  employee_id?: number;
 }
 
 export interface RemuneracionUpdateData {
@@ -60,6 +72,7 @@ export interface RemuneracionUpdateData {
   metodoPago?: string;
 }
 
+// ✅ MEJORADO: Agregar campos de filtro que faltaban
 export interface RemuneracionFilter {
   state?: string;
   employeePosition?: string;
@@ -68,6 +81,11 @@ export interface RemuneracionFilter {
   date_from?: string;
   date_to?: string;
   search?: string;
+  
+  // ✅ Nuevos filtros que tu hook usa pero no estaban tipados
+  area?: string;           // Para filtrar por área
+  type?: string;           // Para filtrar por tipo (REMUNERACION/ANTICIPO)
+  rut?: string;            // Para filtrar por RUT
 }
 
 // This is the shape of the API response for lists of remuneraciones

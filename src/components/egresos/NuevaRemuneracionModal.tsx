@@ -237,7 +237,10 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
       newErrors.anticipo = "El anticipo es obligatorio";
     }
     
-    if (!formData.proyectoId) newErrors.proyectoId = "El proyecto es obligatorio";
+    // TODO: Implementar funcionalidad de proyectos
+    // Cuando se implemente, descomentar:
+    // if (!formData.proyectoId) newErrors.proyectoId = "El proyecto es obligatorio";
+    
     if (!formData.fecha) newErrors.fecha = "El período es obligatorio";
     
     setErrors(newErrors);
@@ -252,7 +255,11 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
     const dataToSubmit = {
       ...formData,
       sueldoLiquido: formData.tipo === "REMUNERACION" ? (formData.sueldoLiquido || 0) : 0,
-      anticipo: formData.tipo === "ANTICIPO" ? (formData.anticipo || 0) : 0
+      anticipo: formData.tipo === "ANTICIPO" ? (formData.anticipo || 0) : 0,
+      // TODO: Cuando se implemente proyectos, usar formData.proyectoId
+      proyectoId: "", // TEMPORAL: Siempre vacío
+      // Calcular monto total
+      montoTotal: formData.tipo === "REMUNERACION" ? (formData.sueldoLiquido || 0) : (formData.anticipo || 0)
     };
     
     if (validateForm()) {
@@ -293,13 +300,9 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
   // Si el modal no está abierto, no renderizar nada
   if (!isOpen) return null;
   
-  // Crear opciones de proyectos
+  // Crear opciones de proyectos - TEMPORAL: Solo mostrar mensaje informativo
   const projectOptions = [
-    { value: "", label: "Seleccione un proyecto" },
-    ...projects.map(project => ({
-      value: project.id.toString(),
-      label: project.name
-    }))
+    { value: "", label: "Funcionalidad en desarrollo..." }
   ];
   
   // Handler para cerrar el modal cuando se hace clic en el fondo
@@ -423,20 +426,24 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
               </div>
             )}
             
-            {/* Proyecto */}
+            {/* Proyecto - TEMPORAL: Deshabilitado visualmente pero sin usar prop disabled */}
             <div>
               <Label htmlFor="proyectoId">
-                Proyecto <span className="text-red-500">*</span>
+                Proyecto <span className="text-gray-400">(próximamente)</span>
               </Label>
-              <Select
-                options={projectOptions}
-                defaultValue={proyectoSeleccionado}
-                onChange={handleProyectoChange}
-                className={errors.proyectoId ? "border-red-500" : ""}
-              />
-              {errors.proyectoId && (
-                <span className="text-red-500 text-sm">{errors.proyectoId}</span>
-              )}
+              <div className="relative">
+                <Select
+                  options={projectOptions}
+                  defaultValue=""
+                  onChange={() => {}} // No hacer nada por ahora
+                  className="bg-gray-100 text-gray-500 cursor-not-allowed opacity-60"
+                />
+                {/* Overlay para evitar interacción */}
+                <div className="absolute inset-0 cursor-not-allowed" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                📋 La selección de proyectos se habilitará próximamente
+              </p>
             </div>
             
             {/* Período - Selector de mes y año */}
