@@ -16,7 +16,7 @@ const emptyCotizacion: Omit<Cotizacion, 'id' | 'companyId'> = {
   amount: 0,
   state: 'draft',
   providerId: 0,
-  providerName: '',
+  supplierName: '',
   valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
   is_approved: false,
   notes: ''
@@ -115,7 +115,7 @@ const CotizacionForm = () => {
     setCotizacion({
       ...cotizacion,
       providerId: providerId,
-      providerName: selectedProvider?.name || ''
+      supplierName: selectedProvider?.name || ''
     });
   };
 

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"; // Make sure to use react-router-dom, not react-router
+import { Link } from "react-router-dom";
 
 interface BreadcrumbItemProps {
   label: string;
@@ -8,9 +8,14 @@ interface BreadcrumbItemProps {
 interface BreadcrumbProps {
   pageTitle?: string;
   items?: BreadcrumbItemProps[];
+  titleSize?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'; // Nueva prop para el tamaño
 }
 
-const PageBreadcrumb: React.FC<BreadcrumbProps> = ({ pageTitle, items }) => {
+const PageBreadcrumb: React.FC<BreadcrumbProps> = ({ 
+  pageTitle, 
+  items, 
+  titleSize = 'xl' // Por defecto xl
+}) => {
   // If items are provided, use them, otherwise fallback to simple pageTitle version
   const useItems = Array.isArray(items) && items.length > 0;
   
@@ -18,11 +23,20 @@ const PageBreadcrumb: React.FC<BreadcrumbProps> = ({ pageTitle, items }) => {
   const displayTitle = useItems 
     ? (pageTitle || items![items!.length - 1].label) 
     : pageTitle;
+
+  // Mapear tamaños a clases de Tailwind
+  const titleSizeClasses = {
+    'sm': 'text-sm',
+    'md': 'text-base',
+    'lg': 'text-lg',
+    'xl': 'text-xl',
+    '2xl': 'text-2xl'
+  };
   
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
       <h2
-        className="text-xl font-semibold text-gray-800 dark:text-white/90"
+        className={`${titleSizeClasses[titleSize]} font-semibold text-gray-800 dark:text-white/90`}
       >
         {displayTitle}
       </h2>

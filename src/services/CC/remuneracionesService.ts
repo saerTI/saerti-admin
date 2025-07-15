@@ -7,23 +7,27 @@ import {
   RemuneracionFilter
 } from '../../types/CC/remuneracion';
 
-// ✅ Interfaz para datos que vienen de la API (snake_case)
+// ✅ Interfaz para datos que vienen de la API (nombres reales de la BD)
 interface ApiRemuneracion {
   id: number;
   employee_id?: number;
   employee_name?: string;
-  employee_rut?: string;
+  employee_tax_id?: string; // Campo real de la BD
+  employee_rut?: string; // Alias del query
   employee_position?: string;
-  sueldo_liquido?: number;
-  anticipo?: number;
+  net_salary?: number; // Campo real de la BD
+  sueldo_liquido?: number; // Alias del query
+  advance_payment?: number; // Campo real de la BD
+  anticipo?: number; // Alias del query
   amount: number;
   area?: string;
-  project_id?: number;
-  project_code?: string;
-  project_name?: string;
+  cost_center_id?: number;
+  project_code?: string; // Alias del query (center_code)
+  project_name?: string; // Alias del query (center_name)
   period: string;
   date: string;
-  state: string;
+  status: string; // Campo real de la BD
+  state?: string; // Para compatibilidad
   work_days?: number;
   payment_method?: string;
   payment_date?: string;
@@ -49,33 +53,33 @@ interface BatchCreateResponse {
 }
 
 /**
- * 🔧 FUNCIÓN CLAVE: Transformar datos de API (snake_case) a Frontend (camelCase)
+ * 🔧 FUNCIÓN CLAVE: Transformar datos de API a Frontend con mapeo correcto
  */
 const transformApiRemuneracion = (apiRem: ApiRemuneracion): Remuneracion => {
   return {
     id: apiRem.id,
     name: apiRem.employee_name || `Empleado ${apiRem.id}`,
     
-    // ✅ MAPEO CORRECTO: snake_case → camelCase
+    // ✅ MAPEO CORRECTO: Usar los campos reales y sus alias
     employeeId: apiRem.employee_id || 0,
     employeeName: apiRem.employee_name,
-    employeeRut: apiRem.employee_rut,
+    employeeRut: apiRem.employee_rut || apiRem.employee_tax_id, // Usar alias o campo real
     employeePosition: apiRem.employee_position,
     
-    // Campos financieros
-    sueldoLiquido: apiRem.sueldo_liquido,
-    anticipo: apiRem.anticipo,
+    // Campos financieros - usar alias o campos reales
+    sueldoLiquido: apiRem.sueldo_liquido || apiRem.net_salary || 0,
+    anticipo: apiRem.anticipo || apiRem.advance_payment || 0,
     amount: apiRem.amount || 0,
     
-    // Información de proyecto
-    projectId: apiRem.project_id,
+    // Información de proyecto/centro de costo
+    projectId: apiRem.cost_center_id,
     projectCode: apiRem.project_code,
     projectName: apiRem.project_name,
     
     // Campos temporales
     period: apiRem.period || '',
     date: apiRem.date || '',
-    state: apiRem.state || 'pending',
+    state: apiRem.state || apiRem.status || 'pending', // Mapear status a state
     
     // Información adicional
     area: apiRem.area,
@@ -122,7 +126,19 @@ export const getRemuneraciones = async (filters: RemuneracionFilter = {}): Promi
         sample: transformedData[0] ? {
           employeeName: transformedData[0].employeeName,
           employeeRut: transformedData[0].employeeRut,
-          sueldoLiquido: transformedData[0].sueldoLiquido
+          sueldoLiquido: transformedData[0].sueldoLiquido,
+          anticipo: transformedData[0].anticipo,
+          amount: transformedData[0].amount
+        } : null,
+        // Debug: Mostrar datos originales también
+        originalSample: response.data[0] ? {
+          employee_name: response.data[0].employee_name,
+          employee_rut: response.data[0].employee_rut,
+          employee_tax_id: response.data[0].employee_tax_id,
+          sueldo_liquido: response.data[0].sueldo_liquido,
+          net_salary: response.data[0].net_salary,
+          anticipo: response.data[0].anticipo,
+          advance_payment: response.data[0].advance_payment
         } : null
       });
       

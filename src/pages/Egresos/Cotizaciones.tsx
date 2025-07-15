@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import gastosApiService, { Cotizacion, GastoFilter } from '../../services/gastosService';
+import { gastosApiService, Cotizacion, GastoFilter } from '../../services/gastosService';
 import Button from '../../components/ui/button/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
@@ -191,7 +191,7 @@ const Cotizaciones = () => {
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {cotizacion.providerName}
+                      {cotizacion.supplierName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {formatDate(cotizacion.date)}

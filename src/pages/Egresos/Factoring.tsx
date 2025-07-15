@@ -299,12 +299,12 @@ const Factoring = () => {
           </div>
 
           <div>
-            <Label htmlFor="projectId">Proyecto</Label>
+            <Label htmlFor="projectId">Centro de Costo</Label>
             <Select
               options={projectOptions}
               defaultValue={filters.projectId ? String(filters.projectId) : ''}
               onChange={handleFilterChange('projectId')}
-              placeholder="Seleccione proyecto"
+              placeholder="Seleccione Centro de Costo"
             />
           </div>
         </div>
@@ -343,10 +343,13 @@ const Factoring = () => {
                   Tasa de Interés
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Proyecto
+                  Total: POR IMPLEMENTAR
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Fecha de Pago
+                  Centro de Costo
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Fecha de Factoring
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Estado
@@ -367,6 +370,9 @@ const Factoring = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {formatPercent(factoring.interest_rate)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    === 00.00 ===
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {factoring.projectName || 'Sin proyecto'}

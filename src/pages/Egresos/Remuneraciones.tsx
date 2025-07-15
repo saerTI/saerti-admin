@@ -2,13 +2,12 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { RemuneracionFilter } from '../../types/CC/remuneracion';
 import Button from '../../components/ui/button/Button';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
 import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
 import Label from '../../components/form/Label';
 import Select from '../../components/form/Select';
-import MultiSelect from '../../components/form/MultiSelect';
 import { Project } from '../../types/project';
 import { Remuneracion, RemuneracionCreateData } from '../../types/CC/remuneracion';
 import NuevaRemuneracionModal from '../../components/egresos/NuevaRemuneracionModal';
@@ -66,7 +65,10 @@ const Remuneraciones = () => {
     prevPage,
     changePerPage,
     refresh
-  } = useRemuneracionesSearch();
+  } = useRemuneracionesSearch({
+    initialPageSize: 25, // 🔥 Establecer 25 como default
+    autoLoad: true       // 🔥 Cargar automáticamente al iniciar
+  });
 
   // Estados locales
   const [searchInput, setSearchInput] = useState('');
@@ -99,6 +101,41 @@ const Remuneraciones = () => {
     setSearchInput('');
     searchByText('');
   }, [searchByText]);
+
+  // Función para obtener el rango de páginas (copiada de OrdenesCompra)
+  const getPaginationRange = () => {
+    if (!pagination) return [];
+    
+    const { current_page, total_pages } = pagination;
+    
+    // 🔥 Si total_pages es null, 0 o 1, devolver array con solo 1
+    if (!total_pages || total_pages <= 1) {
+      return [1];
+    }
+    
+    const delta = 2;
+    const range = [];
+    
+    for (let i = Math.max(2, current_page - delta); 
+         i <= Math.min(total_pages - 1, current_page + delta); 
+         i++) {
+      range.push(i);
+    }
+    
+    if (current_page - delta > 2) {
+      range.unshift("...");
+    }
+    if (current_page + delta < total_pages - 1) {
+      range.push("...");
+    }
+    
+    range.unshift(1);
+    if (total_pages !== 1) {
+      range.push(total_pages);
+    }
+    
+    return range;
+  };
 
   // Cerrar el dropdown cuando se hace clic fuera de él
   useEffect(() => {
@@ -258,21 +295,6 @@ const Remuneraciones = () => {
     { value: '', label: 'Todos los proyectos' }
   ];
 
-  // 🆕 Opciones para elementos por página
-  const perPageOptions = [25, 50, 100, 200];
-
-  // 🆕 Generar array de páginas para paginación
-  const pageNumbers = useMemo(() => {
-    const pages = [];
-    const start = Math.max(1, pagination.current_page - 2);
-    const end = Math.min(pagination.total_pages, pagination.current_page + 2);
-    
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    return pages;
-  }, [pagination.current_page, pagination.total_pages]);
-
   // Combinar errores
   const displayError = searchError || localError;
 
@@ -366,48 +388,6 @@ const Remuneraciones = () => {
       {/* 🆕 Barra de búsqueda y filtros mejorada */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Búsqueda y Filtros</h3>
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <span>
-                {pagination.total > 0 ? ((pagination.current_page - 1) * pagination.per_page + 1) : 0} -{' '}
-                {Math.min(pagination.current_page * pagination.per_page, pagination.total)} de{' '}
-                {pagination.total} resultados
-              </span>
-            </div>
-          </div>
-
-          {/* Barra de búsqueda principal */}
-          <div className="mb-6">
-            <div className="relative max-w-md">
-              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Buscar por nombre o RUT..."
-                value={searchInput}
-                onChange={handleSearchChange}
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-              />
-              {searchInput && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              {loading && (
-                <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
-                  <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Filtros en grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
@@ -455,6 +435,33 @@ const Remuneraciones = () => {
           {/* Controles inferiores */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-600">
             <div className="flex gap-2">
+              <div className="relative max-w-md">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre o RUT..."
+                  value={searchInput}
+                  onChange={handleSearchChange}
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                />
+                {searchInput && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+                {loading && (
+                  <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={clearFilters}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
@@ -474,21 +481,6 @@ const Remuneraciones = () => {
                 </svg>
                 Actualizar
               </button>
-            </div>
-
-            {/* Selector de elementos por página */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar:</span>
-              <select
-                value={pagination.per_page}
-                onChange={(e) => changePerPage(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                {perPageOptions.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <span className="text-sm text-gray-600 dark:text-gray-400">por página</span>
             </div>
           </div>
         </div>
@@ -661,54 +653,108 @@ const Remuneraciones = () => {
               })}
             </tbody>
           </table>
+        </SimpleResponsiveTable>
+      )}
 
-          {/* 🆕 Controles de paginación */}
-          {pagination.total_pages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div className="flex items-center">
-                <button
-                  onClick={prevPage}
-                  disabled={!pagination.has_prev}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Anterior
-                </button>
-              </div>
+      {/* 🔥 Paginación mejorada - SIEMPRE VISIBLE */}
+      {pagination && (
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            Mostrando {(pagination.current_page - 1) * pagination.per_page + 1} a{' '}
+            {Math.min(pagination.current_page * pagination.per_page, pagination.total)} de{' '}
+            {pagination.total} resultados
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {/* Botón Anterior */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.has_prev}
+              onClick={prevPage}
+              className="px-3 py-1 text-xs"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Anterior
+            </Button>
 
-              <div className="flex items-center space-x-2">
-                {pageNumbers.map(page => (
+            {/* Números de página - SIEMPRE MOSTRAR AL MENOS LA PÁGINA 1 */}
+            <div className="hidden sm:flex space-x-1">
+              {pagination.total_pages > 1 ? (
+                // Múltiples páginas: mostrar rango completo
+                getPaginationRange().map((page, index) => (
                   <button
-                    key={page}
-                    onClick={() => goToPage(page)}
-                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                    key={index}
+                    onClick={() => typeof page === 'number' && goToPage(page)}
+                    disabled={page === '...' || page === pagination.current_page}
+                    className={`px-3 py-1 text-xs rounded ${
                       page === pagination.current_page
-                        ? 'bg-brand-600 text-white'
-                        : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                        ? 'bg-brand-500 text-white'
+                        : page === '...'
+                        ? 'text-gray-500 cursor-default'
+                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
                   >
                     {page}
                   </button>
-                ))}
-              </div>
-
-              <div className="flex items-center">
+                ))
+              ) : (
+                // Una sola página: mostrar solo "1" activa
                 <button
-                  onClick={nextPage}
-                  disabled={!pagination.has_next}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  disabled
+                  className="px-3 py-1 text-xs rounded bg-brand-500 text-white cursor-default"
                 >
-                  Siguiente
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  1
                 </button>
-              </div>
+              )}
             </div>
-          )}
-        </SimpleResponsiveTable>
+
+            {/* Página actual (solo en móvil) */}
+            <div className="sm:hidden text-xs text-gray-600 dark:text-gray-400">
+              Página {pagination.current_page} de {pagination.total_pages || 1}
+            </div>
+
+            {/* Botón Siguiente */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.has_next}
+              onClick={nextPage}
+              className="px-3 py-1 text-xs"
+            >
+              Siguiente
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Información adicional cuando no hay datos */}
+      {!loading && remuneraciones.length === 0 && (
+        <div className="text-center py-12">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay remuneraciones</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Comience creando una nueva remuneración o importando desde Excel.
+          </p>
+          <div className="mt-6">
+            <Button 
+              onClick={openModal}
+              className="bg-brand-500 hover:bg-brand-600 text-white"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nueva Remuneración
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

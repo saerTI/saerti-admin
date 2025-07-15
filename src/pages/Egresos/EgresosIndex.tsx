@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import gastosApiService from '../../services/gastosService';
+import { gastosApiService, OrdenCompra, GastoFilter } from '../../services/gastosService';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
 import { formatCurrency } from '../../utils/formatters';
@@ -53,7 +53,7 @@ const GastosIndex = () => {
     { title: 'Leasing y Maquinaria', amount: 0, count: 0, path: '/gastos/leasing-pagos-maquinaria' },
     { title: 'Subcontratos Crédito', amount: 0, count: 0, path: '/gastos/subcontratos-credito' },
     { title: 'Subcontratos Contado', amount: 0, count: 0, path: '/gastos/subcontratos-contado' },
-    { title: 'OC Crédito', amount: 0, count: 0, path: '/gastos/oc-credito' },
+    { title: 'OC Crédito', amount: 0, count: 0, path: '/gastos/ordenes-compra' },
     { title: 'OC Contado', amount: 0, count: 0, path: '/gastos/oc-contado' },
     { title: 'Contratos Notariales', amount: 0, count: 0, path: '/gastos/contratos-notariales' },
     { title: 'Costos Fijos', amount: 0, count: 0, path: '/gastos/costos-fijos' },
@@ -254,11 +254,7 @@ const GastosIndex = () => {
 
   return (
     <div className="w-full px-4 py-6">
-      <PageBreadcrumb pageTitle="Gestión de Gastos" />
-
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Gestión de Gastos</h1>
-      </div>
+      <PageBreadcrumb pageTitle="Gestión de Gastos" titleSize="2xl" />
 
       {/* Error message */}
       {error && (

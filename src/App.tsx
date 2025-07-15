@@ -34,7 +34,7 @@ import SubcontratosCredito from "./pages/Egresos/SubcontratosCredito";
 import SubcontratosContado from "./pages/Egresos/SubcontratosContado";
 import Remuneraciones from "./pages/Egresos/Remuneraciones";
 import GastosImprevistos from "./pages/Egresos/GastosImprevistos";
-import OCCredito from "./pages/Egresos/OCCredito";
+import OrdenesCompra from "./pages/Egresos/OrdenesCompra";
 import EgresossIndex from "./pages/Egresos/EgresosIndex";
 import IngresosIndex from "./pages/Ingresos/IngresosIndex";
 import Factoring from "./pages/Egresos/Factoring";
@@ -140,9 +140,9 @@ export default function App() {
                   <GastosImprevistos />
                 </PrivateRoute>
               } />
-              <Route path="/gastos/oc-credito" element={
+              <Route path="/gastos/ordenes-compra" element={
                 <PrivateRoute>
-                  <OCCredito />
+                  <OrdenesCompra />
                 </PrivateRoute>
               } />
               <Route path="/gastos/factoring" element={

@@ -1,74 +1,192 @@
+// components/UserInfoCard.tsx
+import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
+import { UpdateProfileData } from '../../types/user';
+import { getRoleDisplayName, isValidEmail } from '../../utils/auth';
+
+interface FormData {
+  name: string;
+  email: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}
 
 export default function UserInfoCard() {
+  const { user, updateProfile, error, clearError } = useAuth();
   const { isOpen, openModal, closeModal } = useModal();
-  const handleSave = () => {
-    // Handle save logic here
-    console.log("Saving changes...");
-    closeModal();
+  
+  const [formData, setFormData] = useState<FormData>({
+    name: user?.name || '',
+    email: user?.email || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPasswordFields, setShowPasswordFields] = useState(false);
+
+  // Reset form when modal opens
+  const handleOpenModal = () => {
+    setFormData({
+      name: user?.name || '',
+      email: user?.email || '',
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    setFormErrors({});
+    setShowPasswordFields(false);
+    clearError();
+    openModal();
   };
+
+  // Handle form input changes
+  const handleInputChange = (field: keyof FormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear specific field error when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  // Validate form
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+
+    // Name validation
+    if (!formData.name.trim()) {
+      errors.name = 'El nombre es obligatorio';
+    } else if (formData.name.trim().length < 3) {
+      errors.name = 'El nombre debe tener al menos 3 caracteres';
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      errors.email = 'El email es obligatorio';
+    } else if (!isValidEmail(formData.email)) {
+      errors.email = 'El email no es válido';
+    }
+
+    // Password validation (only if changing password)
+    if (showPasswordFields || formData.newPassword) {
+      if (!formData.currentPassword) {
+        errors.currentPassword = 'La contraseña actual es obligatoria';
+      }
+      
+      if (!formData.newPassword) {
+        errors.newPassword = 'La nueva contraseña es obligatoria';
+      } else if (formData.newPassword.length < 6) {
+        errors.newPassword = 'La contraseña debe tener al menos 6 caracteres';
+      }
+      
+      if (formData.newPassword !== formData.confirmPassword) {
+        errors.confirmPassword = 'Las contraseñas no coinciden';
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle form submission
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    try {
+      setIsLoading(true);
+      clearError();
+
+      const updateData: UpdateProfileData = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+      };
+
+      // Add password fields if changing password
+      if (showPasswordFields && formData.newPassword) {
+        updateData.currentPassword = formData.currentPassword;
+        updateData.newPassword = formData.newPassword;
+      }
+
+      await updateProfile(updateData);
+      closeModal();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-3 bg-gray-200 rounded"></div>
+            <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-6">
-            Personal Information
+            Información Personal
           </h4>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                First Name
+                Nombre
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Musharof
+                {user.name}
               </p>
             </div>
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Last Name
+                Rol
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Chowdhury
+                {getRoleDisplayName(user.role)}
               </p>
             </div>
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Email address
+                Email
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                randomuser@pimjo.com
+                {user.email}
               </p>
             </div>
 
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Phone
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                +09 363 398 46
-              </p>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Bio
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Team Manager
-              </p>
-            </div>
           </div>
         </div>
-
         <button
-          onClick={openModal}
+          onClick={handleOpenModal}
           className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
         >
           <svg
@@ -86,7 +204,7 @@ export default function UserInfoCard() {
               fill=""
             />
           </svg>
-          Edit
+          Editar
         </button>
       </div>
 
@@ -94,86 +212,151 @@ export default function UserInfoCard() {
         <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
           <div className="px-2 pr-14">
             <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-              Edit Personal Information
+              Editar información personal
             </h4>
             <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-              Update your details to keep your profile up-to-date.
+              Modifica tu información para mantener tu perfil actualizado.
             </p>
           </div>
-          <form className="flex flex-col">
+
+          {error && (
+            <div className="mx-2 mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg dark:bg-red-900 dark:border-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
+          <form className="flex flex-col" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
             <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
-              <div>
-                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                  Social Links
-                </h5>
-
-                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-                  <div>
-                    <Label>Facebook</Label>
-                    <Input
-                      type="text"
-                      value="https://www.facebook.com/PimjoHQ"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>X.com</Label>
-                    <Input type="text" value="https://x.com/PimjoHQ" />
-                  </div>
-
-                  <div>
-                    <Label>Linkedin</Label>
-                    <Input
-                      type="text"
-                      value="https://www.linkedin.com/company/pimjo"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Instagram</Label>
-                    <Input type="text" value="https://instagram.com/PimjoHQ" />
-                  </div>
-                </div>
-              </div>
               <div className="mt-7">
                 <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                  Personal Information
+                  Información personal
                 </h5>
 
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                   <div className="col-span-2 lg:col-span-1">
-                    <Label>First Name</Label>
-                    <Input type="text" value="Musharof" />
+                    <Label>Nombre *</Label>
+                    <Input 
+                      type="text" 
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      error={!!formErrors.name}
+                      hint={formErrors.name}
+                      disabled={isLoading}
+                      placeholder="Ingresa tu nombre"
+                    />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
-                    <Label>Last Name</Label>
-                    <Input type="text" value="Chowdhury" />
+                    <Label>Rol</Label>
+                    <Input 
+                      type="text" 
+                      value={getRoleDisplayName(user.role)}
+                      disabled={true}
+                    />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
-                    <Label>Email Address</Label>
-                    <Input type="text" value="randomuser@pimjo.com" />
+                    <Label>Email *</Label>
+                    <Input 
+                      type="email" 
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      error={!!formErrors.email}
+                      hint={formErrors.email}
+                      disabled={isLoading}
+                      placeholder="Ingresa tu email"
+                    />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
-                    <Label>Phone</Label>
-                    <Input type="text" value="+09 363 398 46" />
+                    <Label>Estado</Label>
+                    <Input 
+                      type="text" 
+                      value={user.active ? 'Activo' : 'Inactivo'}
+                      disabled={true}
+                    />
                   </div>
 
+                  {/* Password Change Section */}
                   <div className="col-span-2">
-                    <Label>Bio</Label>
-                    <Input type="text" value="Team Manager" />
+                    <div className="flex items-center gap-2 mb-4">
+                      <input
+                        type="checkbox"
+                        id="changePassword"
+                        checked={showPasswordFields}
+                        onChange={(e) => setShowPasswordFields(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        disabled={isLoading}
+                      />
+                      <label htmlFor="changePassword" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Cambiar contraseña
+                      </label>
+                    </div>
+
+                    {showPasswordFields && (
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="col-span-2 lg:col-span-1">
+                          <Label>Contraseña actual *</Label>
+                          <Input 
+                            type="password" 
+                            value={formData.currentPassword}
+                            onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+                            error={!!formErrors.currentPassword}
+                            hint={formErrors.currentPassword}
+                            disabled={isLoading}
+                            placeholder="Contraseña actual"
+                          />
+                        </div>
+
+                        <div className="col-span-2 lg:col-span-1">
+                          <Label>Nueva contraseña *</Label>
+                          <Input 
+                            type="password" 
+                            value={formData.newPassword}
+                            onChange={(e) => handleInputChange('newPassword', e.target.value)}
+                            error={!!formErrors.newPassword}
+                            hint={formErrors.newPassword}
+                            disabled={isLoading}
+                            placeholder="Nueva contraseña"
+                          />
+                        </div>
+
+                        <div className="col-span-2 lg:col-span-1">
+                          <Label>Confirmar nueva contraseña *</Label>
+                          <Input 
+                            type="password" 
+                            value={formData.confirmPassword}
+                            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                            error={!!formErrors.confirmPassword}
+                            hint={formErrors.confirmPassword}
+                            disabled={isLoading}
+                            placeholder="Confirmar contraseña"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
+
             <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-              <Button size="sm" variant="outline" onClick={closeModal}>
-                Close
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={closeModal}
+                disabled={isLoading}
+                type="button"
+              >
+                Cancelar
               </Button>
-              <Button size="sm" onClick={handleSave}>
-                Save Changes
+              <Button 
+                size="sm" 
+                onClick={handleSave}
+                disabled={isLoading}
+                type="submit"
+              >
+                {isLoading ? 'Guardando...' : 'Guardar cambios'}
               </Button>
             </div>
           </form>

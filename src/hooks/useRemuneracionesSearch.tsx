@@ -30,20 +30,29 @@ interface SearchFilters {
   employeePosition: string;
 }
 
+// 🔥 NUEVA INTERFAZ PARA OPCIONES INICIALES
+interface UseRemuneracionesSearchOptions {
+  initialPageSize?: number;
+  autoLoad?: boolean;
+}
+
 /**
  * Hook personalizado para manejar búsqueda, filtros y paginación de remuneraciones
- * ✅ CORREGIDO: Ahora usa el servicio con transformación
+ * ✅ CORREGIDO: Ahora acepta opciones iniciales
  */
-export function useRemuneracionesSearch() {
+export function useRemuneracionesSearch(options?: UseRemuneracionesSearchOptions) {
+  // 🔥 USAR OPCIONES INICIALES
+  const { initialPageSize = 50, autoLoad = true } = options || {};
+
   // Estado de datos
   const [remuneraciones, setRemuneraciones] = useState<Remuneracion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Estado de paginación
+  // Estado de paginación - 🔥 USAR initialPageSize
   const [pagination, setPagination] = useState<PaginationInfo>({
     current_page: 1,
-    per_page: 50,
+    per_page: initialPageSize, // 🔥 USAR EL VALOR INICIAL
     total: 0,
     total_pages: 0,
     has_next: false,
@@ -104,7 +113,14 @@ export function useRemuneracionesSearch() {
       // ✅ USAR EL SERVICIO CON TRANSFORMACIÓN
       const transformedRemuneraciones = await getRemuneraciones(serviceFilters);
       
-      // 🔧 Llamada separada para metadatos (paginación y stats)
+      // 🔥 SIMULAR PAGINACIÓN LOCAL SI EL BACKEND NO LA PROPORCIONA
+      const totalItems = transformedRemuneraciones.length;
+      const totalPages = Math.ceil(totalItems / limit);
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedData = transformedRemuneraciones.slice(startIndex, endIndex);
+      
+      // 🔧 Llamada separada para metadatos (paginación y stats) - OPCIONAL
       const params = new URLSearchParams();
       if (searchFilters.search) params.append('search', searchFilters.search);
       if (searchFilters.state) params.append('state', searchFilters.state);
@@ -117,43 +133,68 @@ export function useRemuneracionesSearch() {
       params.append('limit', limit.toString());
       params.append('offset', offset.toString());
 
-      const metadataResponse = await api.get<{
-        success: boolean;
-        data: any[];
-        pagination?: PaginationInfo;
-        stats?: StatsInfo;
-        message?: string;
-      }>(`/remuneraciones?${params.toString()}`);
-      
-      if (metadataResponse.success) {
-        // ✅ Usar datos transformados del servicio
-        setRemuneraciones(transformedRemuneraciones);
+      try {
+        const metadataResponse = await api.get<{
+          success: boolean;
+          data: any[];
+          pagination?: PaginationInfo;
+          stats?: StatsInfo;
+          message?: string;
+        }>(`/remuneraciones?${params.toString()}`);
         
-        // Actualizar paginación si viene en la respuesta
-        if (metadataResponse.pagination) {
-          setPagination(metadataResponse.pagination);
-        } else {
-          // Fallback si no hay info de paginación
-          setPagination(prev => ({
-            ...prev,
+        if (metadataResponse.success) {
+          // ✅ Usar datos paginados localmente
+          setRemuneraciones(paginatedData);
+          
+          // 🔥 SIEMPRE ESTABLECER PAGINACIÓN CORRECTA
+          const finalPagination: PaginationInfo = {
             current_page: page,
             per_page: limit,
-            total: transformedRemuneraciones.length
-          }));
-        }
-        
-        // Actualizar estadísticas si vienen
-        if (metadataResponse.stats) {
-          setStats(metadataResponse.stats);
+            total: totalItems,
+            total_pages: Math.max(1, totalPages), // 🔥 MÍNIMO 1 PÁGINA
+            has_next: page < totalPages,
+            has_prev: page > 1
+          };
+          
+          // Usar paginación del backend si viene, sino usar la calculada
+          if (metadataResponse.pagination && metadataResponse.pagination.total_pages) {
+            setPagination(metadataResponse.pagination);
+          } else {
+            setPagination(finalPagination);
+          }
+          
+          // Actualizar estadísticas
+          if (metadataResponse.stats) {
+            setStats(metadataResponse.stats);
+          } else {
+            // Calcular estadísticas usando TODOS los datos (no solo la página actual)
+            const localStats = calculateLocalStats(transformedRemuneraciones);
+            setStats(localStats);
+          }
+          
+          setFilters(searchFilters);
         } else {
-          // Calcular estadísticas localmente usando datos transformados
-          const localStats = calculateLocalStats(transformedRemuneraciones);
-          setStats(localStats);
+          throw new Error(metadataResponse.message || 'Error al cargar remuneraciones');
         }
+      } catch (apiError) {
+        // 🔥 SI FALLA LA LLAMADA AL API, USAR SOLO DATOS LOCALES
+        console.warn('API metadata call failed, using local pagination:', apiError);
+        
+        setRemuneraciones(paginatedData);
+        
+        setPagination({
+          current_page: page,
+          per_page: limit,
+          total: totalItems,
+          total_pages: Math.max(1, totalPages), // 🔥 MÍNIMO 1 PÁGINA
+          has_next: page < totalPages,
+          has_prev: page > 1
+        });
+        
+        const localStats = calculateLocalStats(transformedRemuneraciones);
+        setStats(localStats);
         
         setFilters(searchFilters);
-      } else {
-        throw new Error(metadataResponse.message || 'Error al cargar remuneraciones');
       }
     } catch (err) {
       console.error('Error fetching remuneraciones:', err);
@@ -222,10 +263,12 @@ export function useRemuneracionesSearch() {
     fetchRemuneraciones();
   }, [fetchRemuneraciones]);
 
-  // Cargar datos iniciales
+  // 🔥 CARGAR DATOS INICIALES SOLO SI autoLoad ES TRUE
   useEffect(() => {
-    fetchRemuneraciones();
-  }, []);
+    if (autoLoad) {
+      fetchRemuneraciones();
+    }
+  }, []); // 🔥 Dependencias vacías para que solo se ejecute una vez
 
   return {
     // Datos

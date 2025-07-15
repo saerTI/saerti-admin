@@ -55,14 +55,12 @@ const navItems: NavItem[] = [
     name: "Cuentas Contables",
     subItems: [
       { name: "Remuneraciones", path: "/gastos/remuneraciones", pro: false },
-      { name: "OC con crédito", path: "/gastos/oc-credito", pro: false },
+      { 
+        name: "Orden de Compra", path: "/gastos/ordenes-compra", pro: false,
+      },
       { name: "Factoring", path: "/gastos/factoring", pro: false },
       { name: "Costos Fijos", path: "/gastos/costos-fijos", pro: false },
       { name: "Previsionales", path: "/gastos/previsionales", pro: false },
-      { name: "Subcontratos con crédito", path: "/gastos/subcontratos-credito", pro: false },
-      { name: "Subcontratos Contado", path: "/gastos/subcontratos-contado", pro: false },
-      { name: "Cotizaciones", path: "/gastos/cotizaciones", pro: false },
-      { name: "Gastos Imprevistos", path: "/gastos/imprevistos", pro: false },
     ],
   },
   {
