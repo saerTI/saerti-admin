@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { gastosApiService, OrdenCompra, GastoFilter } from '../../services/gastosService';
+import { gastosApiService, OrdenCompra, GastoFilter } from '../../services/costsService';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
 import { formatCurrency } from '../../utils/formatters';

@@ -22,7 +22,7 @@ const ProjectForm = () => {
     name: '',
     code: '',
     clientId: 0,
-    status: 'draft', // Añadido valor por defecto
+    status: 'borrador', // Añadido valor por defecto
     startDate: '',
     expectedEndDate: '',
     totalBudget: 0,
@@ -60,7 +60,7 @@ const ProjectForm = () => {
           expectedEndDate: projectData.expectedEndDate || '',
           totalBudget: projectData.totalBudget,
           description: projectData.description || '',
-          status: projectData.status || 'draft' // Add this line
+          status: projectData.status || 'borrador'
         });
         
         // Format the budget for display

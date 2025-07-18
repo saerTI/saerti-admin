@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import gastosApiService, { Cotizacion } from '../../services/gastosService';
+import gastosApiService, { Cotizacion } from '../../services/costsService';
 import projectApiService from '../../services/projectService';
 import Button from '../../components/ui/button/Button';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';

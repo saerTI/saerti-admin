@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import DatePicker from '../../components/form/date-picker';
-import CostoFijoModal from '../../components/egresos/NuevoCostoFijoModal';
+import CostoFijoModal from '../../components/CC/NuevoCostoFijoModal';
 import SimpleResponsiveTable from '../../components/tables/SimpleResponsiveTable';
 
 // Interfaz para CostoFijo

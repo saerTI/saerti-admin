@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import gastosApiService, { Previsional } from '../../services/gastosService';
+import gastosApiService, { Previsional } from '../../services/costsService';
 import Button from '../../components/ui/button/Button';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import InputField from '../../components/form/input/InputField';

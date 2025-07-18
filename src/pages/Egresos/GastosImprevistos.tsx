@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import gastosApiService, { GastoImprevisto, GastoFilter } from '../../services/gastosService';
+import gastosApiService, { GastoImprevisto, GastoFilter } from '../../services/costsService';
 import Button from '../../components/ui/button/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';

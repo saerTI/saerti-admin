@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import DatePicker from '../../components/form/date-picker';
-import FactoringModal from '../../components/egresos/NuevoFactoringModal';
+import FactoringModal from '../../components/CC/NuevoFactoringModal';
 import SimpleResponsiveTable from '../../components/tables/SimpleResponsiveTable';
 
 // Interfaz para Factoring

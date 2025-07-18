@@ -16,7 +16,7 @@ import Select from '../../components/form/Select';
 import Label from '../../components/form/Label';
 import DatePicker from '../../components/form/date-picker';
 import SimpleResponsiveTable from '../../components/tables/SimpleResponsiveTable';
-import ImportOrdenesCompraModal from '../../components/egresos/ImportOrdenesCompraModal';
+import ImportOrdenesCompraModal from '../../components/CC/ImportOrdenesCompraModal';
 import { useOrdenesCompra, useOrdenCompraOperations } from '../../hooks/useOrdenesCompra';
 
 const OrdenesCompra = () => {

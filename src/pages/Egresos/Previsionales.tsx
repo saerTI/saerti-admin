@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GastoFilter } from '../../services/gastosService';
+import { GastoFilter } from '../../services/costsService';
 import Button from '../../components/ui/button/Button';
 import { formatCurrency, formatDate, formatDisplayName } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
@@ -21,7 +21,7 @@ import {
 } from '../../services/CC/previsionalesService';
 import { getProjects } from '../../services/projectService'; // Fixed: projectService instead of projectsService
 import { handlePrevisionalExcelUpload } from '../../utils/previsionalUtils'; // Use specialized function for previsionales
-import NuevaPrevisionalModal from '../../components/egresos/NuevaPrevisionalModal';
+import NuevaPrevisionalModal from '../../components/CC/NuevaPrevisionalModal';
 
 // Status translation and styling
 const GASTO_STATUS_MAP: Record<string, { label: string, color: BadgeColor }> = {

@@ -6,11 +6,12 @@ import Button from '../../components/ui/button/Button';
 
 // Status translation and styling
 const PROJECT_STATUS_MAP: Record<string, { label: string, color: string }> = {
-  'draft': { label: 'Borrador', color: 'bg-gray-200 text-gray-800' },
-  'in_progress': { label: 'En Progreso', color: 'bg-blue-200 text-blue-800' },
-  'on_hold': { label: 'En Pausa', color: 'bg-yellow-200 text-yellow-800' },
-  'completed': { label: 'Completado', color: 'bg-green-200 text-green-800' },
-  'cancelled': { label: 'Cancelado', color: 'bg-red-200 text-red-800' }
+  'borrador': { label: 'Borrador', color: 'bg-gray-200 text-gray-800' },
+  'en_progreso': { label: 'En Progreso', color: 'bg-blue-200 text-blue-800' },
+  'suspendido': { label: 'En Pausa', color: 'bg-yellow-200 text-yellow-800' },
+  'completado': { label: 'Completado', color: 'bg-green-200 text-green-800' },
+  'cancelado': { label: 'Cancelado', color: 'bg-red-200 text-red-800' },
+  'activo': { label: 'Activo', color: 'bg-blue-200 text-blue-800' }
 };
 
 const ProjectDetailView = () => {
@@ -133,20 +134,20 @@ const ProjectDetailView = () => {
       
       // Update local state
       if (type === 'income') {
-        const updatedIncome = project.cash_flow.income.filter((line: CashFlowLine) => line.id !== lineId);
+        const updatedIncome = project.cashFlow.income.filter((line: CashFlowLine) => line.id !== lineId);
         setProject({
           ...project,
-          cash_flow: {
-            ...project.cash_flow,
+          cashFlow: {
+            ...project.cashFlow,
             income: updatedIncome
           }
         });
       } else {
-        const updatedExpense = project.cash_flow.expense.filter((line: CashFlowLine) => line.id !== lineId);
+        const updatedExpense = project.cashFlow.expense.filter((line: CashFlowLine) => line.id !== lineId);
         setProject({
           ...project,
-          cash_flow: {
-            ...project.cash_flow,
+          cashFlow: {
+            ...project.cashFlow,
             expense: updatedExpense
           }
         });
@@ -186,12 +187,12 @@ const ProjectDetailView = () => {
   const safeProject = {
     ...project,
     milestones: project.milestones || [],
-    cash_flow: {
-      income: project.cash_flow?.income || [],
-      expense: project.cash_flow?.expense || []
+    cashFlow: {
+      income: project.cashFlow?.income || [],
+      expense: project.cashFlow?.expense || []
     },
     progress: project.progress || 0,
-    state: project.state || 'draft',
+    status: project.status || 'borrador',
     balance: project.balance || 0,
     totalBudget: project.totalBudget || 0,
     totalIncome: project.totalIncome || 0,
@@ -233,8 +234,8 @@ const ProjectDetailView = () => {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Estado</p>
               <div className="mt-2">
-                <span className={`px-3 py-1 text-sm rounded-full ${PROJECT_STATUS_MAP[safeProject.state]?.color || 'bg-gray-100 text-gray-800'}`}>
-                  {PROJECT_STATUS_MAP[safeProject.state]?.label || safeProject.state}
+                <span className={`px-3 py-1 text-sm rounded-full ${PROJECT_STATUS_MAP[safeProject.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                  {PROJECT_STATUS_MAP[safeProject.status]?.label || safeProject.status}
                 </span>
               </div>
             </div>
@@ -532,7 +533,7 @@ const ProjectDetailView = () => {
                 {/* Income */}
                 <div className="mb-8">
                   <h4 className="text-md font-medium text-green-700 dark:text-green-400 mb-3">Ingresos</h4>
-                  {safeProject.cash_flow.income.length === 0 ? (
+                  {safeProject.cashFlow.income.length === 0 ? (
                     <div className="text-center py-4 bg-gray-50 dark:bg-gray-700 rounded">
                       <p className="text-gray-500 dark:text-gray-400">No hay ingresos registrados.</p>
                     </div>
@@ -566,7 +567,7 @@ const ProjectDetailView = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                          {safeProject.cash_flow.income.map((income) => (
+                          {safeProject.cashFlow.income.map((income) => (
                             <tr key={income.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                               <td className="px-6 py-4">
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">{income.name}</div>
@@ -622,7 +623,7 @@ const ProjectDetailView = () => {
                 {/* Expenses */}
                 <div>
                   <h4 className="text-md font-medium text-red-700 dark:text-red-400 mb-3">Gastos</h4>
-                  {safeProject.cash_flow.expense.length === 0 ? (
+                  {safeProject.cashFlow.expense.length === 0 ? (
                     <div className="text-center py-4 bg-gray-50 dark:bg-gray-700 rounded">
                       <p className="text-gray-500 dark:text-gray-400">No hay gastos registrados.</p>
                     </div>
@@ -655,7 +656,7 @@ const ProjectDetailView = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                          {safeProject.cash_flow.expense.map((expense) => (
+                          {safeProject.cashFlow.expense.map((expense) => (
                             <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                               <td className="px-6 py-4">
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">{expense.name}</div>

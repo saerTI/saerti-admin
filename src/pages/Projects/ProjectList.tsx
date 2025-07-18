@@ -6,7 +6,6 @@ import Button from '../../components/ui/button/Button';
 import Label from '../../components/form/Label';
 import Select from '../../components/form/Select';
 import { formatCurrency } from '../../utils/formatters';
-import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
 
 // Status translation and styling
@@ -25,30 +24,19 @@ const ProjectList = () => {
   const [filters, setFilters] = useState<ProjectFilter>({});
   const navigate = useNavigate();
   
-  // Get tenant and auth context
-  const { currentTenant } = useTenant();
+  // Get auth context (removed tenant references)
   const { user, isAuthenticated } = useAuth();
 
   // Create status options for the filter
   const statusOptions = [
     { value: '', label: 'Todos' },
-    { value: 'draft', label: 'Borrador' },
-    { value: 'in_progress', label: 'En Progreso' },
-    { value: 'on_hold', label: 'En Pausa' },
-    { value: 'completed', label: 'Completado' },
-    { value: 'cancelled', label: 'Cancelado' },
+    { value: 'borrador', label: 'Borrador' },
+    { value: 'en_progreso', label: 'En Progreso' },
+    { value: 'suspendido', label: 'En Pausa' },
+    { value: 'completado', label: 'Completado' },
+    { value: 'cancelado', label: 'Cancelado' },
+    { value: 'activo', label: 'Activo' },
   ];
-
-  // Verify tenant and user company alignment
-  useEffect(() => {
-    if (currentTenant?.companyId && user?.companyId && 
-        currentTenant.companyId !== user.companyId) {
-      console.warn("Warning: Tenant company ID and user session company ID don't match", {
-        tenantCompanyId: currentTenant.companyId,
-        userSessionCompanyId: user.companyId
-      });
-    }
-  }, [currentTenant, user]);
 
   // Load projects on component mount and when filters change
   useEffect(() => {

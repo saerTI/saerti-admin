@@ -1,11 +1,18 @@
 // src/types/project.ts
 
+export type ProjectStatus = 
+  | 'borrador'
+  | 'en_progreso' 
+  | 'suspendido'
+  | 'completado'
+  | 'cancelado'
+  | 'activo';
+
 export interface Project {
   id: number;
   name: string;
   description: string;
-  status: string; // Mantenemos status como estaba
-  state: string; // Añadido para solucionar el error de los PROJECT_STATUS_MAP
+  status: ProjectStatus; // Mantenemos status como estaba
   startDate: string;
   expectedEndDate?: string;
   actualEndDate?: string;
@@ -62,7 +69,7 @@ export interface ProjectDetail extends Project {
 }
 
 export interface ProjectFilter {
-  status?: string;
+  status?: ProjectStatus;
   clientId?: number;
   startDateFrom?: string;
   startDateTo?: string;
@@ -73,7 +80,7 @@ export interface ProjectFilter {
 export interface ProjectCreateData {
   name: string;
   description?: string;
-  status: string;
+  status: ProjectStatus;
   startDate: string;
   expectedEndDate?: string;
   budget?: number; // Opcional para compatibilidad

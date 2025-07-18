@@ -10,7 +10,7 @@ import Label from '../../components/form/Label';
 import Select from '../../components/form/Select';
 import { Project } from '../../types/project';
 import { Remuneracion, RemuneracionCreateData } from '../../types/CC/remuneracion';
-import NuevaRemuneracionModal from '../../components/egresos/NuevaRemuneracionModal';
+import NuevaRemuneracionModal from '../../components/CC/NuevaRemuneracionModal';
 
 // Importar servicios y utilidades
 import { 
