@@ -1,195 +1,134 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+// src/pages/Egresos/CostosFijos.tsx
+
+import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  FixedCostFilter,
+  FIXED_COST_STATUS_MAP,
+  PAYMENT_STATUS_MAP,
+  FixedCostState,
+  CostoFijoCreateData
+} from '../../types/CC/fixedCosts';
 import Button from '../../components/ui/button/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
-import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
+import Badge from '../../components/ui/badge/Badge';
 import Select from '../../components/form/Select';
 import Label from '../../components/form/Label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../../components/ui/table";
 import DatePicker from '../../components/form/date-picker';
-import CostoFijoModal from '../../components/CC/NuevoCostoFijoModal';
 import SimpleResponsiveTable from '../../components/tables/SimpleResponsiveTable';
-
-// Interfaz para CostoFijo
-interface CostoFijo {
-  id: number;
-  name: string;
-  description?: string;
-  quota_value: number;
-  paymentDate: string;
-  quota_count: number;
-  startDate: string;
-  endDate: string;
-  projectId?: number;
-  projectName?: string;
-  state: string;
-  date: string;
-  companyId: number;
-}
-
-// Status translation and styling
-const GASTO_STATUS_MAP: Record<string, { label: string, color: BadgeColor }> = {
-  'draft': { label: 'Borrador', color: 'warning' },
-  'pending': { label: 'Pendiente', color: 'warning' },
-  'active': { label: 'Activo', color: 'success' },
-  'completed': { label: 'Completado', color: 'success' },
-  'cancelled': { label: 'Cancelado', color: 'error' }
-};
+import CostoFijoModal from '../../components/CC/NuevoCostoFijoModal';
+import { useFixedCosts, useFixedCostOperations } from '../../hooks/useFixedCosts';
+import { useCostCenters } from '../../hooks/useCostCenters';
 
 const CostosFijos = () => {
-  const [costosFijos, setCostosFijos] = useState<CostoFijo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<any>({});
-  const navigate = useNavigate();
-  
-  // Estado para el modal
+  // ✅ Estados locales
   const [modalOpen, setModalOpen] = useState(false);
+  const [filters, setFilters] = useState<FixedCostFilter>({});
+  
+  // Referencias
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cargar costos fijos cuando cambian los filtros
-  useEffect(() => {
-    const fetchCostosFijos = async () => {
-      try {
-        setLoading(true);
-        // Aquí normalmente llamaríamos a la API
-        // Por ahora, usaremos datos de prueba
-        const data = await getMockCostosFijos();
-        setCostosFijos(data || []);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido al cargar costos fijos');
-        console.error('Error fetching costos fijos:', err);
-        setCostosFijos([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // ✅ Hook principal para costos fijos
+  const {
+    fixedCosts,
+    loading,
+    error,
+    pagination,
+    stats,
+    updateFilters,
+    refresh,
+    hasData,
+    isEmpty,
+    changePage
+  } = useFixedCosts({
+    initialFilters: filters,
+    autoLoad: true,
+    pageSize: 15
+  });
 
-    fetchCostosFijos();
-  }, [filters]);
+  // ✅ Hook de operaciones - DEBE estar al nivel superior
+  const { 
+    createFixedCost, 
+    deleteFixedCost, 
+    updatePaidQuotas, 
+    loading: operationLoading 
+  } = useFixedCostOperations();
+  
+  const { costCenters, loading: costCentersLoading } = useCostCenters();
 
-  // Función de datos de prueba
-  const getMockCostosFijos = async (): Promise<CostoFijo[]> => {
-    // Simular retraso de API
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Mock categories to use for the costs
-    const categories = [
-      'Arriendo de Oficina', 
-      'Leasing Equipos', 
-      'Mantención Sistema', 
-      'Plan Celulares',
-      'Internet y Telefonía',
-      'Servicios Básicos',
-      'Seguros'
-    ];
-    
-    return Array(10).fill(null).map((_, index) => {
-      const name = categories[Math.floor(Math.random() * categories.length)];
-      const quotaCount = Math.floor(Math.random() * 12) + 6; // Entre 6 y 18 cuotas
-      const startDate = new Date(2023, Math.floor(Math.random() * 3), 1); // Comenzar en los primeros 3 meses de 2023
-      const endDate = new Date(startDate);
-      endDate.setMonth(startDate.getMonth() + quotaCount);
-      
-      return {
-        id: index + 1,
-        name,
-        description: Math.random() > 0.5 ? `Descripción para ${name.toLowerCase()}` : undefined,
-        quota_value: Math.floor(Math.random() * 1000000) + 200000,
-        paymentDate: new Date(startDate.getFullYear(), startDate.getMonth(), 15).toISOString(),
-        quota_count: quotaCount,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        projectId: Math.random() > 0.4 ? Math.floor(Math.random() * 5) + 1 : undefined,
-        projectName: Math.random() > 0.4 ? `Proyecto ${Math.floor(Math.random() * 5) + 1}` : undefined,
-        state: ['active', 'pending', 'completed', 'draft'][Math.floor(Math.random() * 4)],
-        date: new Date().toISOString(),
-        companyId: 1
-      };
-    });
-  };
-
-  // Función para eliminar
+  // ✅ Función para eliminar
   const handleDelete = async (id: number) => {
     if (!confirm('¿Está seguro que desea eliminar este costo fijo? Esta acción no se puede deshacer.')) {
       return;
     }
 
     try {
-      // En una app real, esto llamaría a la API
-      // await api.deleteCostoFijo(id);
-      // Por ahora, solo lo eliminamos del estado
-      setCostosFijos(costosFijos.filter(item => item.id !== id));
+      const success = await deleteFixedCost(id);
+      if (success) {
+        refresh();
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al eliminar el costo fijo');
-      console.error('Error deleting costo fijo:', err);
+      console.error('Error deleting fixed cost:', err);
     }
   };
 
-  // Manejar cambios en los filtros
-  const handleFilterChange = (filterName: string) => (value: string) => {
-    if (value === '') {
-      // Eliminar el filtro si el valor está vacío
-      const newFilters = { ...filters };
-      delete newFilters[filterName];
-      setFilters(newFilters);
-    } else {
-      setFilters({ ...filters, [filterName]: value });
+  // ✅ Función para actualizar cuotas pagadas
+  const handleUpdatePaidQuotas = async (id: number, currentPaidQuotas: number, maxQuotas: number) => {
+    const newPaidQuotas = prompt(
+      `Cuotas pagadas actuales: ${currentPaidQuotas}/${maxQuotas}\nIngrese el nuevo número de cuotas pagadas:`,
+      currentPaidQuotas.toString()
+    );
+
+    if (newPaidQuotas === null) return; // Usuario canceló
+
+    const paidQuotasNumber = parseInt(newPaidQuotas);
+    
+    if (isNaN(paidQuotasNumber) || paidQuotasNumber < 0 || paidQuotasNumber > maxQuotas) {
+      alert(`El número de cuotas pagadas debe estar entre 0 y ${maxQuotas}`);
+      return;
+    }
+
+    try {
+      const success = await updatePaidQuotas(id, paidQuotasNumber);
+      if (success) {
+        refresh();
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al actualizar cuotas pagadas');
+      console.error('Error updating paid quotas:', err);
     }
   };
-  
-  // Manejador para el envío del formulario del modal
-  const handleSubmitCostoFijo = async (formData: any) => {
+
+  // ✅ CORREGIDO: Manejador para el envío del formulario del modal
+  const handleSubmitCostoFijo = async (formData: CostoFijoCreateData) => {
     try {
-      // Aquí enviarías los datos a tu API
       console.log("Datos de nuevo costo fijo:", formData);
       
-      // En una app real, enviarías los datos al servidor
-      // const result = await api.createCostoFijo(formData);
-      
-      // Crear un objeto temporal para simular la creación
-      const newId = costosFijos.length > 0 
-        ? Math.max(...costosFijos.map(c => c.id)) + 1 
-        : 1;
-      
-      // Calcular fecha de término (fecha inicio + cantidad de cuotas en meses)
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(startDate);
-      endDate.setMonth(startDate.getMonth() + parseInt(formData.quota_count));
-      
-      // Crear objeto de costo fijo
-      const newCostoFijo: CostoFijo = {
-        id: newId,
+      // ✅ Mapear los datos del modal al formato esperado por la API
+      const fixedCostData = {
         name: formData.name,
         description: formData.description,
-        quota_value: formData.quota_value,
-        paymentDate: formData.paymentDate,
-        quota_count: parseInt(formData.quota_count),
-        startDate: formData.startDate,
-        endDate: endDate.toISOString(),
-        projectId: formData.projectId ? parseInt(formData.projectId) : undefined,
-        projectName: formData.projectId ? `Proyecto ${formData.projectId}` : undefined,
-        state: "active",
-        date: new Date().toISOString(),
-        companyId: 1
+        quota_value: parseFloat(formData.quota_value.toString()),
+        quota_count: parseInt(formData.quota_count.toString()),
+        paid_quotas: 0,
+        start_date: formData.startDate,
+        payment_date: formData.paymentDate,
+        cost_center_id: formData.projectId ? parseInt(formData.projectId) : undefined,
+        state: 'active' as FixedCostState
       };
       
-      // Actualizar el estado local
-      setCostosFijos([newCostoFijo, ...costosFijos]);
+      // ✅ Usar el hook que ya está declarado arriba
+      const newId = await createFixedCost(fixedCostData);
       
-      // Cerrar el modal
-      setModalOpen(false);
-      
-      // Mostrar mensaje de éxito
-      alert("Costo fijo creado con éxito");
+      if (newId) {
+        // ✅ Cerrar modal y refrescar datos
+        setModalOpen(false);
+        refresh();
+        alert("Costo fijo creado con éxito");
+      }
       
     } catch (err) {
       console.error("Error al crear costo fijo:", err);
@@ -197,37 +136,118 @@ const CostosFijos = () => {
     }
   };
 
-  // Calcular algunos datos de resumen
-  const totalAmount = costosFijos.reduce((sum, c) => sum + (c.quota_value * c.quota_count), 0);
-  const activeCount = costosFijos.filter(c => c.state === 'active').length;
-  const pendingCount = costosFijos.filter(c => c.state === 'pending').length;
+  // ✅ Manejador para cambios en filtros
+  const handleFilterChange = (filterName: keyof FixedCostFilter) => (value: string) => {
+    const newFilters = { ...filters };
+    
+    if (value === '') {
+      delete newFilters[filterName];
+    } else {
+      if (filterName === 'costCenterId') {
+        (newFilters as any)[filterName] = parseInt(value, 10);
+      } else {
+        (newFilters as any)[filterName] = value;
+      }
+    }
+    
+    setFilters(newFilters);
+    updateFilters(newFilters);
+  };
 
-  // Crear opciones para los desplegables
+  // ✅ Limpiar todos los filtros
+  const clearFilters = () => {
+    setFilters({});
+    updateFilters({});
+  };
+
+  // ✅ Calcular métricas del dashboard usando stats
+  const totalAmount = stats?.totalAmount || 0;
+  const activeCount = stats?.active || 0;
+  const completedCount = stats?.completed || 0;
+  const totalCount = stats?.total || fixedCosts.length;
+  const remainingAmount = stats?.remainingAmount || 0;
+
+  // ✅ Opciones para dropdowns
   const stateOptions = [
     { value: '', label: 'Todos los estados' },
-    { value: 'draft', label: 'Borrador' },
-    { value: 'pending', label: 'Pendiente' },
-    { value: 'active', label: 'Activo' },
-    { value: 'completed', label: 'Completado' },
-    { value: 'cancelled', label: 'Cancelado' }
+    ...Object.entries(FIXED_COST_STATUS_MAP).map(([value, config]) => ({
+      value,
+      label: config.label
+    }))
   ];
-  
-  const projectOptions = [
-    { value: '', label: 'Todos los proyectos' },
-    { value: '1', label: 'Proyecto 1' },
-    { value: '2', label: 'Proyecto 2' },
-    { value: '3', label: 'Proyecto 3' },
-    { value: '4', label: 'Proyecto 4' },
-    { value: '5', label: 'Proyecto 5' }
+
+  const paymentStatusOptions = [
+    { value: '', label: 'Todos los estados de pago' },
+    ...Object.entries(PAYMENT_STATUS_MAP).map(([value, config]) => ({
+      value,
+      label: config.label
+    }))
   ];
+
+  const costCenterOptions = [
+    { value: '', label: 'Todos los centros' },
+    ...costCenters
+      .filter(cc => cc.type === 'project' || cc.type === 'administrative')
+      .map(cc => ({
+        value: cc.id.toString(),
+        label: `${cc.code} - ${cc.name}`
+      }))
+  ];
+
+  // ✅ Funciones de paginación
+  const handlePageChange = (page: number) => {
+    changePage(page);
+  };
+
+  const handleNextPage = () => {
+    if (pagination?.has_next) {
+      changePage(pagination.current_page + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (pagination?.has_prev) {
+      changePage(pagination.current_page - 1);
+    }
+  };
+
+  // ✅ Función para obtener el rango de páginas
+  const getPaginationRange = () => {
+    if (!pagination) return [];
+    
+    const { current_page, total_pages } = pagination;
+    const delta = 2;
+    const range = [];
+    
+    for (let i = Math.max(2, current_page - delta); 
+         i <= Math.min(total_pages - 1, current_page + delta); 
+         i++) {
+      range.push(i);
+    }
+    
+    if (current_page - delta > 2) {
+      range.unshift("...");
+    }
+    if (current_page + delta < total_pages - 1) {
+      range.push("...");
+    }
+    
+    range.unshift(1);
+    if (total_pages !== 1) {
+      range.push(total_pages);
+    }
+    
+    return range;
+  };
 
   return (
     <div className="container px-4 py-6 mx-auto">
       <PageBreadcrumb pageTitle="Costos Fijos" />
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3 mb-6">
+      {/* Cards de resumen */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-4 mb-6">
         <ComponentCard title='Total Costos' titleCenter={true} centerContent={true}>
-          <h3 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{costosFijos.length}</h3>
+          <h3 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totalCount}</h3>
         </ComponentCard>
         
         <ComponentCard title='Monto Total'>
@@ -236,25 +256,39 @@ const CostosFijos = () => {
           </div>
         </ComponentCard>
         
-        <ComponentCard title='Estado'>
-          <div className="mt-1 flex items-center gap-3">
-            <div className="flex items-center">
-              <div className="h-3 w-3 rounded-full bg-green-500 mr-1"></div>
-              <span className="text-xs">Activos: {activeCount}</span>
+        <ComponentCard title='Por Pagar'>
+          <div className="flex flex-col items-center justify-center">
+            <h3 className="mt-1 text-2xl font-bold text-orange-500">{formatCurrency(remainingAmount)}</h3>
+          </div>
+        </ComponentCard>
+        
+        <ComponentCard title='Estados'>
+          <div className="mt-1 space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-green-500 mr-2"></div>
+                <span className="text-xs">Activos</span>
+              </div>
+              <span className="text-xs font-semibold">{activeCount}</span>
             </div>
-            <div className="flex items-center">
-              <div className="h-3 w-3 rounded-full bg-yellow-500 mr-1"></div>
-              <span className="text-xs">Pendientes: {pendingCount}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-blue-500 mr-2"></div>
+                <span className="text-xs">Completados</span>
+              </div>
+              <span className="text-xs font-semibold">{completedCount}</span>
             </div>
           </div>
         </ComponentCard>
       </div>
 
+      {/* Título y botón de nuevo costo */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Costos Fijos</h1>
         <Button 
           onClick={() => setModalOpen(true)}
           className="bg-brand-500 hover:bg-brand-600 text-white"
+          disabled={operationLoading}
         >
           Nuevo Costo Fijo
         </Button>
@@ -265,12 +299,15 @@ const CostosFijos = () => {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmitCostoFijo}
-        projects={projectOptions.filter(p => p.value !== '').map(p => ({ id: parseInt(p.value), name: p.label }))}
+        projects={costCenterOptions.filter(p => p.value !== '').map(p => ({ 
+          id: parseInt(p.value), 
+          name: p.label 
+        }))}
       />
 
       {/* Filtros */}
       <ComponentCard title="Filtros">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <Label htmlFor="state">Estado</Label>
             <Select
@@ -280,12 +317,33 @@ const CostosFijos = () => {
               placeholder="Seleccione estado"
             />
           </div>
+
+          <div>
+            <Label htmlFor="costCenter">Centro de Costo</Label>
+            <Select
+              options={costCenterOptions}
+              defaultValue={filters.costCenterId ? filters.costCenterId.toString() : ''}
+              onChange={handleFilterChange('costCenterId')}
+              placeholder="Seleccione centro"
+              disabled={costCentersLoading}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="paymentStatus">Estado de Pago</Label>
+            <Select
+              options={paymentStatusOptions}
+              defaultValue={filters.paymentStatus || ''}
+              onChange={handleFilterChange('paymentStatus')}
+              placeholder="Seleccione estado"
+            />
+          </div>
           
           <div>
             <DatePicker
               id="startDate"
               label="Fecha Inicio"
-              placeholder="Seleccione fecha"
+              placeholder="Seleccione fecha inicio"
               defaultDate={filters.startDate || undefined}
               onChange={(selectedDates, dateStr) => {
                 handleFilterChange('startDate')(dateStr);
@@ -296,31 +354,40 @@ const CostosFijos = () => {
           <div>
             <DatePicker
               id="endDate"
-              label="Fecha Término"
-              placeholder="Seleccione fecha"
+              label="Fecha Fin"
+              placeholder="Seleccione fecha fin"
               defaultDate={filters.endDate || undefined}
               onChange={(selectedDates, dateStr) => {
                 handleFilterChange('endDate')(dateStr);
               }}
             />
           </div>
-
-          <div>
-            <Label htmlFor="projectId">Proyecto</Label>
-            <Select
-              options={projectOptions}
-              defaultValue={filters.projectId ? String(filters.projectId) : ''}
-              onChange={handleFilterChange('projectId')}
-              placeholder="Seleccione proyecto"
-            />
-          </div>
         </div>
+
+        {/* Botón para limpiar filtros */}
+        {Object.keys(filters).length > 0 && (
+          <div className="mt-4 flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={clearFilters}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              Limpiar filtros
+            </Button>
+          </div>
+        )}
       </ComponentCard>
 
       {/* Mensaje de error */}
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            {error}
+          </div>
         </div>
       )}
 
@@ -330,16 +397,15 @@ const CostosFijos = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
         </div>
       ) : (
-        /* Tabla usando SimpleResponsiveTable */
+        /* Tabla de costos fijos */
         <SimpleResponsiveTable 
-          hasData={costosFijos.length > 0}
+          hasData={hasData}
           emptyMessage="No se encontraron costos fijos con los filtros seleccionados."
           enableSmoothScroll={true}
         >
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                {/* Primera columna con clase sticky */}
                 <th className="sticky-first-column px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Nombre
                 </th>
@@ -350,7 +416,7 @@ const CostosFijos = () => {
                   Cuotas
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Proyecto
+                  Centro de Costo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Período
@@ -359,12 +425,15 @@ const CostosFijos = () => {
                   Estado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Monto Total
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-              {costosFijos.map((costo) => (
+              {fixedCosts.map((costo) => (
                 <tr key={costo.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
                   <td className="sticky-first-column px-6 py-4 whitespace-nowrap text-sm">
                     <Link 
@@ -383,24 +452,33 @@ const CostosFijos = () => {
                     {formatCurrency(costo.quota_value)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {costo.quota_count}
+                    <button
+                      onClick={() => handleUpdatePaidQuotas(costo.id, costo.paid_quotas, costo.quota_count)}
+                      className="hover:text-brand-500 cursor-pointer"
+                      title="Actualizar cuotas pagadas"
+                    >
+                      {costo.paid_quotas}/{costo.quota_count}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {costo.projectName || 'Administración Central'}
+                    {costo.center_name || 'Sin asignar'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     <div className="flex flex-col">
-                      <span>Inicio: {formatDate(costo.startDate)}</span>
-                      <span>Fin: {formatDate(costo.endDate)}</span>
+                      <span>Inicio: {formatDate(costo.start_date)}</span>
+                      <span>Fin: {formatDate(costo.end_date)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <Badge
                       size="sm"
-                      color={GASTO_STATUS_MAP[costo.state]?.color || 'secondary'}
+                      color={FIXED_COST_STATUS_MAP[costo.state]?.color || 'light'}
                     >
-                      {GASTO_STATUS_MAP[costo.state]?.label || costo.state}
+                      {FIXED_COST_STATUS_MAP[costo.state]?.label || costo.state}
                     </Badge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white">
+                    {formatCurrency(costo.total_amount)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex space-x-2">
@@ -412,7 +490,8 @@ const CostosFijos = () => {
                       </Link>
                       <button
                         onClick={() => handleDelete(costo.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        disabled={operationLoading}
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
                       >
                         Eliminar
                       </button>
@@ -423,6 +502,96 @@ const CostosFijos = () => {
             </tbody>
           </table>
         </SimpleResponsiveTable>
+      )}
+
+      {/* Paginación */}
+      {pagination && pagination.total_pages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            Mostrando {(pagination.current_page - 1) * pagination.per_page + 1} a{' '}
+            {Math.min(pagination.current_page * pagination.per_page, pagination.total)} de{' '}
+            {pagination.total} resultados
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {/* Botón Anterior */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.has_prev}
+              onClick={handlePrevPage}
+              className="px-3 py-1 text-xs"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Anterior
+            </Button>
+
+            {/* Números de página */}
+            <div className="hidden sm:flex space-x-1">
+              {getPaginationRange().map((page, index) => (
+                <button
+                  key={index}
+                  onClick={() => typeof page === 'number' && handlePageChange(page)}
+                  disabled={page === '...' || page === pagination.current_page}
+                  className={`px-3 py-1 text-xs rounded ${
+                    page === pagination.current_page
+                      ? 'bg-brand-500 text-white'
+                      : page === '...'
+                      ? 'text-gray-500 cursor-default'
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            {/* Página actual (solo en móvil) */}
+            <div className="sm:hidden text-xs text-gray-600 dark:text-gray-400">
+              Página {pagination.current_page} de {pagination.total_pages}
+            </div>
+
+            {/* Botón Siguiente */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.has_next}
+              onClick={handleNextPage}
+              className="px-3 py-1 text-xs"
+            >
+              Siguiente
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Información adicional cuando no hay datos */}
+      {!loading && isEmpty && (
+        <div className="text-center py-12">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay costos fijos</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Comience creando un nuevo costo fijo.
+          </p>
+          <div className="mt-6">
+            <Button 
+              onClick={() => setModalOpen(true)}
+              className="bg-brand-500 hover:bg-brand-600 text-white"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nuevo Costo Fijo
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

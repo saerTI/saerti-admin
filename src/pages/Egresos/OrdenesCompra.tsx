@@ -18,6 +18,7 @@ import DatePicker from '../../components/form/date-picker';
 import SimpleResponsiveTable from '../../components/tables/SimpleResponsiveTable';
 import ImportOrdenesCompraModal from '../../components/CC/ImportOrdenesCompraModal';
 import { useOrdenesCompra, useOrdenCompraOperations } from '../../hooks/useOrdenesCompra';
+import { useCostCenters } from '../../hooks/useCostCenters';
 
 const OrdenesCompra = () => {
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ const OrdenesCompra = () => {
 
   // Hook de operaciones
   const { deleteOrden, loading: operationLoading } = useOrdenCompraOperations();
+  const { costCenters, loading: costCentersLoading } = useCostCenters();
 
   // Función para eliminar
   const handleDelete = async (id: number) => {
@@ -146,6 +148,16 @@ const OrdenesCompra = () => {
       value,
       label: config.label
     }))
+  ];
+
+  const costCenterOptions = [
+    { value: '', label: 'Todos los centros' },
+    ...costCenters
+      .filter(cc => cc.type === 'proyecto' || cc.type === 'administrativo')
+      .map(cc => ({
+        value: cc.id.toString(),
+        label: `${cc.code} - ${cc.name}`
+      }))
   ];
 
   // Función para navegación de páginas
@@ -298,7 +310,7 @@ const OrdenesCompra = () => {
 
       {/* Filtros */}
       <ComponentCard title="Filtros">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div>
             <Label htmlFor="state">Estado</Label>
             <Select
@@ -306,6 +318,17 @@ const OrdenesCompra = () => {
               defaultValue={filters.state || ''}
               onChange={handleFilterChange('state')}
               placeholder="Seleccione estado"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="costCenter">Centro de Costo</Label>
+            <Select
+              options={costCenterOptions}
+              defaultValue={filters.costCenterId ? filters.costCenterId.toString() : ''}
+              onChange={handleFilterChange('costCenterId')}
+              placeholder="Seleccione centro"
+              disabled={costCentersLoading}
             />
           </div>
           
@@ -363,7 +386,7 @@ const OrdenesCompra = () => {
               onClick={clearFilters}
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
             >
-              Limpiar filtrosXX
+              Limpiar filtros
             </Button>
           </div>
         )}
@@ -449,9 +472,19 @@ const OrdenesCompra = () => {
                     {oc.centroCostoNombre || 'Sin asignar'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {oc.grupoCuenta || 'Sin grupo'}
-                    </span>
+                    {oc.accountCategoryId ? (
+                      <Link
+                        to={`/cuentas-contables/${oc.accountCategoryId}`}
+                        className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
+
+                      >
+                        {oc.grupoCuenta || 'Sin grupo'}
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                        {oc.grupoCuenta || 'Sin grupo'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {formatDate(oc.date)}

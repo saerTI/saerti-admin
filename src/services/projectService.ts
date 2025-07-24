@@ -1,4 +1,4 @@
-// src/services/projectService.ts - SIN MAPEOS, TODO EN ESPAÑOL
+// src/services/projectService.ts - Actualizado con costos multidimensionales
 import api from './apiService';
 import { 
   Project, 
@@ -14,6 +14,21 @@ import {
   CodeAvailabilityResponse
 } from '../types/project';
 import { removeFromApiCache } from '../hooks/useApi';
+
+// ==========================================
+// IMPORTAR SERVICIOS DE COSTOS MULTIDIMENSIONALES
+// ==========================================
+import multidimensionalCostsService, {
+  CostFilter,
+  MultidimensionalCost,
+  CostsSummary,
+  CostsDimensions,
+  PaginatedCostsResponse
+} from './multidimensionalCostsService';
+
+// ==========================================
+// FUNCIONES EXISTENTES (mantener igual)
+// ==========================================
 
 // Get projects with optional filters
 export const getProjects = async (filters: ProjectFilter = {}): Promise<Project[]> => {
@@ -47,7 +62,7 @@ export const getProjectById = async (id: number): Promise<ProjectDetail> => {
   }
 };
 
-// Create new project - ✅ SIN MAPEO, valores directos en español
+// Create new project
 export const createProject = async (data: ProjectCreateData): Promise<number> => {
   try {
     const backendData = {
@@ -107,7 +122,7 @@ export const deleteProject = async (id: number): Promise<boolean> => {
   }
 };
 
-// Update project status - ✅ SIN MAPEO
+// Update project status
 export const updateProjectStatus = async (id: number, status: string): Promise<boolean> => {
   try {
     console.log('📤 Updating status to:', status);
@@ -125,7 +140,7 @@ export const updateProjectStatus = async (id: number, status: string): Promise<b
   }
 };
 
-// Función para verificar disponibilidad de código de proyecto
+// Check code availability
 export const checkCodeAvailability = async (code: string): Promise<CodeAvailabilityResponse> => {
   try {
     const response = await api.get<CodeAvailabilityResponse>(`/api/projects/check-code/${code}`);
@@ -136,9 +151,10 @@ export const checkCodeAvailability = async (code: string): Promise<CodeAvailabil
   }
 };
 
-// ===== MILESTONES =====
+// ==========================================
+// FUNCIONES DE MILESTONES (mantener igual)
+// ==========================================
 
-// Get milestones for a project
 export const getProjectMilestones = async (projectId: number): Promise<Milestone[]> => {
   try {
     const response = await api.get<{success: boolean, data: Milestone[]}>(`/api/projects/${projectId}/milestones`);
@@ -149,14 +165,10 @@ export const getProjectMilestones = async (projectId: number): Promise<Milestone
   }
 };
 
-// Create milestone
 export const createMilestone = async (projectId: number, data: Omit<Milestone, 'id'>): Promise<number> => {
   try {
     const response = await api.post<{success: boolean, data: {id: number}}>(`/api/projects/${projectId}/milestones`, data);
-    
-    // Invalidar cachés relacionadas con este proyecto
     removeFromApiCache(`project-detail-${projectId}`);
-    
     return response.data.id;
   } catch (error) {
     console.error(`Error creating milestone for project ${projectId}:`, error);
@@ -164,14 +176,10 @@ export const createMilestone = async (projectId: number, data: Omit<Milestone, '
   }
 };
 
-// Update milestone
 export const updateMilestone = async (id: number, data: MilestoneUpdateData): Promise<boolean> => {
   try {
     await api.put(`/api/milestones/${id}`, data);
-    
-    // Como no tenemos el projectId en este contexto, invalidamos el cache por patrón
     removeFromApiCache(/project-detail/);
-    
     return true;
   } catch (error) {
     console.error(`Error updating milestone ${id}:`, error);
@@ -179,14 +187,10 @@ export const updateMilestone = async (id: number, data: MilestoneUpdateData): Pr
   }
 };
 
-// Delete milestone
 export const deleteMilestone = async (id: number): Promise<boolean> => {
   try {
     await api.delete(`/api/milestones/${id}`);
-    
-    // Como no tenemos el projectId en este contexto, invalidamos el cache por patrón
     removeFromApiCache(/project-detail/);
-    
     return true;
   } catch (error) {
     console.error(`Error deleting milestone ${id}:`, error);
@@ -194,9 +198,10 @@ export const deleteMilestone = async (id: number): Promise<boolean> => {
   }
 };
 
-// ===== CASH FLOW =====
+// ==========================================
+// FUNCIONES DE CASH FLOW (mantener igual)
+// ==========================================
 
-// Create cash flow line (income or expense)
 export const createCashFlowLine = async (
   projectId: number,
   type: 'income' | 'expense', 
@@ -204,10 +209,7 @@ export const createCashFlowLine = async (
 ): Promise<number> => {
   try {
     const response = await api.post<{success: boolean, data: {id: number}}>(`/api/projects/${projectId}/cashflow/${type}`, data);
-    
-    // Invalidar cachés relacionadas con este proyecto
     removeFromApiCache(`project-detail-${projectId}`);
-    
     return response.data.id;
   } catch (error) {
     console.error(`Error creating ${type} for project ${projectId}:`, error);
@@ -215,7 +217,6 @@ export const createCashFlowLine = async (
   }
 };
 
-// Update cash flow line
 export const updateCashFlowLine = async (
   lineId: number, 
   type: 'income' | 'expense',
@@ -223,10 +224,7 @@ export const updateCashFlowLine = async (
 ): Promise<boolean> => {
   try {
     await api.put(`/api/cashflow/${type}/${lineId}`, data);
-    
-    // Como no tenemos el projectId en este contexto, invalidamos el cache por patrón
     removeFromApiCache(/project-detail/);
-    
     return true;
   } catch (error) {
     console.error(`Error updating ${type} ${lineId}:`, error);
@@ -234,14 +232,10 @@ export const updateCashFlowLine = async (
   }
 };
 
-// Delete cash flow line
 export const deleteCashFlowLine = async (lineId: number): Promise<boolean> => {
   try {
     await api.delete(`/api/cashflow/${lineId}`);
-    
-    // Como no tenemos el projectId en este contexto, invalidamos el cache por patrón
     removeFromApiCache(/project-detail/);
-    
     return true;
   } catch (error) {
     console.error(`Error deleting cash flow line ${lineId}:`, error);
@@ -249,7 +243,202 @@ export const deleteCashFlowLine = async (lineId: number): Promise<boolean> => {
   }
 };
 
-// Exportamos todo para uso individual
+// ==========================================
+// NUEVAS FUNCIONES DE COSTOS MULTIDIMENSIONALES
+// ==========================================
+
+/**
+ * Obtiene costos multidimensionales de un proyecto
+ */
+export const getProjectCosts = async (projectId: number, filters: CostFilter = {}): Promise<MultidimensionalCost[]> => {
+  try {
+    return await multidimensionalCostsService.getProjectCosts(projectId, filters);
+  } catch (error) {
+    console.error(`Error fetching costs for project ${projectId}:`, error);
+    throw new Error('Failed to fetch project costs');
+  }
+};
+
+/**
+ * Obtiene resumen de costos de un proyecto
+ */
+export const getProjectCostsSummary = async (projectId: number): Promise<CostsSummary> => {
+  try {
+    return await multidimensionalCostsService.getProjectCostsSummary(projectId);
+  } catch (error) {
+    console.error(`Error fetching costs summary for project ${projectId}:`, error);
+    throw new Error('Failed to fetch project costs summary');
+  }
+};
+
+/**
+ * Obtiene dimensiones de costos para un proyecto (para filtros)
+ */
+export const getProjectCostsDimensions = async (projectId: number): Promise<CostsDimensions> => {
+  try {
+    return await multidimensionalCostsService.getCostsDimensions({ cost_center_id: projectId });
+  } catch (error) {
+    console.error(`Error fetching costs dimensions for project ${projectId}:`, error);
+    throw new Error('Failed to fetch project costs dimensions');
+  }
+};
+
+/**
+ * Explora costos del proyecto con filtros específicos
+ */
+export const exploreProjectCosts = async (projectId: number, filters: CostFilter = {}) => {
+  try {
+    const projectFilters = {
+      ...filters,
+      cost_center_id: projectId
+    };
+    
+    return await multidimensionalCostsService.exploreCosts(projectFilters);
+  } catch (error) {
+    console.error(`Error exploring costs for project ${projectId}:`, error);
+    throw new Error('Failed to explore project costs');
+  }
+};
+
+export const getProjectCostsSpecific = async (projectId: number, filters: CostFilter = {}): Promise<PaginatedCostsResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Agregar filtros a los query params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value.toString());
+      }
+    });
+
+    const endpoint = `/api/projects/${projectId}/costs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get<PaginatedCostsResponse>(endpoint);
+    
+    return response;
+  } catch (error) {
+    console.error(`Error obteniendo costos específicos del proyecto ${projectId}:`, error);
+    throw new Error('Error al obtener costos específicos del proyecto');
+  }
+};
+
+/**
+ * Obtiene dimensiones de costos específicas del proyecto
+ */
+export const getProjectCostsDimensionsSpecific = async (projectId: number): Promise<CostsDimensions> => {
+  try {
+    const response = await api.get<{ success: boolean; data: CostsDimensions }>(`/api/projects/${projectId}/costs/dimensions`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error obteniendo dimensiones de costos del proyecto ${projectId}:`, error);
+    throw new Error('Error al obtener dimensiones de costos del proyecto');
+  }
+};
+
+/**
+ * Obtiene análisis detallado de costos del proyecto
+ */
+export const getProjectCostsAnalysis = async (projectId: number) => {
+  try {
+    const response = await api.get<any>(`/api/projects/${projectId}/costs/analysis`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error obteniendo análisis de costos del proyecto ${projectId}:`, error);
+    throw new Error('Error al obtener análisis de costos del proyecto');
+  }
+};
+
+/**
+ * Obtiene resumen ejecutivo de costos del proyecto
+ */
+export const getProjectCostsSummarySpecific = async (projectId: number): Promise<any> => {
+  try {
+    const response = await api.get<{ success: boolean; data: any }>(`/api/projects/${projectId}/costs/summary`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error obteniendo resumen de costos del proyecto ${projectId}:`, error);
+    throw new Error('Error al obtener resumen de costos del proyecto');
+  }
+};
+
+// ==========================================
+// FUNCIONES AUXILIARES PARA UI
+// ==========================================
+
+/**
+ * Obtiene costos y resumen de un proyecto para mostrar en UI
+ */
+export const getProjectCostsForUI = async (projectId: number, filters: CostFilter = {}) => {
+  try {
+    // Obtener costos y resumen en paralelo
+    const [costsResponse, summary] = await Promise.all([
+      getProjectCostsSpecific(projectId, { ...filters, limit: 50 }),
+      getProjectCostsSummarySpecific(projectId)
+    ]);
+    
+    return {
+      costs: costsResponse.data,
+      pagination: costsResponse.pagination,
+      summary: summary.summary,
+      project_info: summary.project_info,
+      by_category: summary.by_category,
+      by_period: summary.by_period,
+      recent_costs: summary.recent_costs
+    };
+  } catch (error) {
+    console.error(`Error obteniendo datos de costos para UI del proyecto ${projectId}:`, error);
+    throw new Error('Error al obtener datos de costos para la interfaz');
+  }
+};
+
+/**
+ * Obtiene dimensiones y filtros disponibles para un proyecto
+ */
+export const getProjectFiltersData = async (projectId: number) => {
+  try {
+    const dimensions = await getProjectCostsDimensionsSpecific(projectId);
+    
+    // Transformar dimensiones a formato para filtros UI
+    return {
+      categories: dimensions.categories.map(cat => ({
+        value: cat.id,
+        label: cat.name,
+        group: cat.group_name,
+        cost_count: cat.cost_count
+      })),
+      suppliers: dimensions.suppliers.map(sup => ({
+        value: sup.id,
+        label: sup.name,
+        cost_count: sup.cost_count
+      })),
+      employees: dimensions.employees.map(emp => ({
+        value: emp.id,
+        label: emp.name,
+        position: emp.position,
+        cost_count: emp.cost_count
+      })),
+      periods: dimensions.periods.map(per => ({
+        value: per.period_key,
+        label: `${per.period_key} (${per.cost_count} registros)`,
+        year: per.period_year,
+        month: per.period_month
+      })),
+      source_types: dimensions.source_types.map(src => ({
+        value: src.source_type,
+        label: src.source_type,
+        cost_count: src.cost_count
+      }))
+    };
+  } catch (error) {
+    console.error(`Error obteniendo datos de filtros del proyecto ${projectId}:`, error);
+    throw new Error('Error al obtener datos de filtros');
+  }
+};
+
+// ==========================================
+// EXPORTS
+// ==========================================
+
+// Export types (incluyendo los nuevos tipos de costos)
 export { 
   type Project,
   type ProjectDetail,
@@ -260,11 +449,17 @@ export {
   type ProjectCreateData,
   type MilestoneUpdateData,
   type CashFlowLineCreateData,
-  type CodeAvailabilityResponse
+  type CodeAvailabilityResponse,
+  // Export new cost-related types
+  type CostFilter,
+  type MultidimensionalCost,
+  type CostsSummary,
+  type CostsDimensions
 };
 
-// Exportamos como objeto por defecto
+// Export default object (incluyendo las nuevas funciones)
 export default {
+  // Existing functions
   getProjects,
   getProjectById,
   createProject,
@@ -278,5 +473,15 @@ export default {
   deleteMilestone,
   createCashFlowLine,
   updateCashFlowLine,
-  deleteCashFlowLine
+  deleteCashFlowLine,
+  
+  // New multidimensional costs functions
+  getProjectCosts,
+  getProjectCostsSummary,
+  getProjectCostsDimensions,
+  exploreProjectCosts,
+
+  // Funciones auxiliares para UI
+  getProjectCostsForUI,
+  getProjectFiltersData
 };

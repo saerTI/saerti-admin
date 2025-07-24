@@ -85,6 +85,8 @@ export interface OrdenCompra extends OrdenCompraBase {
   montoFacturado?: number;
   estadoPago?: OrdenCompraEstadoPago;
   fechaVencimiento?: string;
+
+  accountCategoryId?: number;
 }
 
 // Interface for creating new Orden de Compra
@@ -491,7 +493,7 @@ export interface ApiOrdenCompra {
   order_number: string;
   description?: string;
   cost_center_id?: number;
-  cuenta_categoria_id?: number;
+  account_category_id?: number;
   provider_name: string;
   amount: number;
   date: string;
@@ -601,6 +603,7 @@ export function transformApiOrdenCompra(apiOrden: ApiOrdenCompra): OrdenCompra {
     centroCostoNombre: apiOrden.center_name,
     cuentaContable: apiOrden.categoria_name,
     grupoCuenta: apiOrden.categoria_name,
+    accountCategoryId: apiOrden.account_category_id, // ✅ AGREGADO
     notes: apiOrden.notes,
     companyId: 1,
     deliveryDate: undefined,
