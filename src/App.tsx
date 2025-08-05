@@ -26,17 +26,17 @@ import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
 
 // Import placeholder components for Gastos pages
 // These will need to be created
-import Cotizaciones from "./pages/Egresos/Cotizaciones";
-import Previsionales from "./pages/Egresos/Previsionales";
-import SubcontratosCredito from "./pages/Egresos/SubcontratosCredito";
-import SubcontratosContado from "./pages/Egresos/SubcontratosContado";
-import Remuneraciones from "./pages/Egresos/Remuneraciones";
-import GastosImprevistos from "./pages/Egresos/GastosImprevistos";
-import OrdenesCompra from "./pages/Egresos/OrdenesCompra";
-import EgresossIndex from "./pages/Egresos/EgresosIndex";
+import Cotizaciones from "./pages/Costs/Cotizaciones";
+import Previsionales from "./pages/Costs/Previsionales";
+import SubcontratosCredito from "./pages/Costs/SubcontratosCredito";
+import SubcontratosContado from "./pages/Costs/SubcontratosContado";
+import Remuneraciones from "./pages/Costs/Remuneraciones";
+import GastosImprevistos from "./pages/Costs/GastosImprevistos";
+import OrdenesCompra from "./pages/Costs/OrdenesCompra";
+import EgresossIndex from "./pages/Costs/CostsIndex";
 import IngresosIndex from "./pages/Ingresos/IngresosIndex";
-import Factoring from "./pages/Egresos/Factoring";
-import CostosFijos from "./pages/Egresos/CostosFijos";
+import Factoring from "./pages/Costs/Factoring";
+import CostosFijos from "./pages/Costs/CostosFijos";
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
 // import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";

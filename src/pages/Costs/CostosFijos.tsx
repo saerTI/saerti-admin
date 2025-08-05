@@ -1,4 +1,4 @@
-// src/pages/Egresos/CostosFijos.tsx - Con filtros dinámicos corregidos
+// src/pages/Gastos/CostosFijos.tsx - Con filtros dinámicos corregidos
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';

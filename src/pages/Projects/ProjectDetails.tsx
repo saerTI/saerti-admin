@@ -12,6 +12,7 @@ import projectApiService, {
 } from '../../services/projectService';
 import Button from '../../components/ui/button/Button';
 import CostsRealSection from '../../components/costs/CostsRealSection';
+import Buttons from '../UiElements/Buttons';
 
 // Status translation and styling
 const PROJECT_STATUS_MAP: Record<string, { label: string, color: string }> = {
@@ -783,12 +784,12 @@ const ProjectDetailView = () => {
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end space-x-2">
-                                      <button
+                                      <Button
                                         onClick={() => alert('Editar gasto - Implementar')}
                                         className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                                       >
                                         Editar
-                                      </button>
+                                      </Button>
                                       <button
                                         onClick={() => handleDeleteCashFlowLine(expense.id, 'expense')}
                                         className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
