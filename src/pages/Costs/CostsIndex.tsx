@@ -63,18 +63,18 @@ const CostsIndex = () => {
 
   // **CONFIGURACIÓN DE FILTROS USANDO FilterPanel**
   const filterConfigs: FilterConfig[] = [
-    {
-      key: 'periodType',
-      label: 'Tipo de Período',
-      type: 'select',
-      options: [
-        { value: 'weekly', label: 'Semanal' },
-        { value: 'monthly', label: 'Mensual' },
-        { value: 'quarterly', label: 'Trimestral' },
-        { value: 'annual', label: 'Anual' }
-      ],
-      width: 'sm'
-    },
+    // {
+    //   key: 'periodType',
+    //   label: 'Tipo de Período',
+    //   type: 'select',
+    //   options: [
+    //     { value: 'weekly', label: 'Semanal' },
+    //     { value: 'monthly', label: 'Mensual' },
+    //     { value: 'quarterly', label: 'Trimestral' },
+    //     { value: 'annual', label: 'Anual' }
+    //   ],
+    //   width: 'sm'
+    // },
     {
       key: 'year',
       label: 'Año',
@@ -189,9 +189,9 @@ const CostsIndex = () => {
         } else if (filters.periodType === 'quarterly') {
           periodData = generateQuarterPeriods(selectedYear);
         } else if (filters.periodType === 'annual') {
-          // Show last 5 years
+          // Show last 5 years - UPDATED TO MATCH BACKEND FORMAT
           periodData = Array(5).fill(0).map((_, i) => ({
-            id: `year-${selectedYear - 4 + i}`,
+            id: `${selectedYear - 4 + i}`, // ← CAMBIADO: de `year-${...}` a solo `${...}`
             label: (selectedYear - 4 + i).toString()
           }));
         }

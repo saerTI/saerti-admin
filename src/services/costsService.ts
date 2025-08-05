@@ -222,12 +222,12 @@ export const costsApiService = {
 
       console.log(`📊 Backend returned ${response.data.length} period-category combinations`);
 
-      // **AGRUPAR POR CATEGORÍA Y PERÍODO**
+      // **AGRUPAR POR CATEGORÍA Y PERÍODO - USANDO DIRECTAMENTE period_key**
       const groupedData: Record<string, Record<string, number>> = {};
       
       response.data.forEach(item => {
         const category = item.category_name || 'Sin Categoría';
-        const periodKey = item.period_key;
+        const periodKey = item.period_key; // ← SIN TRANSFORMACIÓN: usar directamente '2025-05'
         const amount = parseFloat(item.total_amount.toString()) || 0;
 
         console.log(`📊 Processing: ${category} -> ${periodKey} = ${amount}`);
@@ -236,7 +236,7 @@ export const costsApiService = {
           groupedData[category] = {};
         }
         
-        groupedData[category][periodKey] = amount;
+        groupedData[category][periodKey] = amount; // ← USAR DIRECTAMENTE period_key
       });
 
       console.log('📊 Grouped data:', groupedData);
@@ -245,7 +245,7 @@ export const costsApiService = {
       const result = Object.entries(groupedData).map(([category, amounts]) => ({
         category,
         path: `/costs/category/${encodeURIComponent(category)}`,
-        amounts
+        amounts // ← amounts ahora tiene keys como '2025-05' que coinciden con los IDs de períodos
       }));
 
       console.log('📊 Final transformed result:', result);

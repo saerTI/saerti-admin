@@ -108,7 +108,7 @@ export const generateWeekPeriods = (year: number): FinancialPeriod[] => {
   return Array(52).fill(0).map((_, i) => {
     const dateRange = getWeekDateRange(year, i + 1);
     return {
-      id: `week-${i + 1}`,
+      id: `${year}-W${(i + 1).toString().padStart(2, '0')}`, // ← '2025-W01', '2025-W02', etc.
       label: dateRange,
       isDateRange: true
     };
@@ -125,7 +125,7 @@ export const generateMonthPeriods = (year: number): FinancialPeriod[] => {
   ];
   
   return months.map((month, i) => ({
-    id: `month-${i + 1}`,
+    id: `${year}-${(i + 1).toString().padStart(2, '0')}`, // ← '2025-01', '2025-02', etc.
     label: month
   }));
 };
@@ -135,7 +135,7 @@ export const generateMonthPeriods = (year: number): FinancialPeriod[] => {
  */
 export const generateQuarterPeriods = (year: number): FinancialPeriod[] => {
   return Array(4).fill(0).map((_, i) => ({
-    id: `quarter-${i + 1}`,
+    id: `${year}-Q${i + 1}`, // ← '2025-Q1', '2025-Q2', etc.
     label: `Q${i + 1}`
   }));
 };
