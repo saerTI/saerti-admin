@@ -456,7 +456,7 @@ const OrdenesCompra = () => {
                 <tr key={oc.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
                   <td className="sticky-first-column px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-gray-100">
                     <Link 
-                      to={`/cuentas/ordenes-compra/${oc.id}`}
+                      to={`/gastos/ordenes-compra/${oc.id}`}
                       className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                     >
                       {oc.orderNumber}

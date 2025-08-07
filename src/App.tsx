@@ -37,6 +37,15 @@ import EgresossIndex from "./pages/Egresos/EgresosIndex";
 import IngresosIndex from "./pages/Ingresos/IngresosIndex";
 import Factoring from "./pages/Egresos/Factoring";
 import CostosFijos from "./pages/Egresos/CostosFijos";
+import OrdenCompraDetail from "./pages/Egresos/OrdenCompraDetail";
+import { RemuneracionesDetail } from "./pages/Egresos/RemuneracionesDetail";
+import RemuneracionesForm from "./pages/Egresos/RemuneracionesForm";
+import { CostosFijosDetail } from "./pages/Egresos/CostosFijosDetail";
+import { CostosFijosEdicion } from "./pages/Egresos/CostosFijosEdicion";
+import Empleados from "./pages/Egresos/Empleados";
+import EmpleadosNuevo from "./pages/Egresos/EmpleadosNuevo";
+import EmpleadosDetalle from "./pages/Egresos/EmpleadosDetalle";
+import EmpleadosEdición from "./pages/Egresos/EmpleadosEdicion";
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
 // import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";
@@ -49,6 +58,7 @@ import CostosFijos from "./pages/Egresos/CostosFijos";
 // import CertificacionesCapacitaciones from "./pages/Gastos/CertificacionesCapacitaciones";
 // import EstudiosAsesorias from "./pages/Gastos/EstudiosAsesorias";
 // import OCContado from "./pages/Gastos/OCContado";
+
 
 
 export default function App() {
@@ -120,6 +130,16 @@ export default function App() {
                 <Remuneraciones />
               </PrivateRoute>
             } />
+            <Route path="/gastos/remuneraciones/:id" element={
+              <PrivateRoute>
+                <RemuneracionesDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/remuneraciones/:id/edit" element={
+              <PrivateRoute>
+                <RemuneracionesForm />
+              </PrivateRoute>
+            } />
             <Route path="/gastos/subcontratos-credito" element={
               <PrivateRoute>
                 <SubcontratosCredito />
@@ -140,6 +160,11 @@ export default function App() {
                 <OrdenesCompra />
               </PrivateRoute>
             } />
+            <Route path="/gastos/ordenes-compra/:id" element={
+              <PrivateRoute>
+                <OrdenCompraDetail />
+              </PrivateRoute>
+            } />
             <Route path="/gastos/factoring" element={
               <PrivateRoute>
                 <Factoring />
@@ -150,6 +175,146 @@ export default function App() {
             <Route path="/gastos/costos-fijos" element={
               <PrivateRoute>
                 <CostosFijos />
+              </PrivateRoute>
+            } />
+             <Route path="/gastos/costos-fijos/:id" element={
+              <PrivateRoute>
+                <CostosFijosDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/empleados" element={
+              <PrivateRoute>
+                <Empleados />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/empleados/new" element={
+              <PrivateRoute>
+                <EmpleadosNuevo />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/empleados/:id" element={
+              <PrivateRoute>
+                <EmpleadosDetalle />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/empleados/:id/edit" element={
+              <PrivateRoute>
+                <EmpleadosEdición />
+              </PrivateRoute>
+            } />
+
+            {/* Rutas de Egresos */}
+            <Route path="/egresos/index" element={
+              <PrivateRoute>
+                <EgresossIndex />
+              </PrivateRoute>
+            } />
+
+            <Route path="/egresos/costos-fijos" element={
+              <PrivateRoute>
+                <CostosFijos />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/costos-fijos/:id" element={
+              <PrivateRoute>
+                <CostosFijosDetail />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/costos-fijos/:id/editar" element={
+              <PrivateRoute>
+                <CostosFijosEdicion />
+              </PrivateRoute>
+            } />
+
+            <Route path="/egresos/cotizaciones" element={
+              <PrivateRoute>
+                <Cotizaciones />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/previsionales" element={
+              <PrivateRoute>
+                <Previsionales />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/remuneraciones" element={
+              <PrivateRoute>
+                <Remuneraciones />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/remuneraciones/:id" element={
+              <PrivateRoute>
+                <RemuneracionesDetail />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/remuneraciones/:id/edit" element={
+              <PrivateRoute>
+                <RemuneracionesForm />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/subcontratos-credito" element={
+              <PrivateRoute>
+                <SubcontratosCredito />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/subcontratos-contado" element={
+              <PrivateRoute>
+                <SubcontratosContado />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/imprevistos" element={
+              <PrivateRoute>
+                <GastosImprevistos />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/ordenes-compra" element={
+              <PrivateRoute>
+                <OrdenesCompra />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/ordenes-compra/:id" element={
+              <PrivateRoute>
+                <OrdenCompraDetail />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/factoring" element={
+              <PrivateRoute>
+                <Factoring />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/empleados" element={
+              <PrivateRoute>
+                <Empleados />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/empleados/new" element={
+              <PrivateRoute>
+                <EmpleadosNuevo />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/empleados/:id" element={
+              <PrivateRoute>
+                <EmpleadosDetalle />
+              </PrivateRoute>
+            } />
+            
+            <Route path="/egresos/empleados/:id/edit" element={
+              <PrivateRoute>
+                <EmpleadosEdición />
               </PrivateRoute>
             } />
 

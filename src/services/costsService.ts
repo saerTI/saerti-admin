@@ -1,5 +1,5 @@
 // Actualización del archivo services/gastosService.ts para incluir nuevas propiedades
-
+import api from './apiService';
 import { OrdenCompra as ImportedOrdenCompra } from '../types/CC/ordenCompra';
 
 // Re-export the OrdenCompra type from the new types file
@@ -32,6 +32,26 @@ export interface GastoFilter {
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
 }
+export interface IOrdenCompraDetail {
+  id: number
+  name: string
+  order_number: string
+  description: string
+  cost_center_id: number
+  account_category_id: number
+  provider_name: string
+  amount: number
+  date: string
+  payment_type: string
+  state: string
+  notes: string
+  created_at: string
+  updated_at: string
+  center_code: string
+  center_name: string
+  categoria_name: string
+  supplier_name: any
+}
 
 // Mock service implementation
 export const gastosApiService = {
@@ -40,9 +60,18 @@ export const gastosApiService = {
     return getMockOrdenesCompra();
   },
 
-  async getOrdenCompraById(id: number): Promise<OrdenCompra | null> {
-    const ordenes = await getMockOrdenesCompra();
-    return ordenes.find(orden => orden.id === id) || null;
+  async getOrdenCompraById(id: number): Promise<IOrdenCompraDetail | null> {
+    console.log('🔍 Fetching orden de compra by ID:', id);
+    // const ordenes = await getMockOrdenesCompra();
+    // return ordenes.find(orden => orden.id === id) || null;
+    try {
+        const response = await api.get<{success: boolean, data: IOrdenCompraDetail}>(`/api/ordenes-compra/${id}`);
+        console.log('🔍 Orden de compra fetched:', response.data);
+        return response.data;
+      } catch (error) {
+        console.error(`Error fetching project ${id}:`, error);
+        throw new Error('Failed to fetch project details');
+      }
   },
 
   async createOrdenCompra(data: Partial<OrdenCompra>): Promise<OrdenCompra> {
@@ -54,7 +83,7 @@ export const gastosApiService = {
     return newOrden;
   },
 
-  async updateOrdenCompra(id: number, data: Partial<OrdenCompra>): Promise<OrdenCompra> {
+  async updateOrdenCompra(id: number, data: Partial<IOrdenCompraDetail>): Promise<IOrdenCompraDetail> {
     // Mock implementation
     const existingOrden = await this.getOrdenCompraById(id);
     if (!existingOrden) {

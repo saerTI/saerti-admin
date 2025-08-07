@@ -4,6 +4,11 @@ import svgr from "vite-plugin-svgr";
 
 export default defineConfig({
   base: './', // 👈 clave para que los chunks .js se resuelvan bien desde ngrok
+  resolve: {
+    alias: {
+      '@': '/src'
+    }
+  },
   plugins: [
     react(),
     svgr({

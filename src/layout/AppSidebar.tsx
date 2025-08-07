@@ -61,6 +61,7 @@ const navItems: NavItem[] = [
       { name: "Factoring", path: "/gastos/factoring", pro: false },
       { name: "Costos Fijos", path: "/gastos/costos-fijos", pro: false },
       { name: "Previsionales", path: "/gastos/previsionales", pro: false },
+      { name: "Empleados", path: "/gastos/empleados", pro: false },
     ],
   },
   {
