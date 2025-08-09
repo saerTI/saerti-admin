@@ -32,6 +32,26 @@ export interface GastoFilter {
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
 }
+export interface IOrdenCompraDetail {
+  id: number
+  name: string
+  order_number: string
+  description: string
+  cost_center_id: number
+  account_category_id: number
+  provider_name: string
+  amount: number
+  date: string
+  payment_type: string
+  state: string
+  notes: string
+  created_at: string
+  updated_at: string
+  center_code: string
+  center_name: string
+  categoria_name: string
+  supplier_name: any
+}
 
 // **AÑADIR TIPO COTIZACION PARA COMPATIBILIDAD**
 export interface Cotizacion {
@@ -365,22 +385,18 @@ export const costsApiService = {
     }
   },
 
-  async getOrdenCompraById(id: number): Promise<OrdenCompra | null> {
+  async getOrdenCompraById(id: number): Promise<IOrdenCompraDetail | null> {
+    console.log('🔍 Fetching orden de compra by ID:', id);
+    // const ordenes = await getMockOrdenesCompra();
+    // return ordenes.find(orden => orden.id === id) || null;
     try {
-      const response = await api.get<{
-        success: boolean;
-        data: OrdenCompra;
-      }>(`/purchase-orders/${id}`);
-
-      if (!response.success) {
-        return null;
+        const response = await api.get<{success: boolean, data: IOrdenCompraDetail}>(`/api/ordenes-compra/${id}`);
+        console.log('🔍 Orden de compra fetched:', response.data);
+        return response.data;
+      } catch (error) {
+        console.error(`Error fetching project ${id}:`, error);
+        throw new Error('Failed to fetch project details');
       }
-
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching orden de compra ${id}:`, error);
-      return null;
-    }
   },
 
   async createOrdenCompra(data: Partial<OrdenCompra>): Promise<OrdenCompra> {
@@ -401,22 +417,13 @@ export const costsApiService = {
     }
   },
 
-  async updateOrdenCompra(id: number, data: Partial<OrdenCompra>): Promise<OrdenCompra> {
-    try {
-      const response = await api.put<{
-        success: boolean;
-        data: OrdenCompra;
-      }>(`/purchase-orders/${id}`, data);
-
-      if (!response.success) {
-        throw new Error('Error al actualizar orden de compra');
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating orden de compra ${id}:`, error);
-      throw new Error('Error al actualizar orden de compra');
+  async updateOrdenCompra(id: number, data: Partial<IOrdenCompraDetail>): Promise<IOrdenCompraDetail> {
+    // Mock implementation
+    const existingOrden = await this.getOrdenCompraById(id);
+    if (!existingOrden) {
+      throw new Error('Orden de compra not found');
     }
+    return { ...existingOrden, ...data };
   },
 
   async deleteOrdenCompra(id: number): Promise<boolean> {

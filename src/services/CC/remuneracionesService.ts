@@ -189,6 +189,24 @@ export const createRemuneracionesBatch = async (data: RemuneracionCreateData[]):
 };
 
 /**
+ * Actualizar remuneración
+ */
+export const updateRemuneracion = async (id: number, data: RemuneracionUpdateData): Promise<Remuneracion> => {
+  try {
+    const response = await api.put<ApiResponse<ApiRemuneracion>>(`/remuneraciones/${id}`, data);
+    
+    if (response.success) {
+      return transformApiRemuneracion(response.data);
+    } else {
+      throw new Error(response.message || 'Error al actualizar remuneración');
+    }
+  } catch (error) {
+    console.error('Error updating remuneración:', error);
+    throw error;
+  }
+};
+
+/**
  * Eliminar remuneración
  */
 export const deleteRemuneracion = async (id: number): Promise<void> => {
@@ -204,9 +222,25 @@ export const deleteRemuneracion = async (id: number): Promise<void> => {
   }
 };
 
+export const getRemuneracionById = async (id: number): Promise<Remuneracion> => {
+  try {
+    const response = await api.get<ApiResponse<ApiRemuneracion>>(`/remuneraciones/${id}`);
+    
+    if (response.success) {
+      return transformApiRemuneracion(response.data);
+    } else {
+      throw new Error(response.message || 'Error al obtener remuneración por ID');
+    }
+  } catch (error) {
+    console.error('Error fetching remuneración by ID:', error);
+    throw error;
+  }
+}
 export default {
   getRemuneraciones,
   createRemuneracion,
   createRemuneracionesBatch,
-  deleteRemuneracion
+  updateRemuneracion,
+  deleteRemuneracion,
+  getRemuneracionById
 };
