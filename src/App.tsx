@@ -34,7 +34,6 @@ import Remuneraciones from "./pages/Costs/Remuneraciones";
 import GastosImprevistos from "./pages/Costs/GastosImprevistos";
 import OrdenesCompra from "./pages/Costs/OrdenesCompra";
 import EgresossIndex from "./pages/Costs/CostsIndex";
-import IngresosIndex from "./pages/Ingresos/IngresosIndex";
 import Factoring from "./pages/Costs/Factoring";
 import CostosFijos from "./pages/Costs/CostosFijos";
 import { RemuneracionesDetail } from "./pages/Costs/RemuneracionesDetail";
@@ -46,6 +45,7 @@ import EmpleadosNuevo from "./pages/Costs/EmpleadosNuevo";
 import EmpleadosDetalle from "./pages/Costs/EmpleadosDetalle";
 import EmpleadosEdición from "./pages/Costs/EmpleadosEdicion";
 import { CostosFijosEdicion } from "./pages/Costs/CostosFijosEdicion";
+import IncomeIndex from "./pages/Income/IncomeIndex";
 
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
@@ -374,7 +374,7 @@ export default function App() {
             {/* Rutas de Ingresos */}
             <Route path="/ingresos/index" element={
               <PrivateRoute>
-                <IngresosIndex />
+                <IncomeIndex />
               </PrivateRoute>
             } />
             
