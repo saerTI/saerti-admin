@@ -324,23 +324,11 @@ const CostsIndex = () => {
     }
   };
 
-  // **MÉTODO DE DEBUG**
-  const handleLoadDebugData = async () => {
-    try {
-      console.log('🔍 Loading debug data...');
-      const debug = await costsApiService.getDebugData();
-      setDebugData(debug);
-      setShowDebug(true);
-      console.log('🔍 Debug data loaded:', debug);
-    } catch (error) {
-      console.error('❌ Error loading debug data:', error);
-    }
-  };
 
   // **TÍTULO DINÁMICO**
   const getTitle = () => {
     if (currentTenant) {
-      return `Gestión de Costos - ${currentTenant.name}`;
+      return `Gestión de Costos `;
     }
     return 'Gestión de Costos';
   };
@@ -349,78 +337,6 @@ const CostsIndex = () => {
           <div className="w-full px-4 py-6">
       <PageBreadcrumb pageTitle={getTitle()} titleSize="2xl" />
 
-      {/* **BOTÓN DE DEBUG** */}
-      <div className="mb-4 flex justify-end">
-        <button
-          onClick={handleLoadDebugData}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-        >
-          🔍 Debug Data Sources
-        </button>
-      </div>
-
-      {/* **PANEL DE DEBUG** */}
-      {showDebug && debugData && (
-        <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white">🔍 Debug Information</h3>
-            <button
-              onClick={() => setShowDebug(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">📊 Table Counts:</h4>
-              <ul className="space-y-1 text-gray-600 dark:text-gray-400">
-                <li>accounting_costs: <strong>{debugData.debug_data?.accounting_costs?.total_count || 0}</strong></li>
-                <li>purchase_orders: <strong>{debugData.debug_data?.purchase_orders?.total_count || 0}</strong></li>
-                <li>fixed_costs: <strong>{debugData.debug_data?.fixed_costs?.total_count || 0}</strong></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">🎯 Analysis:</h4>
-              <ul className="space-y-1 text-gray-600 dark:text-gray-400">
-                <li>Total sources: <strong>{debugData.analysis?.total_sources || 0}</strong></li>
-                <li>View records: <strong>{debugData.analysis?.view_total_records || 0}</strong></li>
-                <li>Has accounting: <strong>{debugData.analysis?.has_accounting_data ? '✅' : '❌'}</strong></li>
-                <li>Has purchases: <strong>{debugData.analysis?.has_purchase_orders ? '✅' : '❌'}</strong></li>
-              </ul>
-            </div>
-          </div>
-          
-          {debugData.recommendations && debugData.recommendations.length > 0 && (
-            <div className="mt-4">
-              <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">💡 Recommendations:</h4>
-              <ul className="space-y-1">
-                {debugData.recommendations.map((rec: string, index: number) => (
-                  <li key={index} className="text-sm text-gray-600 dark:text-gray-400">{rec}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          <details className="mt-4">
-            <summary className="cursor-pointer font-semibold text-gray-700 dark:text-gray-300">
-              🔧 Raw Debug Data (Click to expand)
-            </summary>
-            <pre className="mt-2 p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs overflow-auto max-h-64">
-              {JSON.stringify(debugData, null, 2)}
-            </pre>
-          </details>
-        </div>
-      )}
-
-      {/* Error message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
 
       {/* **SUMMARY OVERVIEW** */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 mb-6">
@@ -467,9 +383,7 @@ const CostsIndex = () => {
 
       {/* **TABLA FINANCIERA POR PERÍODOS** */}
       <FinancialTable 
-        title={`Costos por ${filters.periodType === 'weekly' ? 'Semanas' : 
-                filters.periodType === 'monthly' ? 'Meses' : 
-                filters.periodType === 'quarterly' ? 'Trimestres' : 'Años'}`}
+        title={`Costos por mes`}
         type="expense"
         periods={periods}
         data={expensesByDate}

@@ -1,30 +1,25 @@
-import React from 'react';
+// src/components/tables/FinancialTable.tsx - VERSIÓN CORREGIDA COMPLETA
+
 import { Link } from 'react-router-dom';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '../ui/table';
 import { formatCurrency } from '../../utils/formatters';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../../components/ui/table";
-import Badge from "../../components/ui/badge/Badge";
+import Badge from '../ui/badge/Badge';
 
-// Types for financial data
-export interface FinancialCategory {
-  category: string;
-  path: string;
-  amounts: Record<string, number>;
-}
-
+// Existing interfaces...
 export interface FinancialPeriod {
   id: string;
-  label: string | DateRange;
+  label: string | { startDate: string; endDate: string };
   isDateRange?: boolean;
 }
 
-export interface FinancialTableProps {
-  title: string;
+export interface FinancialCategory {
+  category: string;
+  amounts: Record<string, number>;
+  path: string;
+}
+
+interface FinancialTableProps {
+  title?: string;
   type: 'income' | 'expense';
   periods: FinancialPeriod[];
   data: FinancialCategory[];
@@ -33,86 +28,53 @@ export interface FinancialTableProps {
   showBadges?: boolean;
 }
 
-/**
- * Calculate totals for each period
- */
-const calculatePeriodTotals = (data: FinancialCategory[], periods: FinancialPeriod[]) => {
+// Utility functions
+const calculatePeriodTotals = (data: FinancialCategory[], periods: FinancialPeriod[]): Record<string, number> => {
   const totals: Record<string, number> = {};
   
   periods.forEach(period => {
-    totals[period.id] = data.reduce((sum, item) => 
-      sum + (item.amounts[period.id] || 0), 0);
+    totals[period.id] = data.reduce((sum, category) => {
+      return sum + (category.amounts[period.id] || 0);
+    }, 0);
+  });
+  
+  return totals;
+};
+
+const calculateCategoryTotals = (data: FinancialCategory[]): Record<string, number> => {
+  const totals: Record<string, number> = {};
+  
+  data.forEach(category => {
+    totals[category.category] = Object.values(category.amounts).reduce((sum, amount) => sum + amount, 0);
   });
   
   return totals;
 };
 
 /**
- * Calculate total for each category
- */
-const calculateCategoryTotals = (data: FinancialCategory[]) => {
-  return data.map(item => {
-    const total = Object.values(item.amounts).reduce((sum, amount) => sum + (amount || 0), 0);
-    return {
-      category: item.category,
-      path: item.path,
-      total
-    };
-  });
-};
-
-/**
- * Date range object with start and end dates
- */
-export interface DateRange {
-  startDate: string;
-  endDate: string;
-}
-
-/**
- * Generate date range for a week in a given year
- */
-export const getWeekDateRange = (year: number, weekNumber: number): DateRange => {
-  // Get the first day of the year
-  const firstDayOfYear = new Date(year, 0, 1);
-  
-  // Get the first Monday of the year (or the first day if it's already Monday)
-  const dayOffset = firstDayOfYear.getDay() || 7;
-  const firstMonday = new Date(year, 0, 1 + (8 - dayOffset));
-  
-  // Calculate the start date for the given week
-  const startDate = new Date(firstMonday);
-  startDate.setDate(startDate.getDate() + (weekNumber - 1) * 7);
-  
-  // Calculate the end date (6 days after start date)
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + 6);
-  
-  // Format dates as DD/MM
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    return `${day}/${month}`;
-  };
-  
-  return {
-    startDate: formatDate(startDate),
-    endDate: formatDate(endDate)
-  };
-};
-
-/**
  * Generate week periods for a given year
  */
 export const generateWeekPeriods = (year: number): FinancialPeriod[] => {
-  return Array(52).fill(0).map((_, i) => {
-    const dateRange = getWeekDateRange(year, i + 1);
-    return {
-      id: `${year}-W${(i + 1).toString().padStart(2, '0')}`, // ← '2025-W01', '2025-W02', etc.
-      label: dateRange,
+  const periods: FinancialPeriod[] = [];
+  const startDate = new Date(year, 0, 1);
+  
+  for (let week = 1; week <= 52; week++) {
+    const weekStart = new Date(startDate);
+    weekStart.setDate(startDate.getDate() + (week - 1) * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    periods.push({
+      id: `week-${week}`,
+      label: {
+        startDate: weekStart.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
+        endDate: weekEnd.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })
+      },
       isDateRange: true
-    };
-  });
+    });
+  }
+  
+  return periods;
 };
 
 /**
@@ -125,7 +87,7 @@ export const generateMonthPeriods = (year: number): FinancialPeriod[] => {
   ];
   
   return months.map((month, i) => ({
-    id: `${year}-${(i + 1).toString().padStart(2, '0')}`, // ← '2025-01', '2025-02', etc.
+    id: `month-${i + 1}`,
     label: month
   }));
 };
@@ -135,7 +97,7 @@ export const generateMonthPeriods = (year: number): FinancialPeriod[] => {
  */
 export const generateQuarterPeriods = (year: number): FinancialPeriod[] => {
   return Array(4).fill(0).map((_, i) => ({
-    id: `${year}-Q${i + 1}`, // ← '2025-Q1', '2025-Q2', etc.
+    id: `quarter-${i + 1}`,
     label: `Q${i + 1}`
   }));
 };
@@ -182,25 +144,27 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-full">
+            {/* ✅ HEADER CON CORRECCIONES DE HOVER */}
             <TableHeader className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-              <TableRow>
+              <TableRow className="hover:!bg-gray-50 dark:hover:!bg-gray-700">
+                {/* ✅ PRIMERA COLUMNA - ALINEADA CON CONTENIDO */}
                 <TableCell
                   isHeader
-                  className="px-5 py-3 font-medium text-gray-500 text-start text-sm sticky left-0 bg-gray-50 dark:bg-gray-700 dark:text-gray-300"
+                  className="px-5 py-3 font-medium text-gray-500 text-start text-sm sticky left-0 bg-gray-50 dark:bg-gray-700 dark:text-gray-300 z-50"
                 >
                   {type === 'income' ? 'INGRESOS' : 'EGRESOS'}
                 </TableCell>
                 
-                {/* Period Headers */}
+                {/* ✅ PERIOD HEADERS - ALINEADOS CON LOS DATOS */}
                 {periods.map((period, index) => (
                   <TableCell
                     key={index}
                     isHeader
-                    className="px-5 py-3 font-medium text-gray-500 text-center text-sm dark:text-gray-300"
+                    className="px-5 py-3 font-medium text-gray-500 text-right text-sm dark:text-gray-300 min-w-[120px]"
                   >
                     {period.isDateRange && typeof period.label !== 'string' ? (
-                      <div className="flex flex-col">
+                      <div className="flex flex-col text-xs">
                         <span>{period.label.startDate}</span>
                         <span>{period.label.endDate}</span>
                       </div>
@@ -210,21 +174,26 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                   </TableCell>
                 ))}
                 
-                {/* Total Header */}
+                {/* ✅ TOTAL HEADER - ALINEADO CON LOS DATOS */}
                 <TableCell
                   isHeader
-                  className="px-5 py-3 font-medium text-gray-500 text-center text-sm dark:text-gray-300"
+                  className="px-5 py-3 font-medium text-gray-500 text-right text-sm dark:text-gray-300 min-w-[120px]"
                 >
                   TOTAL
                 </TableCell>
               </TableRow>
             </TableHeader>
             
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {/* Data Rows */}
+            {/* ✅ BODY CON CORRECCIONES DE HOVER */}
+            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] bg-white dark:bg-gray-800">
+              {/* ✅ DATA ROWS - HOVER CORREGIDO */}
               {data.map((item, index) => (
-                <TableRow key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <TableCell className="px-5 py-3 font-medium text-gray-800 text-sm sticky left-0 bg-white dark:bg-gray-800 dark:text-white">
+                <TableRow 
+                  key={index} 
+                  className="group hover:!bg-gray-50 dark:hover:!bg-white/[0.02] transition-colors duration-150"
+                >
+                  {/* ✅ PRIMERA COLUMNA - ALINEADA A LA IZQUIERDA COMO EL HEADER */}
+                  <TableCell className="px-5 py-3 font-medium text-gray-800 text-sm sticky left-0 bg-white dark:bg-gray-800 dark:text-white text-start z-40 group-hover:!bg-gray-50 dark:group-hover:!bg-gray-800">
                     <Link
                       to={item.path}
                       className="text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
@@ -233,7 +202,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                     </Link>
                   </TableCell>
                   
-                  {/* Period Values */}
+                  {/* ✅ PERIOD VALUES - ALINEADOS A LA DERECHA COMO LOS HEADERS */}
                   {periods.map((period, pIndex) => (
                     <TableCell
                       key={pIndex}
@@ -242,46 +211,64 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                       {item.amounts[period.id] > 0 ? (
                         showBadges ? (
                           <Badge
+                            variant="light"
                             size="sm"
                             color={getBadgeColor(item.amounts[period.id])}
                           >
                             {formatCurrency(item.amounts[period.id])}
                           </Badge>
                         ) : (
-                          formatCurrency(item.amounts[period.id])
+                          <span className="font-medium text-gray-800 dark:text-gray-200">
+                            {formatCurrency(item.amounts[period.id])}
+                          </span>
                         )
                       ) : (
-                        '-'
+                        <span className="text-gray-400 dark:text-gray-600">-</span>
                       )}
                     </TableCell>
                   ))}
                   
-                  {/* Row Total */}
-                  <TableCell className="px-5 py-3 text-right font-medium text-sm text-gray-800 dark:text-white">
-                    {formatCurrency(categoryTotals[index].total)}
+                  {/* ✅ CATEGORY TOTAL - ALINEADO A LA DERECHA */}
+                  <TableCell className="px-5 py-3 text-right text-sm font-semibold text-gray-800 dark:text-white">
+                    {categoryTotals[item.category] > 0 ? (
+                      <span className="font-bold text-gray-800 dark:text-gray-200">
+                        {formatCurrency(categoryTotals[item.category])}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 dark:text-gray-600">-</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
               
-              {/* Total Row */}
-              <TableRow className="bg-gray-100 dark:bg-gray-700 font-bold">
-                <TableCell className="px-5 py-3 text-gray-800 text-sm sticky left-0 bg-gray-100 dark:bg-gray-700 dark:text-white">
-                  TOTAL {type === 'income' ? 'INGRESOS' : 'GASTOS'}
+              {/* ✅ TOTALS ROW - HOVER CONTROLADO */}
+              <TableRow className="bg-gray-50 dark:bg-gray-700 hover:!bg-gray-100 dark:hover:!bg-gray-600 transition-colors duration-150">
+                {/* ✅ TOTAL LABEL - ALINEADO A LA IZQUIERDA COMO EL HEADER */}
+                <TableCell className="px-5 py-3 font-bold text-gray-800 text-sm sticky left-0 bg-gray-50 dark:bg-gray-700 dark:text-white text-start z-40">
+                  TOTAL
                 </TableCell>
                 
-                                  {/* Period Totals */}
+                {/* ✅ PERIOD TOTALS - CENTRADOS */}
                 {periods.map((period, index) => (
                   <TableCell
                     key={index}
-                    className={`px-5 py-3 text-right text-sm text-gray-800 dark:text-white ${period.isDateRange ? 'align-middle' : ''}`}
+                    className="px-5 py-3 text-center text-sm font-bold text-gray-800 dark:text-white"
                   >
-                    {formatCurrency(periodTotals[period.id])}
+                    {periodTotals[period.id] > 0 ? (
+                      <span className="text-lg font-bold text-gray-800 dark:text-gray-200">
+                        {formatCurrency(periodTotals[period.id])}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 dark:text-gray-600 text-lg">-</span>
+                    )}
                   </TableCell>
                 ))}
                 
-                {/* Grand Total */}
-                <TableCell className="px-5 py-3 text-right text-sm text-gray-800 dark:text-white">
-                  {formatCurrency(grandTotal)}
+                {/* ✅ GRAND TOTAL - CENTRADO */}
+                <TableCell className="px-5 py-3 text-center text-sm font-bold">
+                  <span className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                    {formatCurrency(grandTotal)}
+                  </span>
                 </TableCell>
               </TableRow>
             </TableBody>
