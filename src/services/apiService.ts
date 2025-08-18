@@ -15,6 +15,7 @@ const apiClient = axios.create({
   },
 });
 
+
 // Interceptor for auth token
 apiClient.interceptors.request.use(
   async (config) => {
@@ -22,7 +23,7 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem('auth_token');
     
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;      
     }
 
     // Ensure path starts with /api, but doesn't duplicate it

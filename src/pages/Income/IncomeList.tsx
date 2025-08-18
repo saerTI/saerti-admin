@@ -521,10 +521,12 @@ const IncomeList = () => {
       <Modal
         isOpen={showDeleteModal}
         onClose={handleDeleteCancel}
-        title="Eliminar Ingreso"
-        size="sm"
+        className="max-w-md"
       >
         <div className="p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            Eliminar Ingreso
+          </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             ¿Está seguro que desea eliminar el ingreso <strong>{incomeToDelete?.document_number}</strong>?
           </p>

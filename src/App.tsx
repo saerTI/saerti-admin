@@ -46,6 +46,7 @@ import EmpleadosDetalle from "./pages/Costs/EmpleadosDetalle";
 import EmpleadosEdición from "./pages/Costs/EmpleadosEdicion";
 import { CostosFijosEdicion } from "./pages/Costs/CostosFijosEdicion";
 import IncomeIndex from "./pages/Income/IncomeIndex";
+import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
 
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
@@ -316,6 +317,12 @@ export default function App() {
             <Route path="/egresos/empleados/:id/edit" element={
               <PrivateRoute>
                 <EmpleadosEdición />
+              </PrivateRoute>
+            } />
+
+            <Route path="/budget-analysis" element={
+              <PrivateRoute>
+                <BudgetAnalyzer />
               </PrivateRoute>
             } />
 
