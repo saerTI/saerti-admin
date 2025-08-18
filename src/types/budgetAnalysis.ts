@@ -182,6 +182,79 @@ export interface BudgetAnalysisFormData extends ProjectData {
   saveAnalysis: boolean;
 }
 
+// ✅ TIPOS PARA PDF ANALYSIS - AGREGADOS
+export interface PdfAnalysisConfig {
+  analysisDepth?: 'basic' | 'standard' | 'detailed';
+  includeProviders?: boolean;
+  projectType?: 'residential' | 'commercial' | 'industrial' | 'infrastructure' | 'renovation';
+  projectLocation?: string;
+  maxCostEstimate?: number;
+  saveAnalysis?: boolean;
+}
+
+export interface PdfAnalysisProgress {
+  stage: 'uploading' | 'extracting' | 'chunking' | 'analyzing' | 'consolidating' | 'complete';
+  progress: number;
+  currentChunk?: number;
+  totalChunks?: number;
+  message: string;
+}
+
+export interface PdfAnalysisResult {
+  analysisId: string;
+  analysis: {
+    resumen_ejecutivo: string;
+    presupuesto_estimado: {
+      total_clp: number;
+      materials_percentage: number;
+      labor_percentage: number;
+      equipment_percentage: number;
+    };
+    materiales_detallados: Array<{
+      item: string;
+      cantidad: number;
+      unidad: string;
+      precio_unitario: number;
+      subtotal: number;
+      categoria: string;
+    }>;
+    mano_obra: Array<{
+      especialidad: string;
+      cantidad_personas: number;
+      horas_totales: number;
+      tarifa_hora: number;
+      subtotal: number;
+    }>;
+    equipos_maquinaria: Array<{
+      tipo_equipo: string;
+      tiempo_uso: string;
+      tarifa_periodo: number;
+      subtotal: number;
+    }>;
+    proveedores_chile: Array<{
+      nombre: string;
+      contacto: string;
+      especialidad: string;
+    }>;
+    analisis_riesgos: Array<{
+      factor: string;
+      probability: string;
+      impact: string;
+      mitigation: string;
+    }>;
+    recomendaciones: string[];
+    cronograma_estimado: string;
+    chunks_procesados: number;
+    confidence_score: number;
+  };
+  metadata: {
+    chunksProcessed: number;
+    originalFileSize: number;
+    textLength: number;
+    processingTime: string;
+  };
+}
+
 // ✅ NUEVA: Type guards para verificar estructura
 export function isParsedAnalysis(analysis: any): analysis is ParsedAnalysis {
   return analysis && 
