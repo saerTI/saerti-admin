@@ -1,4 +1,4 @@
-// src/services/budgetAnalysisService.ts
+// src/services/budgetAnalysisService.ts - VERSIÓN CORREGIDA SIN ERRORES
 
 import React from 'react';
 import api from './apiService';
@@ -11,7 +11,10 @@ import type {
   AnalysisHistoryItem,
   PdfAnalysisConfig,
   PdfAnalysisProgress,
-  PdfAnalysisResult
+  PdfAnalysisResult,
+  CostStatus,
+  UsageStats,
+  FileValidationResult
 } from '../types/budgetAnalysis';
 
 // Interfaces para respuestas de la API siguiendo el patrón del proyecto
@@ -33,6 +36,99 @@ interface ApiPaginatedResponse<T> {
     };
   };
   message: string;
+}
+
+// 🔥 INTERFAZ CORREGIDA: Para manejar la respuesta del backend optimizado
+interface BackendPdfResponse {
+  success: boolean;
+  message: string;
+  data: {
+    analysis: {
+      resumen_ejecutivo: string;
+      presupuesto_estimado: {
+        total_clp: number;
+        materials_percentage: number;
+        labor_percentage: number;
+        equipment_percentage: number;
+        overhead_percentage?: number; // OPCIONAL
+      };
+      materiales_detallados: Array<{
+        item: string;
+        cantidad: number;
+        unidad: string;
+        precio_unitario: number;
+        subtotal: number;
+        categoria: string;
+      }>;
+      mano_obra: Array<{
+        especialidad: string;
+        cantidad_personas: number;
+        horas_totales: number;
+        tarifa_hora: number;
+        subtotal: number;
+      }>;
+      equipos_maquinaria: Array<{
+        tipo_equipo: string;
+        tiempo_uso: string;
+        tarifa_periodo: number;
+        subtotal: number;
+      }>;
+      proveedores_chile: Array<{
+        nombre: string;
+        contacto: string;
+        especialidad: string;
+      }>;
+      analisis_riesgos: Array<{
+        factor: string;
+        probability: string;
+        impact: string;
+        mitigation: string;
+      }>;
+      recomendaciones: string[];
+      cronograma_estimado: string;
+      confidence_score: number;
+      chunks_procesados: number;
+      chunks_exitosos?: number;
+      processing_method?: string;
+      desglose_costos?: {
+        materiales: number;
+        mano_obra: number;
+        equipos: number;
+        gastos_generales: number;
+        utilidad: number;
+        total: number;
+      };
+      factores_regionales?: {
+        market_conditions: string;
+        logistics: string;
+        local_regulations: string;
+        climate_impact: string;
+      };
+      extraction_metadata?: any;
+    };
+    metadata: {
+      analysisId: string;
+      originalFileSize: number;
+      originalFileName: string;
+      contentLength: number;
+      processingTime: string;
+      processingTimeMs?: number;
+      extraction?: {
+        method: string;
+        confidence: number;
+        chunks_processed: number;
+        chunks_successful: number;
+      };
+      optimization?: {
+        cost_estimate_usd: number;
+        cost_estimate_clp: number;
+        model_used: string;
+        optimization_applied: boolean;
+        cost_warning: string;
+      };
+    };
+  };
+  timestamp: string;
 }
 
 export const budgetAnalysisService = {
@@ -85,7 +181,6 @@ export const budgetAnalysisService = {
     } catch (error: any) {
       console.error('❌ Error en análisis rápido:', error);
       
-      // Mejorar manejo de errores
       if (error.response?.status === 429) {
         throw new Error('Límite de análisis alcanzado. Intente nuevamente en unos minutos.');
       } else if (error.response?.status === 503) {
@@ -126,8 +221,7 @@ export const budgetAnalysisService = {
   },
 
   /**
-   * 🔥 FUNCIÓN ACTUALIZADA: Analiza un PDF de presupuesto con timeout extendido
-   * Compatible con tu servicio API existente
+   * 🔥 FUNCIÓN CORREGIDA: Compatible con backend optimizado
    */
   async analyzePdfBudget(
     file: File,
@@ -143,84 +237,234 @@ export const budgetAnalysisService = {
         throw new Error('Solo se permiten archivos PDF');
       }
 
-      // 🔥 LÍMITE AUMENTADO: 50MB para PDFs grandes
-      if (file.size > 50 * 1024 * 1024) {
-        throw new Error('El archivo PDF no puede exceder 50MB');
+      if (file.size > 20 * 1024 * 1024) {
+        throw new Error('El archivo PDF no puede exceder 20MB');
       }
 
-      // Preparar FormData
+      // Preparar FormData con nombres correctos del backend
       const formData = new FormData();
       formData.append('pdfFile', file);
-      
-      // Agregar configuración
-      Object.entries(config).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
+
+      // Agregar configuración con nombres exactos del backend optimizado
+      if (config.analysisDepth) formData.append('analysisDepth', config.analysisDepth);
+      if (config.projectType) formData.append('projectType', config.projectType);
+      if (config.projectLocation) formData.append('projectLocation', config.projectLocation);
+      if (config.includeProviders !== undefined) formData.append('includeProviders', config.includeProviders.toString());
+      if (config.maxCostEstimate) formData.append('maxCostEstimate', config.maxCostEstimate.toString());
+      if (config.saveAnalysis !== undefined) formData.append('saveAnalysis', config.saveAnalysis.toString());
 
       console.log(`📄 Enviando PDF para análisis: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
 
-      // 🔥 USAR TU SERVICIO API EXISTENTE con timeout personalizado
       try {
         const calculateTimeout = (fileSizeBytes: number): number => {
-        const sizeMB = fileSizeBytes / (1024 * 1024);
-        
-        if (sizeMB < 5) {
-          return 120000; // 2 minutes for small files
-        } else if (sizeMB < 15) {
-          return 360000; // 6 minutes for medium files (your case)
-        } else {
-          return 480000; // 8 minutes for large files
-        }
-      };
+          const sizeMB = fileSizeBytes / (1024 * 1024);
+          
+          if (sizeMB < 5) {
+            return 120000;
+          } else if (sizeMB < 15) {
+            return 300000;
+          } else {
+            return 420000;
+          }
+        };
 
-      const response = await api.postFormData<ApiResponse<PdfAnalysisResult>>(
-        '/budget-analysis/pdf', 
-        formData,
-        {
-          timeout: calculateTimeout(file.size),
-        }
-      );
+        const response = await api.postFormData<BackendPdfResponse>(
+          '/budget-analysis/pdf', 
+          formData,
+          {
+            timeout: calculateTimeout(file.size),
+          }
+        );
 
         console.log('✅ Análisis PDF completado exitosamente');
-        return response.data || response; // Manejar diferentes formatos de respuesta
+        console.log('🔍 Respuesta del backend:', response);
+
+        // 🔥 TRANSFORMACIÓN CORREGIDA - Manejar tanto response.data como response directamente
+        console.log('🔍 Estructura de respuesta recibida:', response);
+
+        // Verificar la estructura real de la respuesta
+        let backendData: BackendPdfResponse;
+
+        console.log('🔍 Estructura de respuesta recibida:', response);
+
+        // Caso 1: La respuesta viene envuelta en ApiResponse
+        if (response && typeof response === 'object' && 'data' in response && response.data) {
+          backendData = response.data as BackendPdfResponse;
+        } 
+        // Caso 2: La respuesta es directamente BackendPdfResponse
+        else if (response && typeof response === 'object' && 'success' in response) {
+          backendData = response as BackendPdfResponse;
+        }
+        // Caso 3: Estructura de análisis directo
+        else if (response && typeof response === 'object' && 'analysis' in response && 'metadata' in response) {
+          backendData = {
+            success: true,
+            message: 'Análisis completado',
+            data: response as any,
+            timestamp: new Date().toISOString()
+          };
+        }
+        else {
+          console.error('❌ Estructura de respuesta no reconocida:', response);
+          throw new Error('Formato de respuesta del servidor no reconocido');
+        }
+
+        // Validar que tenemos una respuesta exitosa
+        if (!backendData.success) {
+          throw new Error(backendData.message || 'Error en el análisis');
+        }
+
+        // Verificar que tenemos los datos necesarios
+        if (!backendData.data || !backendData.data.analysis || !backendData.data.metadata) {
+          console.error('❌ Datos incompletos en respuesta:', backendData);
+          throw new Error('Respuesta del servidor incompleta');
+        }
+
+        const transformedResult: PdfAnalysisResult = {
+          analysisId: backendData.data.metadata.analysisId || `pdf_${Date.now()}`,
+          analysis: {
+            resumen_ejecutivo: backendData.data.analysis.resumen_ejecutivo || '',
+            presupuesto_estimado: {
+              total_clp: backendData.data.analysis.presupuesto_estimado?.total_clp || 0,
+              materials_percentage: backendData.data.analysis.presupuesto_estimado?.materials_percentage || 0,
+              labor_percentage: backendData.data.analysis.presupuesto_estimado?.labor_percentage || 0,
+              equipment_percentage: backendData.data.analysis.presupuesto_estimado?.equipment_percentage || 0,
+              overhead_percentage: backendData.data.analysis.presupuesto_estimado?.overhead_percentage || 15
+            },
+            materiales_detallados: backendData.data.analysis.materiales_detallados || [],
+            mano_obra: backendData.data.analysis.mano_obra || [],
+            equipos_maquinaria: backendData.data.analysis.equipos_maquinaria || [],
+            proveedores_chile: backendData.data.analysis.proveedores_chile || [],
+            analisis_riesgos: backendData.data.analysis.analisis_riesgos || [],
+            recomendaciones: backendData.data.analysis.recomendaciones || [],
+            cronograma_estimado: backendData.data.analysis.cronograma_estimado || 'No disponible',
+            chunks_procesados: backendData.data.analysis.chunks_procesados || 0,
+            confidence_score: backendData.data.analysis.confidence_score || 0,
+            // Campos adicionales opcionales
+            chunks_exitosos: backendData.data.analysis.chunks_exitosos,
+            processing_method: backendData.data.analysis.processing_method,
+            desglose_costos: backendData.data.analysis.desglose_costos,
+            factores_regionales: backendData.data.analysis.factores_regionales,
+            extraction_metadata: backendData.data.analysis.extraction_metadata
+          },
+          metadata: {
+            chunksProcessed: backendData.data.analysis.chunks_procesados || 0,
+            originalFileSize: backendData.data.metadata.originalFileSize || file.size,
+            textLength: backendData.data.metadata.contentLength || 0,
+            processingTime: backendData.data.metadata.processingTime || new Date().toISOString(),
+            // Campos adicionales opcionales
+            originalFileName: backendData.data.metadata.originalFileName,
+            processingTimeMs: backendData.data.metadata.processingTimeMs,
+            extraction: backendData.data.metadata.extraction,
+            optimization: backendData.data.metadata.optimization
+          }
+        };
+
+        console.log('🔄 Resultado transformado:', transformedResult);
+        return transformedResult;
 
       } catch (apiError: any) {
         console.error('❌ Error en API call:', apiError);
         
-        // Manejar errores específicos de tu API service
         if (apiError.code === 'ECONNABORTED' || apiError.message.includes('timeout')) {
           throw new Error(
-            `⏱️ El análisis del PDF tomó más de ${file.size > 10 * 1024 * 1024 ? '3' : '1.5'} minutos.\n\n` +
+            `⏱️ El análisis del PDF tomó más de ${file.size > 10 * 1024 * 1024 ? '5' : '2'} minutos.\n\n` +
+            `El sistema optimizado está activo pero el archivo requiere más tiempo.\n\n` +
             `Recomendaciones:\n` +
-            `• El archivo es muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB)\n` +
-            `• Comprima el PDF o divídalo en partes más pequeñas\n` +
-            `• Asegúrese de tener una conexión estable\n` +
-            `• Intente nuevamente en unos minutos`
+            `• El archivo es grande (${(file.size / 1024 / 1024).toFixed(1)}MB)\n` +
+            `• Comprima el PDF o divídalo en secciones más pequeñas\n` +
+            `• Use análisis 'básico' en lugar de 'detallado'\n` +
+            `• Asegúrese de tener una conexión estable`
           );
         }
 
+        if (apiError.response?.status === 400) {
+          const errorData = apiError.response.data;
+          if (errorData?.error_code === 'COST_LIMIT_EXCEEDED') {
+            throw new Error(
+              `💰 ${errorData.message}\n\n` +
+              `Sugerencias del sistema optimizado:\n` +
+              `${errorData.suggestions?.join('\n• ') || '• Use un archivo más pequeño'}`
+            );
+          } else if (errorData?.error_code === 'INVALID_FILE') {
+            throw new Error(`📄 ${errorData.message}`);
+          }
+        }
+
         if (apiError.response?.status === 413) {
-          throw new Error('Archivo demasiado grande. Máximo 50MB permitido.');
+          throw new Error('Archivo demasiado grande. Máximo 20MB permitido con las optimizaciones actuales.');
         } else if (apiError.response?.status === 415) {
           throw new Error('Formato de archivo no soportado. Solo se permiten archivos PDF.');
         } else if (apiError.response?.status === 503) {
           throw new Error('Servicio de análisis temporalmente no disponible.');
         } else if (apiError.response?.status === 429) {
-          throw new Error('Límite de API alcanzado. Intente en unos minutos.');
+          const errorData = apiError.response.data;
+          if (errorData?.error_code === 'DAILY_COST_LIMIT') {
+            throw new Error(
+              `🛡️ Límite diario de costos alcanzado.\n\n` +
+              `El sistema de optimización ha evitado gastos excesivos.\n` +
+              `Intente nuevamente mañana o contacte al administrador.`
+            );
+          } else if (errorData?.error_code === 'HOURLY_ANALYSIS_LIMIT') {
+            throw new Error(
+              `⏰ Límite horario de análisis alcanzado.\n\n` +
+              `Para evitar sobrecarga del sistema, intente en la próxima hora.`
+            );
+          }
+          throw new Error('Límite de API alcanzado. El sistema optimizado está protegiendo contra uso excesivo.');
         }
         
         throw new Error(
           apiError.response?.data?.message || 
           apiError.message ||
-          'Error analizando archivo PDF'
+          'Error analizando archivo PDF con el sistema optimizado'
         );
       }
 
     } catch (error: any) {
       console.error('❌ Error en analyzePdfBudget:', error);
       throw error;
+    }
+  },
+
+  /**
+   * 🔥 NUEVA FUNCIÓN: Validar PDF antes de analizar
+   */
+  async validatePdfBeforeAnalysis(
+    file: File,
+    config: PdfAnalysisConfig = {}
+  ): Promise<FileValidationResult> {
+    try {
+      const formData = new FormData();
+      formData.append('pdfFile', file);
+      
+      Object.entries(config).forEach(([key, value]) => {
+        if (value !== undefined) {
+          formData.append(key, value.toString());
+        }
+      });
+
+      const response = await api.postFormData<any>('/budget-analysis/pdf/validate', formData);
+      
+      return {
+        isValid: response.data?.file_validation?.isValid || false,
+        warnings: response.data?.warnings || [],
+        costEstimate: response.data?.cost_estimate || {},
+        recommendation: response.data?.recommendation || 'ERROR'
+      };
+    } catch (error: any) {
+      console.error('Error validando PDF:', error);
+      return {
+        isValid: false,
+        warnings: ['Error validando archivo'],
+        costEstimate: {
+          estimated_cost_usd: 0,
+          estimated_cost_clp: 0,
+          cost_warning: 'Error',
+          chunks_to_process: 0
+        },
+        recommendation: 'ERROR'
+      };
     }
   },
 
@@ -299,6 +543,32 @@ export const budgetAnalysisService = {
     } catch (error) {
       console.error('Error comparando análisis:', error);
       throw new Error('Error comparando análisis');
+    }
+  },
+
+  /**
+   * 🔥 NUEVA FUNCIÓN: Obtener estadísticas de uso
+   */
+  async getUsageStats(): Promise<UsageStats> {
+    try {
+      const response = await api.get<ApiResponse<UsageStats>>('/budget-analysis/usage/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Error obteniendo estadísticas:', error);
+      throw new Error('Error obteniendo estadísticas de uso');
+    }
+  },
+
+  /**
+   * 🔥 NUEVA FUNCIÓN: Obtener estado de costos
+   */
+  async getCostStatus(): Promise<CostStatus> {
+    try {
+      const response = await api.get<ApiResponse<CostStatus>>('/budget-analysis/cost-status');
+      return response.data;
+    } catch (error) {
+      console.error('Error obteniendo estado de costos:', error);
+      throw new Error('Error obteniendo estado de costos');
     }
   }
 };
@@ -379,7 +649,7 @@ export const useBudgetAnalysis = () => {
 };
 
 /**
- * 🔥 HOOK ACTUALIZADO: Hook personalizado para análisis de PDF compatible con tus tipos
+ * 🔥 HOOK CORREGIDO: Compatible con backend optimizado
  */
 export const usePdfAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
@@ -392,77 +662,70 @@ export const usePdfAnalysis = () => {
       setIsAnalyzing(true);
       setError(null);
       
-      // 🔥 ESTIMACIÓN DE TIEMPO basada en tamaño del archivo
       const fileSizeMB = file.size / (1024 * 1024);
-      const estimatedSeconds = fileSizeMB > 10 ? 180 : 90; // 3min para archivos grandes, 1.5min para pequeños
+      const estimatedSeconds = fileSizeMB > 10 ? 120 : fileSizeMB > 5 ? 90 : 60;
       setEstimatedTime(estimatedSeconds);
       
       setProgress({ 
         stage: 'uploading', 
         progress: 0, 
-        message: `Preparando archivo (${fileSizeMB.toFixed(1)}MB)...` 
+        message: `Preparando archivo (${fileSizeMB.toFixed(1)}MB) para análisis optimizado...` 
       });
 
-      // 🔥 PROGRESO REALISTA basado en el tamaño del archivo
       const progressSteps: PdfAnalysisProgress[] = [
         { 
           stage: 'uploading', 
           progress: 5, 
-          message: 'Enviando archivo al servidor...' 
+          message: 'Enviando archivo al sistema optimizado...' 
         },
         { 
           stage: 'extracting', 
           progress: 15, 
-          message: fileSizeMB > 5 ? 'Convirtiendo PDF a imágenes (esto puede tomar un momento)...' : 'Extrayendo texto del PDF...'
+          message: 'Validando archivo y estimando costos...'
         },
         { 
           stage: 'chunking', 
           progress: 25, 
-          message: 'Procesando páginas del documento...' 
+          message: 'Aplicando chunking inteligente...' 
         },
         { 
           stage: 'analyzing', 
           progress: 45, 
-          message: 'Analizando con Claude Vision AI...' 
+          message: 'Analizando con Claude Vision (proceso optimizado)...' 
         },
         { 
           stage: 'analyzing', 
           progress: 70, 
-          message: 'Identificando materiales y costos...' 
+          message: 'Extrayendo materiales y costos...' 
         },
         { 
           stage: 'consolidating', 
           progress: 90, 
-          message: 'Consolidando análisis final...' 
+          message: 'Consolidando resultados y aplicando optimizaciones...' 
         }
       ];
 
-      // 🔥 PROGRESO CON TIMING REALISTA
       const stepDuration = (estimatedSeconds * 1000) / progressSteps.length;
       
-      // Ejecutar pasos de progreso en paralelo con la llamada real
       let currentStepIndex = 0;
       const progressInterval = setInterval(() => {
         if (currentStepIndex < progressSteps.length) {
           setProgress(progressSteps[currentStepIndex]);
           currentStepIndex++;
         }
-      }, stepDuration * 0.4); // Progreso más lento que el tiempo real
+      }, stepDuration * 0.6);
 
       try {
-        // Llamar al servicio real
         const result = await budgetAnalysisService.analyzePdfBudget(file, config);
         
-        // Limpiar interval de progreso
         clearInterval(progressInterval);
         
         setProgress({ 
           stage: 'complete', 
           progress: 100, 
-          message: 'Análisis completado exitosamente' 
+          message: 'Análisis completado con optimizaciones aplicadas' 
         });
         
-        // Mantener el progreso completo por un momento antes de limpiar
         setTimeout(() => {
           setIsAnalyzing(false);
           setProgress(null);
@@ -477,28 +740,22 @@ export const usePdfAnalysis = () => {
       }
 
     } catch (err: any) {
-      console.error('❌ Error en análisis PDF:', err);
+      console.error('❌ Error en análisis PDF optimizado:', err);
       
-      // 🔥 MENSAJES DE ERROR ESPECÍFICOS Y ÚTILES
       let errorMessage = err.message;
       
-      if (err.message.includes('timeout') || err.message.includes('Timeout')) {
-        errorMessage = `⏱️ El análisis tomó demasiado tiempo.\n\n` +
-          `Recomendaciones:\n` +
-          `• El archivo es muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB)\n` +
-          `• Comprima el PDF o divídalo en partes más pequeñas\n` +
-          `• Asegúrese de tener una conexión estable\n` +
-          `• Intente nuevamente en unos minutos`;
+      if (err.message.includes('COST_LIMIT') || err.message.includes('Límite diario')) {
+        errorMessage = `🛡️ Sistema de protección de costos activado\n\n${err.message}`;
+      } else if (err.message.includes('timeout') || err.message.includes('Timeout')) {
+        errorMessage = `⏱️ Timeout del sistema optimizado\n\n${err.message}`;
+      } else if (err.message.includes('HOURLY_ANALYSIS_LIMIT')) {
+        errorMessage = `⏰ Límite horario alcanzado\n\n${err.message}`;
+      } else if (err.message.includes('optimizado')) {
+        errorMessage = err.message;
       } else if (err.message.includes('Network')) {
-        errorMessage = '🌐 Error de conexión. Verifique su internet e intente nuevamente.';
+        errorMessage = '🌐 Error de conexión con el sistema optimizado. Verifique su internet e intente nuevamente.';
       } else if (err.message.includes('413') || err.message.includes('grande')) {
-        errorMessage = `📁 Archivo demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo permitido: 50MB.`;
-      } else if (err.message.includes('415') || err.message.includes('formato')) {
-        errorMessage = '📄 Solo se permiten archivos PDF válidos.';
-      } else if (err.message.includes('429') || err.message.includes('límite')) {
-        errorMessage = '🚦 Límite de análisis alcanzado. Intente nuevamente en unos minutos.';
-      } else if (err.message.includes('503') || err.message.includes('no disponible')) {
-        errorMessage = '🔧 Servicio temporalmente no disponible. Intente nuevamente en unos minutos.';
+        errorMessage = `📁 Archivo demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo permitido: 20MB con optimizaciones.`;
       }
       
       setError(errorMessage);
@@ -527,7 +784,7 @@ export const usePdfAnalysis = () => {
 };
 
 /**
- * Formatea resultados para visualización
+ * 🔥 FUNCIÓN CORREGIDA: Formatea resultados del backend optimizado
  */
 export const formatPdfAnalysisForDisplay = (analysis: PdfAnalysisResult['analysis']) => {
   return {
@@ -567,37 +824,45 @@ export const formatPdfAnalysisForDisplay = (analysis: PdfAnalysisResult['analysi
     timeline: {
       title: 'Cronograma Estimado',
       content: analysis.cronograma_estimado
+    },
+    optimization: {
+      title: 'Optimizaciones Aplicadas',
+      chunks_processed: analysis.chunks_procesados || 0,
+      chunks_successful: analysis.chunks_exitosos || 0,
+      processing_method: analysis.processing_method || 'standard',
+      extraction_metadata: analysis.extraction_metadata || {}
+    },
+    costs: {
+      title: 'Desglose de Costos',
+      breakdown: analysis.desglose_costos || {},
+      regional_factors: analysis.factores_regionales || {}
     }
   };
 };
 
 /**
- * 🔥 NUEVA FUNCIÓN: Validador de archivos PDF antes de subir
+ * 🔥 FUNCIÓN CORREGIDA: Validador de archivos PDF
  */
 export const validatePdfFile = (file: File): { isValid: boolean; error?: string; warnings?: string[] } => {
   const warnings: string[] = [];
   
-  // Validar tipo de archivo
   if (file.type !== 'application/pdf') {
     return { isValid: false, error: 'Solo se permiten archivos PDF' };
   }
   
-  // Validar tamaño
   const sizeMB = file.size / (1024 * 1024);
-  if (sizeMB > 50) {
-    return { isValid: false, error: 'El archivo no puede exceder 50MB' };
-  }
-  
-  // Advertencias para archivos grandes
   if (sizeMB > 20) {
-    warnings.push('Archivo grande: el procesamiento puede tomar varios minutos');
+    return { isValid: false, error: 'El archivo no puede exceder 20MB (límite del sistema optimizado)' };
   }
   
-  if (sizeMB > 10) {
-    warnings.push('Para mejor rendimiento, considere comprimir el PDF');
+  if (sizeMB > 15) {
+    warnings.push('Archivo muy grande: se usará modelo más eficiente para reducir costos');
+  } else if (sizeMB > 10) {
+    warnings.push('Archivo grande: el procesamiento puede tomar 3-5 minutos');
+  } else if (sizeMB > 5) {
+    warnings.push('Archivo medio: procesamiento optimizado de 1-2 minutos');
   }
   
-  // Validar nombre del archivo
   if (file.name.length > 100) {
     warnings.push('Nombre de archivo muy largo');
   }
@@ -606,32 +871,146 @@ export const validatePdfFile = (file: File): { isValid: boolean; error?: string;
 };
 
 /**
- * 🔥 NUEVA FUNCIÓN: Estimador de tiempo de procesamiento
+ * 🔥 FUNCIÓN CORREGIDA: Estimador de tiempo con optimizaciones
  */
-export const estimateProcessingTime = (file: File): { 
-  estimatedSeconds: number; 
-  category: 'fast' | 'medium' | 'slow';
-  description: string;
-} => {
+export const estimateProcessingTime = (file: File) => {
   const sizeMB = file.size / (1024 * 1024);
   
   if (sizeMB < 2) {
     return {
       estimatedSeconds: 30,
-      category: 'fast',
-      description: 'Procesamiento rápido (menos de 1 minuto)'
+      category: 'fast' as const,
+      description: 'Procesamiento rápido con chunking inteligente',
+      optimizations: ['Pre-validación', 'Chunking optimizado', 'Modelo estándar']
+    };
+  } else if (sizeMB < 5) {
+    return {
+      estimatedSeconds: 60,
+      category: 'medium' as const, 
+      description: 'Procesamiento medio con optimizaciones aplicadas',
+      optimizations: ['Chunking inteligente', 'Validación de contenido', 'Control de costos']
     };
   } else if (sizeMB < 10) {
     return {
       estimatedSeconds: 90,
-      category: 'medium', 
-      description: 'Procesamiento medio (1-2 minutos)'
+      category: 'medium' as const,
+      description: 'Procesamiento optimizado para archivo grande',
+      optimizations: ['Chunking avanzado', 'Modelo eficiente', 'Límite de chunks']
     };
   } else {
     return {
-      estimatedSeconds: 180,
-      category: 'slow',
-      description: 'Procesamiento lento (2-3 minutos)'
+      estimatedSeconds: 120,
+      category: 'slow' as const,
+      description: 'Procesamiento con máximas optimizaciones',
+      optimizations: ['Modelo económico', 'Chunking máximo', 'Validación estricta', 'Control de costos activo']
     };
   }
 };
+
+/**
+ * 🔥 Hook para monitorear costos del sistema
+ */
+export const useCostMonitoring = () => {
+  const [costStatus, setCostStatus] = React.useState<CostStatus | null>(null);
+  const [usageStats, setUsageStats] = React.useState<UsageStats | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const refreshCostStatus = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const [costs, usage] = await Promise.all([
+        budgetAnalysisService.getCostStatus(),
+        budgetAnalysisService.getUsageStats()
+      ]);
+      
+      setCostStatus(costs);
+      setUsageStats(usage);
+    } catch (err: any) {
+      setError(err.message);
+      console.error('Error obteniendo estado de costos:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const canAnalyze = React.useMemo(() => {
+    if (!costStatus) return true;
+    
+    const dailyUsage = parseFloat(costStatus.global_usage?.daily?.percentage_used || '0');
+    const hourlyUsage = parseFloat(costStatus.global_usage?.hourly?.percentage_used || '0');
+    const userUsage = parseFloat(costStatus.user_usage?.percentage_used || '0');
+    
+    return dailyUsage < 90 && hourlyUsage < 90 && userUsage < 90;
+  }, [costStatus]);
+
+  const getRemainingAnalyses = React.useMemo(() => {
+    if (!costStatus) return { daily: '∞', hourly: '∞', user: '∞' };
+    
+    return {
+      daily: costStatus.global_usage?.daily?.remaining || 0,
+      hourly: costStatus.global_usage?.hourly?.remaining || 0,
+      user: costStatus.user_usage?.remaining || 0
+    };
+  }, [costStatus]);
+
+  React.useEffect(() => {
+    refreshCostStatus();
+    
+    const interval = setInterval(refreshCostStatus, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return {
+    costStatus,
+    usageStats,
+    isLoading,
+    error,
+    canAnalyze,
+    remainingAnalyses: getRemainingAnalyses,
+    refreshCostStatus
+  };
+};
+
+/**
+ * 🔥 Hook para pre-validación
+ */
+export const usePreValidation = () => {
+  const [isValidating, setIsValidating] = React.useState(false);
+  const [validationResult, setValidationResult] = React.useState<FileValidationResult | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const validateFile = async (file: File, config: PdfAnalysisConfig = {}) => {
+    try {
+      setIsValidating(true);
+      setError(null);
+      
+      const result = await budgetAnalysisService.validatePdfBeforeAnalysis(file, config);
+      setValidationResult(result);
+      
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const clearValidation = () => {
+    setValidationResult(null);
+    setError(null);
+  };
+
+  return {
+    validateFile,
+    isValidating,
+    validationResult,
+    error,
+    clearValidation
+  };
+};
+
+export default budgetAnalysisService;

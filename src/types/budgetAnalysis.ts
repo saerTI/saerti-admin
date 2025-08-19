@@ -1,4 +1,4 @@
-// src/types/budgetAnalysis.ts
+// src/types/budgetAnalysis.ts - VERSIÓN CORREGIDA COMPATIBLE CON BACKEND OPTIMIZADO
 
 export interface ProjectData {
   id?: string;
@@ -54,37 +54,6 @@ export interface ParsedAnalysis {
     instalaciones?: BudgetBreakdown;
     otros?: BudgetBreakdown;
     [key: string]: BudgetBreakdown | undefined; // Para permitir otras partidas
-  };
-  desglose_principal?: {
-    estructura?: string;
-    terminaciones?: string;
-    instalaciones?: string;
-    [key: string]: string | undefined;
-  };
-  factores_regionales?: RegionalFactors;
-  analisis_riesgos?: RiskAnalysis[];
-  factores_riesgo?: string[];
-  recomendaciones?: string[];
-  cronograma_sugerido?: string;
-  contingencia_recomendada?: string;
-}
-
-// ✅ ACTUALIZADA: Estructura real que viene del backend
-export interface BudgetAnalysis {
-  // Campos que siempre vienen del backend
-  resumen_ejecutivo: string;
-  presupuesto_ajustado: string;
-  nota: string;
-  contenido_original: string; // ✅ AGREGADO: El JSON embebido en markdown
-  
-  // Campos opcionales que pueden venir directamente o parseados
-  desglose_detallado?: {
-    estructura?: BudgetBreakdown;
-    albañilería?: BudgetBreakdown;
-    terminaciones?: BudgetBreakdown;
-    instalaciones?: BudgetBreakdown;
-    otros?: BudgetBreakdown;
-    [key: string]: BudgetBreakdown | undefined;
   };
   desglose_principal?: {
     estructura?: string;
@@ -182,7 +151,7 @@ export interface BudgetAnalysisFormData extends ProjectData {
   saveAnalysis: boolean;
 }
 
-// ✅ TIPOS PARA PDF ANALYSIS - AGREGADOS
+// ✅ TIPOS PARA PDF ANALYSIS - CORREGIDOS PARA BACKEND OPTIMIZADO
 export interface PdfAnalysisConfig {
   analysisDepth?: 'basic' | 'standard' | 'detailed';
   includeProviders?: boolean;
@@ -200,6 +169,7 @@ export interface PdfAnalysisProgress {
   message: string;
 }
 
+// 🔥 ESTRUCTURA ACTUALIZADA para backend optimizado
 export interface PdfAnalysisResult {
   analysisId: string;
   analysis: {
@@ -209,6 +179,7 @@ export interface PdfAnalysisResult {
       materials_percentage: number;
       labor_percentage: number;
       equipment_percentage: number;
+      overhead_percentage?: number; // 🔥 OPCIONAL para compatibilidad
     };
     materiales_detallados: Array<{
       item: string;
@@ -246,12 +217,46 @@ export interface PdfAnalysisResult {
     cronograma_estimado: string;
     chunks_procesados: number;
     confidence_score: number;
+    // 🔥 CAMPOS ADICIONALES del backend optimizado
+    chunks_exitosos?: number;
+    processing_method?: string;
+    desglose_costos?: {
+      materiales: number;
+      mano_obra: number;
+      equipos: number;
+      gastos_generales: number;
+      utilidad: number;
+      total: number;
+    };
+    factores_regionales?: {
+      market_conditions: string;
+      logistics: string;
+      local_regulations: string;
+      climate_impact: string;
+    };
+    extraction_metadata?: any;
   };
   metadata: {
     chunksProcessed: number;
     originalFileSize: number;
     textLength: number;
     processingTime: string;
+    // 🔥 CAMPOS ADICIONALES del backend optimizado
+    originalFileName?: string;
+    processingTimeMs?: number;
+    extraction?: {
+      method: string;
+      confidence: number;
+      chunks_processed: number;
+      chunks_successful: number;
+    };
+    optimization?: {
+      cost_estimate_usd: number;
+      cost_estimate_clp: number;
+      model_used: string;
+      optimization_applied: boolean;
+      cost_warning: string;
+    };
   };
 }
 
@@ -320,4 +325,182 @@ export function parseAnalysisContent(analysis: BudgetAnalysis): ParsedAnalysis {
       contingencia_recomendada: "20%"
     };
   }
+}
+
+// 🔥 NUEVOS TIPOS para el sistema optimizado
+export interface CostStatus {
+  environment: string;
+  global_usage: {
+    daily: {
+      date: string;
+      cost_used: number;
+      cost_limit: number;
+      percentage_used: string;
+      remaining: number;
+    };
+    hourly: {
+      hour: string;
+      analyses_count: number;
+      analyses_limit: number;
+      percentage_used: string;
+      remaining: number;
+    };
+  };
+  user_usage: {
+    user_id: string;
+    daily_cost: number;
+    daily_limit: number;
+    percentage_used: string;
+    remaining: number;
+  };
+  system_health: {
+    is_healthy: boolean;
+    tracked_days: number;
+    tracked_hours: number;
+    tracked_users: number;
+    last_cleanup: string;
+  };
+}
+
+export interface UsageStats {
+  user_id: string;
+  environment: string;
+  current_month: {
+    budget_analyses: number;
+    pdf_analyses: number;
+    comparisons: number;
+    total_cost_usd: number;
+    total_cost_clp: number;
+  };
+  limits: {
+    monthly_analyses: number;
+    pdf_analyses: number;
+    max_file_size_mb: number;
+    concurrent_analyses: number;
+    daily_cost_limit_usd: number;
+    global_daily_limit_usd: number;
+  };
+  usage_percentage: {
+    budget_analyses: number;
+    pdf_analyses: number;
+    daily_cost: string;
+  };
+  optimization_stats: {
+    average_cost_per_analysis: number;
+    tokens_saved_this_month: number;
+    cost_saved_usd: number;
+    files_rejected_oversized: number;
+    optimizations_applied: number;
+  };
+}
+
+export interface FileValidationResult {
+  isValid: boolean;
+  warnings: string[];
+  costEstimate: {
+    estimated_cost_usd: number;
+    estimated_cost_clp: number;
+    cost_warning: string;
+    chunks_to_process: number;
+  };
+  recommendation: 'ARCHIVO_OPTIMO_PARA_ANALISIS' | 'ARCHIVO_MEDIO_PROCEDER_CON_CUIDADO' | 'ARCHIVO_GRANDE_CONSIDERAR_REDUCIR' | 'ERROR';
+}
+
+export interface ProcessingTimeEstimate {
+  estimatedSeconds: number;
+  category: 'fast' | 'medium' | 'slow';
+  description: string;
+  optimizations: string[];
+}
+
+// 🔥 TIPOS DE ERROR específicos del sistema optimizado
+export type OptimizedSystemError = 
+  | 'COST_LIMIT_EXCEEDED'
+  | 'DAILY_COST_LIMIT'
+  | 'HOURLY_ANALYSIS_LIMIT'
+  | 'USER_DAILY_LIMIT'
+  | 'WOULD_EXCEED_DAILY_LIMIT'
+  | 'WOULD_EXCEED_USER_LIMIT'
+  | 'INVALID_FILE'
+  | 'FILE_TOO_LARGE'
+  | 'RATE_LIMIT'
+  | 'ANALYSIS_ERROR'
+  | 'VALIDATION_ERROR';
+
+export interface OptimizedErrorResponse {
+  success: false;
+
+  error: {
+    message: string;
+    code: OptimizedSystemError;
+    suggestions?: string[];
+    retryAfter?: number;  // más consistente en camelCase
+    timestamp: string;
+  };
+
+  costs?: {
+    estimatedUsd?: number;
+    warning?: string;
+    current?: number;
+    limit?: number;
+  };
+
+  projectDetails?: {
+    terminaciones?: string;
+    instalaciones?: string;
+    [key: string]: string | undefined; // mantiene flexibilidad
+  };
+
+  factoresRegionales?: RegionalFactors;
+  analisisRiesgos?: RiskAnalysis[];
+  factoresRiesgo?: string[];
+  recomendaciones?: string[];
+  cronogramaSugerido?: string;
+  contingenciaRecomendada?: string;
+}
+
+
+// ✅ ACTUALIZADA: Estructura real que viene del backend
+export interface BudgetAnalysis {
+  // Campos que siempre vienen del backend
+  resumen_ejecutivo: string;
+  presupuesto_ajustado: string;
+  nota: string;
+  contenido_original: string; // ✅ AGREGADO: El JSON embebido en markdown
+  
+  // Campos opcionales que pueden venir directamente o parseados
+  desglose_detallado?: {
+    estructura?: BudgetBreakdown;
+    albañilería?: BudgetBreakdown;
+    terminaciones?: BudgetBreakdown;
+    instalaciones?: BudgetBreakdown;
+    otros?: BudgetBreakdown;
+    [key: string]: BudgetBreakdown | undefined;
+  };
+  desglose_principal?: {
+    estructura?: string;
+    terminaciones?: string;
+    instalaciones?: string;
+    [key: string]: string | undefined;
+  };
+  factores_regionales?: RegionalFactors;
+  analisis_riesgos?: RiskAnalysis[];
+  factores_riesgo?: string[];
+  recomendaciones?: string[];
+  cronograma_sugerido?: string;
+  contingencia_recomendada?: string;
+  
+  // Metadatos del análisis
+  metadata?: {
+    generated_at: string;
+    model_used: string;
+    project_id: string | null;
+    confidence_score: number;
+    api_cost_estimate: {
+      input_tokens: number;
+      output_tokens: number;
+      estimated_cost_usd: number;
+      estimated_cost_clp: number;
+    };
+  };
 }
