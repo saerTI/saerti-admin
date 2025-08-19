@@ -3,7 +3,9 @@ import React, { useState, useRef, useCallback } from 'react';
 import { 
   budgetAnalysisService,
   usePdfAnalysis, 
-  formatPdfAnalysisForDisplay
+  formatPdfAnalysisForDisplay,
+  validatePdfFile,
+  estimateProcessingTime
 } from '../../services/budgetAnalysisService';
 import type {
   PdfAnalysisConfig,
@@ -27,10 +29,11 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
   const [showConfig, setShowConfig] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<PdfAnalysisResult | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [fileValidation, setFileValidation] = useState<{ isValid: boolean; error?: string; warnings?: string[] } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { analyzePdf, isAnalyzing, progress, error, resetState } = usePdfAnalysis();
+  const { analyzePdf, isAnalyzing, progress, error, estimatedTime, resetState } = usePdfAnalysis();
 
   // Configuración del análisis
   const [config, setConfig] = useState<PdfAnalysisConfig>({
@@ -45,20 +48,23 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
   const handleFileSelect = useCallback((file: File) => {
     if (!file) return;
 
-    // Validar tipo
-    if (file.type !== 'application/pdf') {
-      alert('Solo se permiten archivos PDF');
-      return;
-    }
+    // 🔥 VALIDACIÓN MEJORADA usando la nueva función
+    const validation = validatePdfFile(file);
+    setFileValidation(validation);
 
-    // Validar tamaño
-    if (file.size > 15 * 1024 * 1024) {
-      alert('El archivo no puede exceder 15MB');
+    if (!validation.isValid) {
+      alert(validation.error);
       return;
     }
 
     setSelectedFile(file);
     resetState();
+    
+    // 🔥 MOSTRAR ADVERTENCIAS si las hay
+    if (validation.warnings && validation.warnings.length > 0) {
+      console.warn('Advertencias del archivo:', validation.warnings);
+      // Podrías mostrar las advertencias en el UI aquí
+    }
   }, [resetState]);
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +105,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
       onAnalysisComplete?.(result);
     } catch (err) {
       console.error('Error analizando PDF:', err);
+      // El error ya se maneja en el hook usePdfAnalysis
     }
   };
 
@@ -107,10 +114,21 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     setSelectedFile(null);
     setAnalysisResult(null);
     setShowResults(false);
+    setFileValidation(null);
     resetState();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // 🔥 OBTENER INFORMACIÓN DEL ARCHIVO con estimación de tiempo
+  const getFileInfo = () => {
+    if (!selectedFile) return null;
+    
+    const sizeMB = (selectedFile.size / (1024 * 1024)).toFixed(1);
+    const timeEstimate = estimateProcessingTime(selectedFile);
+    
+    return { sizeMB, timeEstimate };
   };
 
   return (
@@ -144,14 +162,34 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                     {selectedFile.name}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    {getFileInfo()?.sizeMB} MB
                   </p>
+                  {/* 🔥 MOSTRAR ESTIMACIÓN DE TIEMPO */}
+                  {getFileInfo()?.timeEstimate && (
+                    <div className="mt-2">
+                      <span className={`
+                        inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        ${getFileInfo()?.timeEstimate.category === 'fast' ? 'bg-green-100 text-green-800' : ''}
+                        ${getFileInfo()?.timeEstimate.category === 'medium' ? 'bg-yellow-100 text-yellow-800' : ''}
+                        ${getFileInfo()?.timeEstimate.category === 'slow' ? 'bg-red-100 text-red-800' : ''}
+                      `}>
+                        {getFileInfo()?.timeEstimate.description}
+                      </span>
+                    </div>
+                  )}
+                  {/* 🔥 MOSTRAR ADVERTENCIAS si las hay */}
+                  {fileValidation?.warnings && fileValidation.warnings.length > 0 && (
+                    <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                      ⚠️ {fileValidation.warnings[0]}
+                    </div>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleClear}
                   className="text-red-500 hover:text-red-700"
+                  disabled={isAnalyzing}
                 >
                   Remover archivo
                 </Button>
@@ -174,11 +212,12 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={isAnalyzing}
                 >
                   Seleccionar Archivo
                 </Button>
                 <p className="text-xs text-gray-400">
-                  Máximo 15MB - Solo archivos PDF
+                  Máximo 50MB - Solo archivos PDF
                 </p>
               </div>
             )}
@@ -190,6 +229,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
             accept=".pdf"
             onChange={handleFileInputChange}
             className="hidden"
+            disabled={isAnalyzing}
           />
 
           {/* Configuration Section */}
@@ -203,6 +243,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowConfig(!showConfig)}
+                  disabled={isAnalyzing}
                 >
                   {showConfig ? 'Ocultar' : 'Configurar'}
                 </Button>
@@ -211,7 +252,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
               {showConfig && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Profundidad del Análisis
                     </label>
                     <select
@@ -220,16 +261,17 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                         ...prev, 
                         analysisDepth: e.target.value as any 
                       }))}
-                      className="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500"
+                      className="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+                      disabled={isAnalyzing}
                     >
-                      <option value="basic">Básico</option>
-                      <option value="standard">Estándar</option>
-                      <option value="detailed">Detallado</option>
+                      <option value="basic">Básico - Rápido (30-60s)</option>
+                      <option value="standard">Estándar - Equilibrado (1-2min)</option>
+                      <option value="detailed">Detallado - Completo (2-3min)</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Tipo de Proyecto
                     </label>
                     <select
@@ -238,7 +280,8 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                         ...prev, 
                         projectType: e.target.value as any 
                       }))}
-                      className="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500"
+                      className="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+                      disabled={isAnalyzing}
                     >
                       <option value="residential">Residencial</option>
                       <option value="commercial">Comercial</option>
@@ -249,7 +292,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                       Ubicación del Proyecto
                     </label>
                     <input
@@ -259,8 +302,9 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                         ...prev, 
                         projectLocation: e.target.value 
                       }))}
-                      className="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500"
+                      className="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                       placeholder="Santiago, Chile"
+                      disabled={isAnalyzing}
                     />
                   </div>
 
@@ -274,8 +318,9 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                         includeProviders: e.target.checked 
                       }))}
                       className="mr-2"
+                      disabled={isAnalyzing}
                     />
-                    <label htmlFor="includeProviders" className="text-sm">
+                    <label htmlFor="includeProviders" className="text-sm text-gray-700 dark:text-gray-300">
                       Incluir proveedores chilenos
                     </label>
                   </div>
@@ -285,14 +330,14 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
           )}
 
           {/* Actions */}
-          {selectedFile && (
+          {selectedFile && !isAnalyzing && !analysisResult && (
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleAnalyze}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || !fileValidation?.isValid}
                 className="flex-1"
               >
-                {isAnalyzing ? 'Analizando...' : 'Analizar Presupuesto'}
+                🤖 Analizar con Claude Vision
               </Button>
               
               <Button
@@ -305,34 +350,128 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
             </div>
           )}
 
-          {/* Progress */}
-          {progress && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-300">
-                  {progress.message}
-                </span>
-                {progress.currentChunk && progress.totalChunks && (
-                  <span className="text-gray-500">
-                    Sección {progress.currentChunk}/{progress.totalChunks}
+          {/* 🔥 PROGRESO MEJORADO con más detalles */}
+          {isAnalyzing && progress && (
+            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="font-medium text-blue-900 dark:text-blue-300">
+                    Analizando Presupuesto
+                  </span>
+                </div>
+                {estimatedTime && (
+                  <span className="text-sm text-blue-700 dark:text-blue-400">
+                    ~{Math.max(1, Math.round(estimatedTime * (1 - (progress?.progress || 0) / 100)))}min restante
                   </span>
                 )}
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                <div
-                  className="bg-brand-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${progress.progress}%` }}
-                />
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-blue-800 dark:text-blue-300">
+                    {progress.message}
+                  </span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    {progress.progress}%
+                  </span>
+                </div>
+                
+                <div className="w-full bg-blue-200 rounded-full h-2 dark:bg-blue-800">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${progress.progress}%` }}
+                  />
+                </div>
+                
+                {/* 🔥 INDICADORES DE ETAPA */}
+                <div className="flex justify-between text-xs mt-3">
+                  {[
+                    { stage: 'uploading', label: '📤 Subida', threshold: 10 },
+                    { stage: 'extracting', label: '🔍 Extracción', threshold: 30 },
+                    { stage: 'analyzing', label: '🤖 Análisis', threshold: 70 },
+                    { stage: 'consolidating', label: '📊 Finalización', threshold: 90 }
+                  ].map(({ stage, label, threshold }) => (
+                    <div
+                      key={stage}
+                      className={`flex flex-col items-center ${
+                        progress.stage === stage 
+                          ? 'text-blue-600 dark:text-blue-400 font-medium' 
+                          : progress.progress > threshold 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-gray-400'
+                      }`}
+                    >
+                      <span className="text-lg">{label.split(' ')[0]}</span>
+                      <span className="text-xs">{label.split(' ')[1]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 🔥 TIPS DURANTE EL PROCESAMIENTO */}
+              <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <h5 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
+                  💡 Mientras Claude analiza tu documento:
+                </h5>
+                <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
+                  <li>• Identificando materiales, cantidades y precios</li>
+                  <li>• Buscando proveedores chilenos mencionados</li>
+                  <li>• Calculando totales y subtotales</li>
+                  <li>• Generando recomendaciones específicas</li>
+                </ul>
               </div>
             </div>
           )}
 
-          {/* Error */}
+          {/* 🔥 ERROR MEJORADO con soluciones específicas */}
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
-              <p className="text-red-700 dark:text-red-300">
-                <strong>Error:</strong> {error}
-              </p>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="text-red-800 dark:text-red-300 font-medium mb-2">
+                    ❌ Error en el Análisis
+                  </h4>
+                  <div className="text-red-700 dark:text-red-300 text-sm whitespace-pre-line">
+                    {error}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => resetState()}
+                  className="text-red-600 hover:text-red-800 ml-4"
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              {/* 🔥 BOTÓN DE REINTENTO */}
+              <div className="mt-4 flex gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAnalyze}
+                  disabled={!selectedFile || isAnalyzing}
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  🔄 Reintentar Análisis
+                </Button>
+                {error.includes('timeout') || error.includes('grande') ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      // Cambiar a análisis básico para archivos problemáticos
+                      setConfig(prev => ({ ...prev, analysisDepth: 'basic' }));
+                      handleAnalyze();
+                    }}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    ⚡ Análisis Rápido
+                  </Button>
+                ) : null}
+              </div>
             </div>
           )}
         </div>
@@ -391,7 +530,7 @@ const PdfAnalysisResultsModal: React.FC<PdfAnalysisResultsModalProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Análisis de Presupuesto PDF
+                📄 Análisis de Presupuesto PDF
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 ID: {analysisResult.analysisId} • 
@@ -415,7 +554,7 @@ const PdfAnalysisResultsModal: React.FC<PdfAnalysisResultsModalProps> = ({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`
-                  py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap
+                  py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center
                   ${activeTab === tab.id
                     ? 'border-brand-500 text-brand-600 dark:text-brand-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -569,7 +708,13 @@ const PdfAnalysisResultsModal: React.FC<PdfAnalysisResultsModalProps> = ({
             </div>
           )}
 
-          {/* Otros tabs similares... */}
+          {/* Aquí puedes agregar los otros tabs: labor, equipment, providers, risks */}
+          {activeTab !== 'summary' && activeTab !== 'materials' && (
+            <div className="text-center py-8 text-gray-500">
+              <p>Contenido de {activeTab} próximamente...</p>
+              <p className="text-sm mt-2">Los datos están disponibles en formattedData.{activeTab}</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -585,8 +730,9 @@ const PdfAnalysisResultsModal: React.FC<PdfAnalysisResultsModalProps> = ({
               <Button onClick={() => {
                 // TODO: Implementar exportación
                 console.log('Exportar análisis:', analysisResult);
+                alert('Función de exportación próximamente...');
               }}>
-                Exportar PDF
+                📥 Exportar Resultados
               </Button>
             </div>
           </div>

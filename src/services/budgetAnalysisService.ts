@@ -126,7 +126,8 @@ export const budgetAnalysisService = {
   },
 
   /**
-   * Analiza un PDF de presupuesto
+   * 🔥 FUNCIÓN ACTUALIZADA: Analiza un PDF de presupuesto con timeout extendido
+   * Compatible con tu servicio API existente
    */
   async analyzePdfBudget(
     file: File,
@@ -142,8 +143,9 @@ export const budgetAnalysisService = {
         throw new Error('Solo se permiten archivos PDF');
       }
 
-      if (file.size > 15 * 1024 * 1024) {
-        throw new Error('El archivo PDF no puede exceder 15MB');
+      // 🔥 LÍMITE AUMENTADO: 50MB para PDFs grandes
+      if (file.size > 50 * 1024 * 1024) {
+        throw new Error('El archivo PDF no puede exceder 50MB');
       }
 
       // Preparar FormData
@@ -157,27 +159,68 @@ export const budgetAnalysisService = {
         }
       });
 
-      console.log('📄 Enviando PDF para análisis:', file.name);
+      console.log(`📄 Enviando PDF para análisis: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
 
-      // Usar api service para consistencia, pero necesitamos FormData
-      const response = await api.postFormData<ApiResponse<PdfAnalysisResult>>('/budget-analysis/pdf', formData);
-      
-      console.log('✅ Análisis PDF completado');
-      
-      return response.data;
+      // 🔥 USAR TU SERVICIO API EXISTENTE con timeout personalizado
+      try {
+        const calculateTimeout = (fileSizeBytes: number): number => {
+        const sizeMB = fileSizeBytes / (1024 * 1024);
+        
+        if (sizeMB < 5) {
+          return 120000; // 2 minutes for small files
+        } else if (sizeMB < 15) {
+          return 360000; // 6 minutes for medium files (your case)
+        } else {
+          return 480000; // 8 minutes for large files
+        }
+      };
+
+      const response = await api.postFormData<ApiResponse<PdfAnalysisResult>>(
+        '/budget-analysis/pdf', 
+        formData,
+        {
+          timeout: calculateTimeout(file.size),
+        }
+      );
+
+        console.log('✅ Análisis PDF completado exitosamente');
+        return response.data || response; // Manejar diferentes formatos de respuesta
+
+      } catch (apiError: any) {
+        console.error('❌ Error en API call:', apiError);
+        
+        // Manejar errores específicos de tu API service
+        if (apiError.code === 'ECONNABORTED' || apiError.message.includes('timeout')) {
+          throw new Error(
+            `⏱️ El análisis del PDF tomó más de ${file.size > 10 * 1024 * 1024 ? '3' : '1.5'} minutos.\n\n` +
+            `Recomendaciones:\n` +
+            `• El archivo es muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB)\n` +
+            `• Comprima el PDF o divídalo en partes más pequeñas\n` +
+            `• Asegúrese de tener una conexión estable\n` +
+            `• Intente nuevamente en unos minutos`
+          );
+        }
+
+        if (apiError.response?.status === 413) {
+          throw new Error('Archivo demasiado grande. Máximo 50MB permitido.');
+        } else if (apiError.response?.status === 415) {
+          throw new Error('Formato de archivo no soportado. Solo se permiten archivos PDF.');
+        } else if (apiError.response?.status === 503) {
+          throw new Error('Servicio de análisis temporalmente no disponible.');
+        } else if (apiError.response?.status === 429) {
+          throw new Error('Límite de API alcanzado. Intente en unos minutos.');
+        }
+        
+        throw new Error(
+          apiError.response?.data?.message || 
+          apiError.message ||
+          'Error analizando archivo PDF'
+        );
+      }
 
     } catch (error: any) {
-      console.error('Error en analyzePdfBudget:', error);
-      
-      if (error.response?.status === 413) {
-        throw new Error('Archivo demasiado grande. Máximo 15MB permitido.');
-      } else if (error.response?.status === 415) {
-        throw new Error('Formato de archivo no soportado. Solo se permiten archivos PDF.');
-      } else if (error.response?.status === 503) {
-        throw new Error('Servicio de análisis temporalmente no disponible.');
-      }
-      
-      throw new Error('Error analizando archivo PDF');
+      console.error('❌ Error en analyzePdfBudget:', error);
+      throw error;
     }
   },
 
@@ -336,44 +379,133 @@ export const useBudgetAnalysis = () => {
 };
 
 /**
- * Hook personalizado para análisis de PDF
+ * 🔥 HOOK ACTUALIZADO: Hook personalizado para análisis de PDF compatible con tus tipos
  */
 export const usePdfAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [progress, setProgress] = React.useState<PdfAnalysisProgress | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [estimatedTime, setEstimatedTime] = React.useState<number | null>(null);
 
   const analyzePdf = async (file: File, config: PdfAnalysisConfig = {}) => {
     try {
       setIsAnalyzing(true);
       setError(null);
-      setProgress({ stage: 'uploading', progress: 0, message: 'Preparando archivo...' });
+      
+      // 🔥 ESTIMACIÓN DE TIEMPO basada en tamaño del archivo
+      const fileSizeMB = file.size / (1024 * 1024);
+      const estimatedSeconds = fileSizeMB > 10 ? 180 : 90; // 3min para archivos grandes, 1.5min para pequeños
+      setEstimatedTime(estimatedSeconds);
+      
+      setProgress({ 
+        stage: 'uploading', 
+        progress: 0, 
+        message: `Preparando archivo (${fileSizeMB.toFixed(1)}MB)...` 
+      });
 
-      // Simular progreso mientras se procesa
+      // 🔥 PROGRESO REALISTA basado en el tamaño del archivo
       const progressSteps: PdfAnalysisProgress[] = [
-        { stage: 'uploading', progress: 10, message: 'Enviando archivo...' },
-        { stage: 'extracting', progress: 30, message: 'Extrayendo texto del PDF...' },
-        { stage: 'chunking', progress: 50, message: 'Dividiendo documento...' },
-        { stage: 'analyzing', progress: 80, message: 'Analizando contenido...' },
-        { stage: 'consolidating', progress: 95, message: 'Finalizando análisis...' }
+        { 
+          stage: 'uploading', 
+          progress: 5, 
+          message: 'Enviando archivo al servidor...' 
+        },
+        { 
+          stage: 'extracting', 
+          progress: 15, 
+          message: fileSizeMB > 5 ? 'Convirtiendo PDF a imágenes (esto puede tomar un momento)...' : 'Extrayendo texto del PDF...'
+        },
+        { 
+          stage: 'chunking', 
+          progress: 25, 
+          message: 'Procesando páginas del documento...' 
+        },
+        { 
+          stage: 'analyzing', 
+          progress: 45, 
+          message: 'Analizando con Claude Vision AI...' 
+        },
+        { 
+          stage: 'analyzing', 
+          progress: 70, 
+          message: 'Identificando materiales y costos...' 
+        },
+        { 
+          stage: 'consolidating', 
+          progress: 90, 
+          message: 'Consolidando análisis final...' 
+        }
       ];
 
-      // Simular progreso paso a paso
-      for (const step of progressSteps) {
-        setProgress(step);
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // 🔥 PROGRESO CON TIMING REALISTA
+      const stepDuration = (estimatedSeconds * 1000) / progressSteps.length;
+      
+      // Ejecutar pasos de progreso en paralelo con la llamada real
+      let currentStepIndex = 0;
+      const progressInterval = setInterval(() => {
+        if (currentStepIndex < progressSteps.length) {
+          setProgress(progressSteps[currentStepIndex]);
+          currentStepIndex++;
+        }
+      }, stepDuration * 0.4); // Progreso más lento que el tiempo real
+
+      try {
+        // Llamar al servicio real
+        const result = await budgetAnalysisService.analyzePdfBudget(file, config);
+        
+        // Limpiar interval de progreso
+        clearInterval(progressInterval);
+        
+        setProgress({ 
+          stage: 'complete', 
+          progress: 100, 
+          message: 'Análisis completado exitosamente' 
+        });
+        
+        // Mantener el progreso completo por un momento antes de limpiar
+        setTimeout(() => {
+          setIsAnalyzing(false);
+          setProgress(null);
+          setEstimatedTime(null);
+        }, 1500);
+        
+        return result;
+
+      } catch (serviceError) {
+        clearInterval(progressInterval);
+        throw serviceError;
       }
 
-      const result = await budgetAnalysisService.analyzePdfBudget(file, config);
+    } catch (err: any) {
+      console.error('❌ Error en análisis PDF:', err);
       
-      setProgress({ stage: 'complete', progress: 100, message: 'Análisis completado' });
+      // 🔥 MENSAJES DE ERROR ESPECÍFICOS Y ÚTILES
+      let errorMessage = err.message;
+      
+      if (err.message.includes('timeout') || err.message.includes('Timeout')) {
+        errorMessage = `⏱️ El análisis tomó demasiado tiempo.\n\n` +
+          `Recomendaciones:\n` +
+          `• El archivo es muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB)\n` +
+          `• Comprima el PDF o divídalo en partes más pequeñas\n` +
+          `• Asegúrese de tener una conexión estable\n` +
+          `• Intente nuevamente en unos minutos`;
+      } else if (err.message.includes('Network')) {
+        errorMessage = '🌐 Error de conexión. Verifique su internet e intente nuevamente.';
+      } else if (err.message.includes('413') || err.message.includes('grande')) {
+        errorMessage = `📁 Archivo demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo permitido: 50MB.`;
+      } else if (err.message.includes('415') || err.message.includes('formato')) {
+        errorMessage = '📄 Solo se permiten archivos PDF válidos.';
+      } else if (err.message.includes('429') || err.message.includes('límite')) {
+        errorMessage = '🚦 Límite de análisis alcanzado. Intente nuevamente en unos minutos.';
+      } else if (err.message.includes('503') || err.message.includes('no disponible')) {
+        errorMessage = '🔧 Servicio temporalmente no disponible. Intente nuevamente en unos minutos.';
+      }
+      
+      setError(errorMessage);
       setIsAnalyzing(false);
-      return result;
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      setIsAnalyzing(false);
-      throw err;
+      setProgress(null);
+      setEstimatedTime(null);
+      throw new Error(errorMessage);
     }
   };
 
@@ -381,6 +513,7 @@ export const usePdfAnalysis = () => {
     setIsAnalyzing(false);
     setProgress(null);
     setError(null);
+    setEstimatedTime(null);
   };
 
   return {
@@ -388,6 +521,7 @@ export const usePdfAnalysis = () => {
     isAnalyzing,
     progress,
     error,
+    estimatedTime,
     resetState
   };
 };
@@ -435,4 +569,69 @@ export const formatPdfAnalysisForDisplay = (analysis: PdfAnalysisResult['analysi
       content: analysis.cronograma_estimado
     }
   };
+};
+
+/**
+ * 🔥 NUEVA FUNCIÓN: Validador de archivos PDF antes de subir
+ */
+export const validatePdfFile = (file: File): { isValid: boolean; error?: string; warnings?: string[] } => {
+  const warnings: string[] = [];
+  
+  // Validar tipo de archivo
+  if (file.type !== 'application/pdf') {
+    return { isValid: false, error: 'Solo se permiten archivos PDF' };
+  }
+  
+  // Validar tamaño
+  const sizeMB = file.size / (1024 * 1024);
+  if (sizeMB > 50) {
+    return { isValid: false, error: 'El archivo no puede exceder 50MB' };
+  }
+  
+  // Advertencias para archivos grandes
+  if (sizeMB > 20) {
+    warnings.push('Archivo grande: el procesamiento puede tomar varios minutos');
+  }
+  
+  if (sizeMB > 10) {
+    warnings.push('Para mejor rendimiento, considere comprimir el PDF');
+  }
+  
+  // Validar nombre del archivo
+  if (file.name.length > 100) {
+    warnings.push('Nombre de archivo muy largo');
+  }
+  
+  return { isValid: true, warnings: warnings.length > 0 ? warnings : undefined };
+};
+
+/**
+ * 🔥 NUEVA FUNCIÓN: Estimador de tiempo de procesamiento
+ */
+export const estimateProcessingTime = (file: File): { 
+  estimatedSeconds: number; 
+  category: 'fast' | 'medium' | 'slow';
+  description: string;
+} => {
+  const sizeMB = file.size / (1024 * 1024);
+  
+  if (sizeMB < 2) {
+    return {
+      estimatedSeconds: 30,
+      category: 'fast',
+      description: 'Procesamiento rápido (menos de 1 minuto)'
+    };
+  } else if (sizeMB < 10) {
+    return {
+      estimatedSeconds: 90,
+      category: 'medium', 
+      description: 'Procesamiento medio (1-2 minutos)'
+    };
+  } else {
+    return {
+      estimatedSeconds: 180,
+      category: 'slow',
+      description: 'Procesamiento lento (2-3 minutos)'
+    };
+  }
 };
