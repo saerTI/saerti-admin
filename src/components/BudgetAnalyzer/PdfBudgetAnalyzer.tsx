@@ -12,7 +12,7 @@ import {
 import type {
   PdfAnalysisConfig,
   PdfAnalysisResult 
-} from '../../types/budgetAnalysis';
+} from './types/budgetAnalysis';
 import Button from '../ui/button/Button';
 import { Modal } from '../ui/modal';
 import ComponentCard from '../common/ComponentCard';

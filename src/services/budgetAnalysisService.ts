@@ -15,7 +15,7 @@ import type {
   CostStatus,
   UsageStats,
   FileValidationResult
-} from '../types/budgetAnalysis';
+} from '../components/BudgetAnalyzer/types/budgetAnalysis';
 
 // Interfaces para respuestas de la API siguiendo el patrón del proyecto
 interface ApiResponse<T> {
@@ -268,7 +268,8 @@ export const budgetAnalysisService = {
           }
         };
 
-        const response = await api.postFormData<BackendPdfResponse>(
+        // Usar tipo any para la respuesta inicial para manejar diferentes estructuras
+        const response: any = await api.postFormData(
           '/budget-analysis/pdf', 
           formData,
           {
@@ -279,99 +280,211 @@ export const budgetAnalysisService = {
         console.log('✅ Análisis PDF completado exitosamente');
         console.log('🔍 Respuesta del backend:', response);
 
-        // 🔥 TRANSFORMACIÓN CORREGIDA - Manejar tanto response.data como response directamente
-        console.log('🔍 Estructura de respuesta recibida:', response);
-
-        // Verificar la estructura real de la respuesta
-        let backendData: BackendPdfResponse;
-
-        console.log('🔍 Estructura de respuesta recibida:', response);
-
-        // Caso 1: La respuesta viene envuelta en ApiResponse
-        if (response && typeof response === 'object' && 'data' in response && response.data) {
-          backendData = response.data as BackendPdfResponse;
-        } 
-        // Caso 2: La respuesta es directamente BackendPdfResponse
-        else if (response && typeof response === 'object' && 'success' in response) {
-          backendData = response as BackendPdfResponse;
-        }
-        // Caso 3: Estructura de análisis directo
-        else if (response && typeof response === 'object' && 'analysis' in response && 'metadata' in response) {
-          backendData = {
-            success: true,
-            message: 'Análisis completado',
-            data: response as any,
-            timestamp: new Date().toISOString()
-          };
-        }
-        else {
-          console.error('❌ Estructura de respuesta no reconocida:', response);
-          throw new Error('Formato de respuesta del servidor no reconocido');
+        // 🔥 VALIDACIÓN CRÍTICA: Verificar que tenemos una respuesta válida
+        if (!response) {
+          throw new Error('No se recibió respuesta del servidor');
         }
 
-        // Validar que tenemos una respuesta exitosa
-        if (!backendData.success) {
-          throw new Error(backendData.message || 'Error en el análisis');
+        // 🔥 NORMALIZACIÓN DE RESPUESTA: Manejar diferentes estructuras posibles
+        let normalizedResponse: BackendPdfResponse;
+
+        // Determinar la estructura de la respuesta
+        if (response && typeof response === 'object') {
+          // Si la respuesta ya tiene la estructura esperada
+          if (response.success === true && response.data && response.data.analysis) {
+            console.log('✅ Respuesta con estructura estándar detectada');
+            normalizedResponse = response;
+          }
+          // Si la respuesta viene anidada en data
+          else if (response.data && response.data.success === true && response.data.data) {
+            console.log('✅ Respuesta anidada detectada, extrayendo...');
+            normalizedResponse = response.data;
+          }
+          // Si la respuesta tiene directamente analysis y metadata
+          else if (response.analysis && response.metadata) {
+            console.log('✅ Respuesta directa de análisis detectada');
+            normalizedResponse = {
+              success: true,
+              message: 'Análisis completado',
+              data: {
+                analysis: response.analysis,
+                metadata: response.metadata
+              },
+              timestamp: new Date().toISOString()
+            };
+          }
+          // Si la respuesta es solo el objeto data
+          else if (response.data && response.data.analysis && response.data.metadata) {
+            console.log('✅ Respuesta con data directo detectada');
+            normalizedResponse = {
+              success: true,
+              message: response.message || 'Análisis completado',
+              data: response.data,
+              timestamp: response.timestamp || new Date().toISOString()
+            };
+          }
+          else {
+            console.error('❌ Estructura de respuesta no reconocida:', response);
+            throw new Error('Estructura de respuesta del servidor no reconocida');
+          }
+        } else {
+          console.error('❌ Respuesta inválida:', response);
+          throw new Error('Respuesta del servidor inválida');
         }
 
-        // Verificar que tenemos los datos necesarios
-        if (!backendData.data || !backendData.data.analysis || !backendData.data.metadata) {
-          console.error('❌ Datos incompletos en respuesta:', backendData);
-          throw new Error('Respuesta del servidor incompleta');
+        // 🔥 LOG DETALLADO para debugging
+        console.log('📊 Respuesta normalizada:', {
+          hasSuccess: 'success' in normalizedResponse,
+          success: normalizedResponse.success,
+          hasData: 'data' in normalizedResponse,
+          hasAnalysis: normalizedResponse.data?.analysis ? true : false,
+          hasMetadata: normalizedResponse.data?.metadata ? true : false,
+          message: normalizedResponse.message
+        });
+
+        // 🔥 VALIDACIÓN DE ÉXITO: Solo fallar si explícitamente es false
+        if (normalizedResponse.success === false) {
+          console.error('❌ El servidor indicó fallo:', normalizedResponse.message);
+          
+          // Caso especial: PDF sin contenido suficiente
+          if (normalizedResponse.message?.includes('no contiene suficientes')) {
+            const minimalResult: PdfAnalysisResult = {
+              analysisId: `pdf_${Date.now()}`,
+              analysis: {
+                resumen_ejecutivo: 'El documento no contiene suficiente información presupuestaria.',
+                presupuesto_estimado: {
+                  total_clp: 0,
+                  materials_percentage: 0,
+                  labor_percentage: 0,
+                  equipment_percentage: 0,
+                  overhead_percentage: 0
+                },
+                materiales_detallados: [],
+                mano_obra: [],
+                equipos_maquinaria: [],
+                proveedores_chile: [],
+                analisis_riesgos: [],
+                recomendaciones: [
+                  'El documento parece ser un PDF escaneado',
+                  'Se recomienda usar un PDF con texto seleccionable'
+                ],
+                cronograma_estimado: 'No disponible',
+                chunks_procesados: 0,
+                confidence_score: 0
+              },
+              metadata: {
+                chunksProcessed: 0,
+                originalFileSize: file.size,
+                textLength: 0,
+                processingTime: new Date().toISOString(),
+                originalFileName: file.name
+              }
+            };
+            
+            return minimalResult;
+          }
+          
+          throw new Error(normalizedResponse.message || 'Error en el análisis del servidor');
         }
 
-        const transformedResult: PdfAnalysisResult = {
-          analysisId: backendData.data.metadata.analysisId || `pdf_${Date.now()}`,
+        // 🔥 EXTRACCIÓN DE DATOS: Asegurar que tenemos los datos necesarios
+        const analysisData = normalizedResponse.data?.analysis;
+        const metadataData = normalizedResponse.data?.metadata;
+
+        if (!analysisData) {
+          console.error('❌ No se encontraron datos de análisis en la respuesta normalizada');
+          throw new Error('Respuesta sin datos de análisis');
+        }
+
+        // 🔥 CONSTRUCCIÓN DEL RESULTADO FINAL
+        const result: PdfAnalysisResult = {
+          analysisId: metadataData?.analysisId || `pdf_${Date.now()}`,
           analysis: {
-            resumen_ejecutivo: backendData.data.analysis.resumen_ejecutivo || '',
+            resumen_ejecutivo: analysisData.resumen_ejecutivo || 'Análisis completado',
             presupuesto_estimado: {
-              total_clp: backendData.data.analysis.presupuesto_estimado?.total_clp || 0,
-              materials_percentage: backendData.data.analysis.presupuesto_estimado?.materials_percentage || 0,
-              labor_percentage: backendData.data.analysis.presupuesto_estimado?.labor_percentage || 0,
-              equipment_percentage: backendData.data.analysis.presupuesto_estimado?.equipment_percentage || 0,
-              overhead_percentage: backendData.data.analysis.presupuesto_estimado?.overhead_percentage || 15
+              total_clp: analysisData.presupuesto_estimado?.total_clp || 0,
+              materials_percentage: analysisData.presupuesto_estimado?.materials_percentage || 0,
+              labor_percentage: analysisData.presupuesto_estimado?.labor_percentage || 0,
+              equipment_percentage: analysisData.presupuesto_estimado?.equipment_percentage || 0,
+              overhead_percentage: analysisData.presupuesto_estimado?.overhead_percentage || 15
             },
-            materiales_detallados: backendData.data.analysis.materiales_detallados || [],
-            mano_obra: backendData.data.analysis.mano_obra || [],
-            equipos_maquinaria: backendData.data.analysis.equipos_maquinaria || [],
-            proveedores_chile: backendData.data.analysis.proveedores_chile || [],
-            analisis_riesgos: backendData.data.analysis.analisis_riesgos || [],
-            recomendaciones: backendData.data.analysis.recomendaciones || [],
-            cronograma_estimado: backendData.data.analysis.cronograma_estimado || 'No disponible',
-            chunks_procesados: backendData.data.analysis.chunks_procesados || 0,
-            confidence_score: backendData.data.analysis.confidence_score || 0,
-            // Campos adicionales opcionales
-            chunks_exitosos: backendData.data.analysis.chunks_exitosos,
-            processing_method: backendData.data.analysis.processing_method,
-            desglose_costos: backendData.data.analysis.desglose_costos,
-            factores_regionales: backendData.data.analysis.factores_regionales,
-            extraction_metadata: backendData.data.analysis.extraction_metadata
+            materiales_detallados: Array.isArray(analysisData.materiales_detallados) 
+              ? analysisData.materiales_detallados 
+              : [],
+            mano_obra: Array.isArray(analysisData.mano_obra) 
+              ? analysisData.mano_obra 
+              : [],
+            equipos_maquinaria: Array.isArray(analysisData.equipos_maquinaria) 
+              ? analysisData.equipos_maquinaria 
+              : [],
+            proveedores_chile: Array.isArray(analysisData.proveedores_chile) 
+              ? analysisData.proveedores_chile 
+              : [],
+            analisis_riesgos: Array.isArray(analysisData.analisis_riesgos) 
+              ? analysisData.analisis_riesgos 
+              : [],
+            recomendaciones: Array.isArray(analysisData.recomendaciones) 
+              ? analysisData.recomendaciones 
+              : ['Análisis completado exitosamente'],
+            cronograma_estimado: analysisData.cronograma_estimado || 'Por determinar',
+            chunks_procesados: analysisData.chunks_procesados || 0,
+            confidence_score: analysisData.confidence_score || 0,
+            // Campos opcionales
+            chunks_exitosos: analysisData.chunks_exitosos,
+            processing_method: analysisData.processing_method,
+            desglose_costos: analysisData.desglose_costos,
+            factores_regionales: analysisData.factores_regionales,
+            extraction_metadata: analysisData.extraction_metadata
           },
           metadata: {
-            chunksProcessed: backendData.data.analysis.chunks_procesados || 0,
-            originalFileSize: backendData.data.metadata.originalFileSize || file.size,
-            textLength: backendData.data.metadata.contentLength || 0,
-            processingTime: backendData.data.metadata.processingTime || new Date().toISOString(),
-            // Campos adicionales opcionales
-            originalFileName: backendData.data.metadata.originalFileName,
-            processingTimeMs: backendData.data.metadata.processingTimeMs,
-            extraction: backendData.data.metadata.extraction,
-            optimization: backendData.data.metadata.optimization
+            chunksProcessed: analysisData.chunks_procesados || metadataData?.extraction?.chunks_processed || 0,
+            originalFileSize: metadataData?.originalFileSize || file.size,
+            textLength: metadataData?.contentLength || 0,
+            processingTime: metadataData?.processingTime || new Date().toISOString(),
+            originalFileName: metadataData?.originalFileName || file.name,
+            processingTimeMs: metadataData?.processingTimeMs,
+            extraction: metadataData?.extraction,
+            optimization: metadataData?.optimization
           }
         };
 
-        console.log('🔄 Resultado transformado:', transformedResult);
-        return transformedResult;
+        console.log('✅ Análisis transformado exitosamente:', {
+          id: result.analysisId,
+          confianza: result.analysis.confidence_score,
+          materiales: result.analysis.materiales_detallados.length,
+          manoObra: result.analysis.mano_obra.length,
+          equipos: result.analysis.equipos_maquinaria.length,
+          proveedores: result.analysis.proveedores_chile.length,
+          presupuestoTotal: result.analysis.presupuesto_estimado.total_clp
+        });
+        
+        // Advertencia si el análisis tiene baja confianza
+        if (result.analysis.confidence_score === 0 && 
+            result.analysis.materiales_detallados.length === 0 &&
+            result.analysis.mano_obra.length === 0) {
+          
+          console.warn('⚠️ Análisis con confianza 0% - PDF posiblemente no analizable');
+          
+          result.analysis.recomendaciones = [
+            'El PDF parece ser escaneado o contener principalmente imágenes',
+            'No se pudo extraer información presupuestaria estructurada',
+            'Use un PDF con texto seleccionable para mejores resultados'
+          ];
+          
+          result.analysis.resumen_ejecutivo = 
+            'Análisis limitado: El documento PDF no contiene suficiente información textual extraíble.';
+        }
+        
+        return result;
 
       } catch (apiError: any) {
         console.error('❌ Error en API call:', apiError);
         
-        if (apiError.code === 'ECONNABORTED' || apiError.message.includes('timeout')) {
+        // Manejo de errores específicos
+        if (apiError.code === 'ECONNABORTED' || apiError.message?.includes('timeout')) {
           throw new Error(
-            `⏱️ El análisis del PDF tomó más de ${file.size > 10 * 1024 * 1024 ? '5' : '2'} minutos.\n\n` +
-            `El sistema optimizado está activo pero el archivo requiere más tiempo.\n\n` +
+            `⏱️ El análisis del PDF tomó demasiado tiempo.\n\n` +
             `Recomendaciones:\n` +
-            `• El archivo es grande (${(file.size / 1024 / 1024).toFixed(1)}MB)\n` +
             `• Comprima el PDF o divídalo en secciones más pequeñas\n` +
             `• Use análisis 'básico' en lugar de 'detallado'\n` +
             `• Asegúrese de tener una conexión estable`
@@ -383,7 +496,7 @@ export const budgetAnalysisService = {
           if (errorData?.error_code === 'COST_LIMIT_EXCEEDED') {
             throw new Error(
               `💰 ${errorData.message}\n\n` +
-              `Sugerencias del sistema optimizado:\n` +
+              `Sugerencias:\n` +
               `${errorData.suggestions?.join('\n• ') || '• Use un archivo más pequeño'}`
             );
           } else if (errorData?.error_code === 'INVALID_FILE') {
@@ -392,32 +505,20 @@ export const budgetAnalysisService = {
         }
 
         if (apiError.response?.status === 413) {
-          throw new Error('Archivo demasiado grande. Máximo 20MB permitido con las optimizaciones actuales.');
+          throw new Error('Archivo demasiado grande. Máximo 20MB permitido.');
         } else if (apiError.response?.status === 415) {
           throw new Error('Formato de archivo no soportado. Solo se permiten archivos PDF.');
         } else if (apiError.response?.status === 503) {
           throw new Error('Servicio de análisis temporalmente no disponible.');
         } else if (apiError.response?.status === 429) {
-          const errorData = apiError.response.data;
-          if (errorData?.error_code === 'DAILY_COST_LIMIT') {
-            throw new Error(
-              `🛡️ Límite diario de costos alcanzado.\n\n` +
-              `El sistema de optimización ha evitado gastos excesivos.\n` +
-              `Intente nuevamente mañana o contacte al administrador.`
-            );
-          } else if (errorData?.error_code === 'HOURLY_ANALYSIS_LIMIT') {
-            throw new Error(
-              `⏰ Límite horario de análisis alcanzado.\n\n` +
-              `Para evitar sobrecarga del sistema, intente en la próxima hora.`
-            );
-          }
-          throw new Error('Límite de API alcanzado. El sistema optimizado está protegiendo contra uso excesivo.');
+          throw new Error('Límite de API alcanzado. Intente nuevamente más tarde.');
         }
         
+        // Error genérico
         throw new Error(
           apiError.response?.data?.message || 
           apiError.message ||
-          'Error analizando archivo PDF con el sistema optimizado'
+          'Error analizando archivo PDF'
         );
       }
 

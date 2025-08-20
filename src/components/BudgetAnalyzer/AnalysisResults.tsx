@@ -18,7 +18,7 @@ import type {
   BudgetBreakdown, 
   RiskAnalysis,
   parseAnalysisContent 
-} from '../../types/budgetAnalysis';
+} from './types/budgetAnalysis';
 
 interface AnalysisResultsProps {
   analysis: BudgetAnalysis | { analysis: BudgetAnalysis; project_info: any; analysis_config: any }; // Manejar ambos formatos

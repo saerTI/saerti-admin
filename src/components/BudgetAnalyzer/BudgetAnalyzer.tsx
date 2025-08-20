@@ -6,7 +6,7 @@ import { budgetAnalysisService, useBudgetAnalysis } from '../../services/budgetA
 import { AnalysisResults } from './AnalysisResults';
 import PdfBudgetAnalyzer from './PdfBudgetAnalyzer';
 import ChartTab from '../common/ChartTab';
-import type { ProjectData, AnalysisConfig, PdfAnalysisResult } from '../../types/budgetAnalysis';
+import type { ProjectData, AnalysisConfig, PdfAnalysisResult } from './types/budgetAnalysis';
 
 export const BudgetAnalyzer: React.FC = () => {
   // Estado de tabs
