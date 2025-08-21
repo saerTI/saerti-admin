@@ -46,6 +46,8 @@ import Empleados from "./pages/Egresos/Empleados";
 import EmpleadosNuevo from "./pages/Egresos/EmpleadosNuevo";
 import EmpleadosDetalle from "./pages/Egresos/EmpleadosDetalle";
 import EmpleadosEdición from "./pages/Egresos/EmpleadosEdicion";
+import OrdenCompraEdicion from "./pages/Egresos/OrdenCompraEdicion";
+import OrdenCompraForm from "./pages/Egresos/OrdenCompraForm";
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
 // import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";
@@ -163,6 +165,16 @@ export default function App() {
             <Route path="/gastos/ordenes-compra/:id" element={
               <PrivateRoute>
                 <OrdenCompraDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/ordenes-compra/:id/edit" element={
+              <PrivateRoute>
+                <OrdenCompraEdicion />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/ordenes-compra/new" element={
+              <PrivateRoute>
+                <OrdenCompraForm />
               </PrivateRoute>
             } />
             <Route path="/gastos/factoring" element={
