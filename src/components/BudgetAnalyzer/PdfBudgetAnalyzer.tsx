@@ -1,22 +1,18 @@
-// src/components/BudgetAnalyzer/PdfBudgetAnalyzer.tsx - VERSIÓN REFACTORIZADA
+// src/components/BudgetAnalyzer/PdfBudgetAnalyzer.tsx - VERSIÓN CORREGIDA SIN ERROR
 import React, { useState, useRef, useCallback } from 'react';
 import { 
   budgetAnalysisService,
   usePdfAnalysis, 
-  formatPdfAnalysisForDisplay,
   validatePdfFile,
   estimateProcessingTime,
-  useCostMonitoring,
-  usePreValidation
+  useCostMonitoring
 } from '../../services/budgetAnalysisService';
 import type {
   PdfAnalysisConfig,
   PdfAnalysisResult 
 } from './types/budgetAnalysis';
 import Button from '../ui/button/Button';
-import { Modal } from '../ui/modal';
 import ComponentCard from '../common/ComponentCard';
-// Importar el componente modular PdfAnalysisResultsModal
 import { PdfAnalysisResultsModal } from './PdfAnalysisResultsModal';
 
 interface PdfBudgetAnalyzerProps {
@@ -37,12 +33,9 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // 🔥 HOOKS ACTUALIZADOS para el backend optimizado
   const { analyzePdf, isAnalyzing, progress, error, estimatedTime, resetState } = usePdfAnalysis();
   const { costStatus, canAnalyze, remainingAnalyses, refreshCostStatus } = useCostMonitoring();
-  const { validateFile, isValidating, validationResult } = usePreValidation();
 
-  // Configuración del análisis con valores optimizados
   const [config, setConfig] = useState<PdfAnalysisConfig>({
     analysisDepth: 'standard',
     includeProviders: true,
@@ -51,11 +44,77 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     saveAnalysis: true
   });
 
-  // Manejadores de archivo
+  // ✅ FUNCIÓN LOCAL para validar y corregir análisis
+  const validarYCorregirAnalisis = (analysis: any): any => {
+    console.log('🔍 Validando análisis del backend:', analysis);
+
+    // Calcular totales reales de materiales, mano de obra y equipos
+    const materialesTotal = analysis.materiales_detallados?.reduce(
+      (sum: number, item: any) => sum + (item.subtotal || 0), 0
+    ) || 0;
+
+    const manoObraTotal = analysis.mano_obra?.reduce(
+      (sum: number, item: any) => sum + (item.subtotal || 0), 0
+    ) || 0;
+
+    const equiposTotal = analysis.equipos_maquinaria?.reduce(
+      (sum: number, item: any) => sum + (item.subtotal || 0), 0
+    ) || 0;
+
+    console.log('📊 Totales calculados:', {
+      materiales: materialesTotal,
+      manoObra: manoObraTotal,
+      equipos: equiposTotal
+    });
+
+    // Calcular presupuesto con metodología estándar chilena
+    const costosDirectos = materialesTotal + manoObraTotal + equiposTotal;
+    const gastosGenerales = costosDirectos * 0.12; // 12%
+    const baseUtilidad = costosDirectos + gastosGenerales;
+    const utilidad = baseUtilidad * 0.10; // 10%
+    const contingencia = costosDirectos * 0.05; // 5%
+    const subtotal = costosDirectos + gastosGenerales + utilidad + contingencia;
+    const iva = subtotal * 0.19;
+    const total = subtotal + iva;
+
+    console.log('✅ Presupuesto corregido:', {
+      costosDirectos,
+      gastosGenerales,
+      utilidad,
+      contingencia,
+      subtotal,
+      iva,
+      total
+    });
+
+    // Retornar análisis corregido
+    return {
+      ...analysis,
+      presupuesto_estimado: {
+        ...analysis.presupuesto_estimado,
+        total_clp: total,
+        materials_percentage: (materialesTotal / costosDirectos) * 100,
+        labor_percentage: (manoObraTotal / costosDirectos) * 100,
+        equipment_percentage: (equiposTotal / costosDirectos) * 100,
+        overhead_percentage: ((gastosGenerales + utilidad + contingencia) / costosDirectos) * 100
+      },
+      desglose_costos: {
+        materiales: materialesTotal,
+        mano_obra: manoObraTotal,
+        equipos: equiposTotal,
+        gastos_generales: gastosGenerales,
+        utilidad: utilidad,
+        contingencia: contingencia,
+        subtotal: subtotal,
+        iva: iva,
+        total: total
+      }
+    };
+  };
+
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file) return;
 
-    // 🔥 VALIDACIÓN LOCAL MEJORADA
     const validation = validatePdfFile(file);
     setFileValidation(validation);
 
@@ -67,19 +126,10 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     setSelectedFile(file);
     resetState();
     
-    // 🔥 MOSTRAR ADVERTENCIAS del sistema optimizado
     if (validation.warnings && validation.warnings.length > 0) {
-      console.warn('⚠️ Advertencias del sistema optimizado:', validation.warnings);
+      console.warn('⚠️ Advertencias:', validation.warnings);
     }
-
-    // 🔥 NUEVA: Pre-validación con el backend optimizado
-    try {
-      await validateFile(file, config);
-    } catch (err) {
-      console.warn('Pre-validación falló:', err);
-      // No bloquear, solo advertir
-    }
-  }, [resetState, validateFile, config]);
+  }, [resetState]);
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -108,32 +158,53 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     }
   };
 
-  // 🔥 ANÁLISIS MEJORADO con validaciones del backend optimizado
+  // ✅ ANÁLISIS CORREGIDO con validación de datos
   const handleAnalyze = async () => {
     if (!selectedFile) return;
 
-    // Verificar límites del sistema optimizado
     if (!canAnalyze) {
-      alert('🛡️ Límites del sistema optimizado alcanzados. Intente más tarde.');
+      alert('🛡️ Límites del sistema alcanzados. Intente más tarde.');
       await refreshCostStatus();
       return;
     }
 
     try {
+      console.log('📄 Iniciando análisis de PDF...');
       const result = await analyzePdf(selectedFile, config);
-      setAnalysisResult(result);
-      setShowResults(true);
-      onAnalysisComplete?.(result);
       
-      // Refrescar estado de costos después del análisis
+      console.log('📊 Resultado recibido del backend:', result);
+      
+      // ✅ VALIDAR Y CORREGIR datos antes de guardar
+      const correctedResult = {
+        ...result,
+        analysis: validarYCorregirAnalisis(result.analysis)
+      };
+      
+      console.log('✅ Resultado corregido:', correctedResult);
+      
+      setAnalysisResult(correctedResult);
+      setShowResults(true);
+      onAnalysisComplete?.(correctedResult);
+      
       await refreshCostStatus();
     } catch (err) {
-      console.error('Error analizando PDF con sistema optimizado:', err);
-      // El error ya se maneja en el hook usePdfAnalysis
+      console.error('❌ Error analizando PDF:', err);
     }
   };
 
-  // Limpiar selección
+  // ✅ FUNCIÓN CORREGIDA para mostrar análisis existente 
+  const handleViewAnalysis = () => {
+    console.log('🔍 Intentando mostrar análisis:', analysisResult);
+    
+    if (analysisResult) {
+      console.log('📄 Mostrando análisis existente:', analysisResult);
+      setShowResults(true);
+    } else {
+      console.log('❌ No hay análisis para mostrar');
+      alert('No hay análisis disponible. Realice un análisis primero.');
+    }
+  };
+
   const handleClear = () => {
     setSelectedFile(null);
     setAnalysisResult(null);
@@ -145,7 +216,6 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     }
   };
 
-  // 🔥 INFORMACIÓN MEJORADA del archivo con datos del sistema optimizado
   const getFileInfo = () => {
     if (!selectedFile) return null;
     
@@ -155,7 +225,6 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     return { sizeMB, timeEstimate };
   };
 
-  // 🔥 NUEVA: Obtener recomendación de configuración basada en el archivo
   const getConfigRecommendation = () => {
     if (!selectedFile) return null;
     
@@ -164,7 +233,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     if (sizeMB > 10) {
       return {
         analysisDepth: 'basic',
-        reason: 'Archivo grande - análisis básico recomendado para reducir costos'
+        reason: 'Archivo grande - análisis básico recomendado'
       };
     } else if (sizeMB > 5) {
       return {
@@ -179,11 +248,26 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
     }
   };
 
+  // ✅ FUNCIÓN para formatear moneda
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // ✅ FUNCIÓN para obtener el total correcto del presupuesto
+  const getTotalPresupuesto = (analysis: any) => {
+    // Priorizar desglose_costos.total si existe, sino usar presupuesto_estimado.total_clp
+    return analysis.desglose_costos?.total || analysis.presupuesto_estimado?.total_clp || 0;
+  };
+
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* 🔥 NUEVO: Panel de estado del sistema optimizado */}
+      {/* Panel de estado del sistema */}
       {costStatus && (
-        <ComponentCard title="🛡️ Estado del Sistema Optimizado" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
+        <ComponentCard title="🛡️ Estado del Sistema" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="text-center">
               <div className="font-medium text-blue-900 dark:text-blue-300">Uso Diario</div>
@@ -208,16 +292,56 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
               <div className={`text-lg font-bold ${canAnalyze ? 'text-green-600' : 'text-red-600'}`}>
                 {canAnalyze ? '✅ Disponible' : '🚫 Limitado'}
               </div>
-              <div className="text-xs text-blue-500">
-                Optimizaciones activas
-              </div>
             </div>
           </div>
         </ComponentCard>
       )}
 
+      {/* ✅ INFORMACIÓN del análisis disponible */}
+      {analysisResult && (
+        <ComponentCard title="📊 Análisis Disponible" className="bg-green-50 border-green-200">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <h4 className="font-medium text-green-600">Archivo</h4>
+              <p className="text-sm text-green-900 truncate">
+                {analysisResult.metadata?.originalFileName || 'PDF analizado'}
+              </p>
+            </div>
+            <div className="text-center">
+              <h4 className="font-medium text-green-600">Presupuesto</h4>
+              <p className="text-lg font-bold text-green-800">
+                {formatCurrency(getTotalPresupuesto(analysisResult.analysis))}
+              </p>
+            </div>
+            <div className="text-center">
+              <h4 className="font-medium text-green-600">Confianza</h4>
+              <p className="text-lg font-bold text-green-800">
+                {Math.round(analysisResult.analysis.confidence_score || 0)}%
+              </p>
+            </div>
+            <div className="text-center">
+              <h4 className="font-medium text-green-600">Items</h4>
+              <p className="text-lg font-bold text-green-800">
+                {(analysisResult.analysis.materiales_detallados?.length || 0) +
+                 (analysisResult.analysis.mano_obra?.length || 0) +
+                 (analysisResult.analysis.equipos_maquinaria?.length || 0)}
+              </p>
+            </div>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <Button
+              onClick={handleViewAnalysis}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              🔍 Ver Análisis Detallado Completo
+            </Button>
+          </div>
+        </ComponentCard>
+      )}
+
       {/* Upload Zone */}
-      <ComponentCard title="📄 Análisis de Presupuesto PDF (Optimizado)" className="bg-white dark:bg-gray-800">
+      <ComponentCard title="📄 Análisis de Presupuesto PDF" className="bg-white dark:bg-gray-800">
         <div className="space-y-4">
           {/* Drag & Drop Zone */}
           <div
@@ -246,12 +370,11 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                     {selectedFile.name}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {getFileInfo()?.sizeMB} MB • Máximo 20MB con optimizaciones
+                    {getFileInfo()?.sizeMB} MB • Máximo 20MB
                   </p>
                   
-                  {/* 🔥 INFORMACIÓN MEJORADA del sistema optimizado */}
                   {getFileInfo()?.timeEstimate && (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-2">
                       <span className={`
                         inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                         ${getFileInfo()?.timeEstimate.category === 'fast' ? 'bg-green-100 text-green-800' : ''}
@@ -260,28 +383,9 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                       `}>
                         {getFileInfo()?.timeEstimate.description}
                       </span>
-                      
-                      {/* Mostrar optimizaciones aplicadas */}
-                      <div className="text-xs text-blue-600 dark:text-blue-400">
-                        🔧 Optimizaciones: {getFileInfo()?.timeEstimate.optimizations.slice(0, 2).join(', ')}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 🔥 VALIDACIÓN DEL BACKEND */}
-                  {validationResult && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
-                      <div className="font-medium text-blue-800">Pre-validación del sistema:</div>
-                      <div className="text-blue-600">{validationResult.recommendation}</div>
-                      {validationResult.costEstimate?.cost_warning && (
-                        <div className="text-orange-600 mt-1">
-                          💰 {validationResult.costEstimate.cost_warning}
-                        </div>
-                      )}
                     </div>
                   )}
                   
-                  {/* 🔥 ADVERTENCIAS del sistema optimizado */}
                   {fileValidation?.warnings && fileValidation.warnings.length > 0 && (
                     <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
                       ⚠️ {fileValidation.warnings[0]}
@@ -307,7 +411,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                 </div>
                 <div>
                   <p className="text-lg font-medium text-gray-900 dark:text-white">
-                    {canAnalyze ? 'Arrastra tu presupuesto PDF aquí' : '🛡️ Sistema en modo conservación'}
+                    {canAnalyze ? 'Arrastra el proyecto en formato PDF aquí' : '🛡️ Sistema en modo conservación'}
                   </p>
                   <p className="text-sm text-gray-500">
                     {canAnalyze ? 'o haz clic para seleccionar archivo' : 'Límites temporales alcanzados'}
@@ -321,7 +425,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                   Seleccionar Archivo
                 </Button>
                 <p className="text-xs text-gray-400">
-                  Máximo 20MB • Sistema optimizado activo • Solo archivos PDF
+                  Máximo 20MB • Solo archivos PDF
                 </p>
               </div>
             )}
@@ -336,12 +440,12 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
             disabled={isAnalyzing || !canAnalyze}
           />
 
-          {/* 🔥 CONFIGURACIÓN MEJORADA con recomendaciones del sistema */}
+          {/* Configuración */}
           {selectedFile && (
             <div className="space-y-4 p-4 bg-gray-50 rounded-lg dark:bg-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-gray-900 dark:text-white">
-                  ⚙️ Configuración del Análisis Optimizado
+                  ⚙️ Configuración del Análisis
                 </h3>
                 <Button
                   variant="ghost"
@@ -353,11 +457,10 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                 </Button>
               </div>
 
-              {/* 🔥 RECOMENDACIÓN AUTOMÁTICA */}
               {getConfigRecommendation() && (
                 <div className="p-3 bg-blue-100 rounded-lg dark:bg-blue-900/30">
                   <div className="text-sm font-medium text-blue-900 dark:text-blue-300">
-                    💡 Recomendación del sistema optimizado:
+                    💡 Recomendación del sistema:
                   </div>
                   <div className="text-sm text-blue-700 dark:text-blue-400 mt-1">
                     {getConfigRecommendation()?.reason}
@@ -393,13 +496,10 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                       className="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                       disabled={isAnalyzing}
                     >
-                      <option value="basic">Básico - Rápido y económico (30-60s)</option>
+                      <option value="basic">Básico - Rápido (30-60s)</option>
                       <option value="standard">Estándar - Equilibrado (1-2min)</option>
                       <option value="detailed">Detallado - Completo (2-3min)</option>
                     </select>
-                    <div className="text-xs text-gray-500 mt-1">
-                      🔧 El sistema optimizado ajustará automáticamente el modelo usado
-                    </div>
                   </div>
 
                   <div>
@@ -453,7 +553,7 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                       disabled={isAnalyzing}
                     />
                     <label htmlFor="includeProviders" className="text-sm text-gray-700 dark:text-gray-300">
-                      Incluir proveedores chilenos (recomendado)
+                      Incluir proveedores chilenos
                     </label>
                   </div>
                 </div>
@@ -462,15 +562,27 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
           )}
 
           {/* Actions */}
-          {selectedFile && !isAnalyzing && !analysisResult && (
+          {selectedFile && (
             <div className="flex items-center gap-3">
-              <Button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing || !fileValidation?.isValid || !canAnalyze}
-                className="flex-1"
-              >
-                🤖 Analizar con Sistema Optimizado
-              </Button>
+              {!isAnalyzing && !analysisResult && (
+                <Button
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || !fileValidation?.isValid || !canAnalyze}
+                  className="flex-1"
+                >
+                  🤖 Analizar con IA
+                </Button>
+              )}
+              
+              {/* ✅ BOTÓN para análisis existente */}
+              {analysisResult && !isAnalyzing && (
+                <Button
+                  onClick={handleViewAnalysis}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  📊 Ver Análisis Completo
+                </Button>
+              )}
               
               <Button
                 variant="outline"
@@ -482,14 +594,14 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
             </div>
           )}
 
-          {/* 🔥 PROGRESO MEJORADO con información del sistema optimizado */}
+          {/* Progreso */}
           {isAnalyzing && progress && (
             <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                   <span className="font-medium text-blue-900 dark:text-blue-300">
-                    Sistema Optimizado Procesando
+                    Sistema Procesando
                   </span>
                 </div>
                 {estimatedTime && (
@@ -515,73 +627,21 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                     style={{ width: `${progress.progress}%` }}
                   />
                 </div>
-                
-                {/* 🔥 INDICADORES DE ETAPA DEL SISTEMA OPTIMIZADO */}
-                <div className="flex justify-between text-xs mt-3">
-                  {[
-                    { stage: 'uploading', label: '📤 Subida', threshold: 10 },
-                    { stage: 'extracting', label: '🔍 Validación', threshold: 30 },
-                    { stage: 'analyzing', label: '🤖 Claude Vision', threshold: 70 },
-                    { stage: 'consolidating', label: '🛡️ Optimización', threshold: 90 }
-                  ].map(({ stage, label, threshold }) => (
-                    <div
-                      key={stage}
-                      className={`flex flex-col items-center ${
-                        progress.stage === stage 
-                          ? 'text-blue-600 dark:text-blue-400 font-medium' 
-                          : progress.progress > threshold 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : 'text-gray-400'
-                      }`}
-                    >
-                      <span className="text-lg">{label.split(' ')[0]}</span>
-                      <span className="text-xs">{label.split(' ')[1]}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* 🔥 TIPS ESPECÍFICOS del sistema optimizado */}
-              <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <h5 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
-                  🛡️ Sistema Optimizado Trabajando:
-                </h5>
-                <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
-                  <li>• Aplicando chunking inteligente para reducir costos</li>
-                  <li>• Validando contenido presupuestario en tiempo real</li>
-                  <li>• Usando modelo Claude eficiente según tamaño de archivo</li>
-                  <li>• Generando análisis con control de calidad automático</li>
-                </ul>
               </div>
             </div>
           )}
 
-          {/* 🔥 ERROR MEJORADO con información del sistema optimizado */}
+          {/* Error */}
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h4 className="text-red-800 dark:text-red-300 font-medium mb-2">
-                    ❌ Error en el Sistema Optimizado
+                    ❌ Error en el Sistema
                   </h4>
                   <div className="text-red-700 dark:text-red-300 text-sm whitespace-pre-line">
                     {error}
                   </div>
-                  
-                  {/* 🔥 INFORMACIÓN ADICIONAL del sistema optimizado */}
-                  {error.includes('COST_LIMIT') && (
-                    <div className="mt-3 p-2 bg-red-100 rounded text-xs text-red-800">
-                      💡 <strong>Sistema de protección activo:</strong> Las optimizaciones han evitado gastos excesivos. 
-                      El análisis se puede reactivar mañana o con un archivo más pequeño.
-                    </div>
-                  )}
-                  
-                  {error.includes('timeout') && (
-                    <div className="mt-3 p-2 bg-yellow-100 rounded text-xs text-yellow-800">
-                      ⚡ <strong>Sugerencia automática:</strong> El sistema detectó que el archivo es complejo. 
-                      Pruebe con análisis "básico" para procesamiento más rápido.
-                    </div>
-                  )}
                 </div>
                 <Button
                   variant="ghost"
@@ -593,7 +653,6 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                 </Button>
               </div>
               
-              {/* 🔥 BOTONES DE RECUPERACIÓN del sistema optimizado */}
               <div className="mt-4 flex gap-3 flex-wrap">
                 <Button
                   variant="outline"
@@ -604,43 +663,20 @@ const PdfBudgetAnalyzer: React.FC<PdfBudgetAnalyzerProps> = ({
                 >
                   🔄 Reintentar
                 </Button>
-                
-                {error.includes('timeout') || error.includes('grande') ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setConfig(prev => ({ ...prev, analysisDepth: 'basic' }));
-                      setTimeout(handleAnalyze, 100);
-                    }}
-                    disabled={!selectedFile || isAnalyzing || !canAnalyze}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    ⚡ Modo Rápido
-                  </Button>
-                ) : null}
-                
-                {error.includes('COST_LIMIT') && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={refreshCostStatus}
-                    className="text-green-600 hover:text-green-800"
-                  >
-                    🔄 Verificar Estado
-                  </Button>
-                )}
               </div>
             </div>
           )}
         </div>
       </ComponentCard>
 
-      {/* Results Modal - Usando el componente modular */}
+      {/* ✅ MODAL SIN formatFunction prop */}
       {showResults && analysisResult && (
         <PdfAnalysisResultsModal
           isOpen={showResults}
-          onClose={() => setShowResults(false)}
+          onClose={() => {
+            console.log('🔒 Cerrando modal pero manteniendo datos...');
+            setShowResults(false);
+          }}
           analysisResult={analysisResult}
         />
       )}
