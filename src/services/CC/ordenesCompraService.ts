@@ -10,29 +10,9 @@ import {
   ESTADO_MAPPING,
   transformApiOrdenCompra,
   transformToApiOrdenCompraCreateData,
-  ApiDataResponse
+  ApiDataResponse,
+  ApiOrdenCompra // ✅ Importar la interfaz correcta
 } from '../../types/CC/ordenCompra';
-
-// Interfaz para datos que vienen de la API (snake_case)
-interface ApiOrdenCompra {
-  id: number;
-  name: string;
-  order_number: string;
-  description?: string;
-  cost_center_id?: number;
-  cuenta_categoria_id?: number;
-  provider_name: string;
-  amount: number;
-  date: string;
-  payment_type: 'credit' | 'cash';
-  state: string;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
-  center_code?: string;
-  center_name?: string;
-  categoria_name?: string;
-}
 
 interface ApiResponse<T> {
   success: boolean;
@@ -116,8 +96,14 @@ export const getOrdenesCompra = async (
     const response = await api.get<ApiResponse<ApiOrdenCompra[]>>(url);
     
     if (response.success) {
-      // Transformar datos usando la función centralizada
-      const transformedData = response.data.map(transformApiOrdenCompra);
+      // Normalizar montos (fallback a total_amount)
+      const normalized = (response.data || []).map(o => ({
+        ...o,
+        amount: o.amount !== undefined ? o.amount : (o.total_amount !== undefined ? o.total_amount : 0)
+      }));
+      
+      // Transformar con función centralizada
+      const transformedData = normalized.map(transformApiOrdenCompra);
       
       console.log('✅ Órdenes de compra transformadas correctamente:', {
         original: response.data.length,
@@ -220,7 +206,12 @@ export const getOrdenCompraById = async (id: number): Promise<OrdenCompra> => {
     const response = await api.get<ApiResponse<ApiOrdenCompra>>(`/ordenes-compra/${id}`);
     
     if (response.success) {
-      return transformApiOrdenCompra(response.data);
+      const data = response.data;
+      const normalized: ApiOrdenCompra = {
+        ...data,
+        amount: data.amount !== undefined ? data.amount : (data.total_amount !== undefined ? data.total_amount : 0)
+      };
+      return transformApiOrdenCompra(normalized as any);
     } else {
       throw new Error(response.message || 'Error al obtener orden de compra');
     }
@@ -247,10 +238,6 @@ export const createOrdenCompra = async (data: OrdenCompraCreateData): Promise<{
     
     if (!data.supplierName?.trim()) {
       throw new Error('Nombre del proveedor es requerido');
-    }
-    
-    if (!data.amount || data.amount <= 0) {
-      throw new Error('Monto debe ser mayor a cero');
     }
     
     // Usar el transformador centralizado
@@ -284,22 +271,39 @@ export const updateOrdenCompra = async (data: OrdenCompraUpdateData): Promise<bo
       throw new Error('ID de orden de compra es requerido');
     }
     
-    // Crear un objeto con los datos completos necesarios para la transformación
-    const completeData: OrdenCompraCreateData = {
-      name: data.name || '',
-      orderNumber: data.orderNumber || '',
-      supplierName: data.supplierName || '',
-      amount: data.amount || 0,
-      date: data.date || new Date().toISOString().split('T')[0],
-      paymentType: data.paymentType || 'credit',
-      state: data.state || 'draft',
-      ...data // Sobrescribir con los datos reales
+    console.log('🔄 Updating orden de compra with data:', data);
+    console.log('🔍 Data keys being sent:', Object.keys(data));
+    console.log('🔍 Data stringified:', JSON.stringify(data, null, 2));
+    
+    // Construir objeto solo con campos que realmente cambian
+    const updateData: any = {};
+    
+    // Helper function to add field only if it exists and is meaningful
+    const addFieldIfPresent = (targetField: string, sourceField: keyof OrdenCompraUpdateData) => {
+      if (data.hasOwnProperty(sourceField) && data[sourceField] !== undefined) {
+        updateData[targetField] = data[sourceField];
+      }
     };
     
-    // Usar el transformador centralizado
-    const apiData = transformToApiOrdenCompraCreateData(completeData);
+    // Mapear solo campos presentes en los datos de actualización
+    addFieldIfPresent('name', 'name');
+    addFieldIfPresent('orderNumber', 'orderNumber');
+    addFieldIfPresent('supplierName', 'supplierName');
+    addFieldIfPresent('date', 'date');
+    addFieldIfPresent('state', 'state');
+    addFieldIfPresent('notes', 'notes');
+    addFieldIfPresent('centroCostoId', 'centroCostoId');
+    addFieldIfPresent('amount', 'amount');
     
-    const response = await api.put<ApiResponse<null>>(`/ordenes-compra/${data.id}`, apiData);
+    // Si no hay campos para actualizar (aparte del ID), no hacer nada
+    if (Object.keys(updateData).length === 0) {
+      console.log('⚠️ No fields to update');
+      return true; // No error, pero no hay cambios
+    }
+    
+    console.log('📤 Sending update data (only changed fields):', updateData);
+    
+    const response = await api.put<ApiResponse<null>>(`/ordenes-compra/${data.id}`, updateData);
     
     if (response.success) {
       return true;
@@ -421,7 +425,6 @@ export const createOrdenCompraBatch = async (
                 amount: error.item.amount || ordenes[error.index]?.amount || 0,
                 supplierName: ordenes[error.index]?.supplierName || 'N/A',
                 state: ordenes[error.index]?.state || 'draft',
-                paymentType: ordenes[error.index]?.paymentType || 'credit',
                 date: ordenes[error.index]?.date || '',
                 cuentaContable: error.item.category || error.item.categoria || ordenes[error.index]?.cuentaContable || '',
                 grupoCuenta: error.item.category || error.item.categoria || ordenes[error.index]?.grupoCuenta || '',

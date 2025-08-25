@@ -25,7 +25,7 @@ import CashFlow from "./pages/CashFlow/CashFlow";
 import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
 
 // Import placeholder components for Gastos pages
-// These will need to be created
+
 import Cotizaciones from "./pages/Costs/Cotizaciones";
 import Previsionales from "./pages/Costs/Previsionales";
 import SubcontratosCredito from "./pages/Costs/SubcontratosCredito";
@@ -47,6 +47,8 @@ import EmpleadosEdición from "./pages/Costs/EmpleadosEdicion";
 import { CostosFijosEdicion } from "./pages/Costs/CostosFijosEdicion";
 import IncomeIndex from "./pages/Income/IncomeIndex";
 import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
+import OrdenCompraForm from "./pages/Costs/OrdenCompraForm";
+import OrdenCompraEdicion from "./pages/Costs/OrdenCompraEdicion";
 
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
@@ -165,6 +167,16 @@ export default function App() {
             <Route path="/gastos/ordenes-compra/:id" element={
               <PrivateRoute>
                 <OrdenCompraDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/ordenes-compra/:id/edit" element={
+              <PrivateRoute>
+                <OrdenCompraEdicion />
+              </PrivateRoute>
+            } />
+            <Route path="/gastos/ordenes-compra/new" element={
+              <PrivateRoute>
+                <OrdenCompraForm />
               </PrivateRoute>
             } />
             <Route path="/gastos/factoring" element={
