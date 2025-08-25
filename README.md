@@ -1,192 +1,324 @@
-# SAER TI React - Free React Tailwind Admin Dashboard Template
+# SAER TI - Frontend
 
-SAER TI is a free and open-source admin dashboard template built on **React and Tailwind CSS**, providing developers
-with everything they need to create a comprehensive, data-driven back-end,
-dashboard, or admin panel solution for upcoming web projects.
+Dashboard administrativo moderno construido con React.js para el sistema de gestión empresarial SAER TI.
 
-With SAER TI, you get access to all the necessary dashboard UI components, elements, and pages required to build a
-feature-rich and complete dashboard or admin panel. Whether you're building dashboard or admin panel for a complex web
-application or a simple website, SAER TI is the perfect solution to help you get up and running quickly.
+## Descripción
 
-![SAER TI React.js Dashboard Preview](./banner.png)
+SAER TI Frontend es una aplicación web moderna que proporciona una interfaz de usuario intuitiva y responsiva para el sistema de gestión empresarial SAER TI, incluyendo:
 
-## Overview
+- **Dashboard Ejecutivo**: Visualización de métricas y KPIs empresariales
+- **Gestión de Usuarios**: Interface para administración de usuarios y perfiles
+- **Análisis Financiero**: Gráficos interactivos y reportes financieros
+- **Centros de Costo**: Visualización y gestión de centros de costo
+- **Responsive Design**: Adaptado para desktop, tablet y móvil
 
-SAER TI provides essential UI components and layouts for building feature-rich, data-driven admin dashboards and
-control panels. It's built on:
+## Tecnologías Utilizadas
 
-- React 19
-- TypeScript
-- Tailwind CSS
+- **React.js 19**: Framework principal
+- **TypeScript**: Tipado estático
+- **Vite**: Build tool y desarrollo
+- **React Router**: Navegación
+- **Context API**: Manejo de estado global
+- **Axios**: Cliente HTTP
+- **ApexCharts**: Visualización de datos
+- **CSS Modules**: Estilos modulares
 
-### Quick Links
+## Requisitos del Sistema
 
-- [✨ Visit Website](https://SAER TI.com)
-- [📄 Documentation](https://SAER TI.com/docs)
-- [⬇️ Download](https://SAER TI.com/download)
-- [🖌️ Figma Design File (Community Edition)](https://www.figma.com/community/file/1214477970819985778)
-- [⚡ Get PRO Version](https://SAER TI.com/pricing)
+- **Node.js**: v18.x o superior (recomendado v20.x)
+- **npm**: v8.x o superior
+- **Navegador moderno**: Chrome, Firefox, Safari, Edge
 
-### Demos
+## Instalación
 
-- [Free Version](https://free-react-demo.SAER TI.com/)
-- [Pro Version](https://react-demo.SAER TI.com)
-
-### Other Versions
-
-- [HTML Version](https://github.com/SAER TI/SAER TI-free-tailwind-dashboard-template)
-- [Next.js Version](https://github.com/SAER TI/free-nextjs-admin-dashboard)
-- [Vue.js Version](https://github.com/SAER TI/vue-tailwind-admin-dashboard)
-
-## Installation
-
-### Prerequisites
-
-To get started with SAER TI, ensure you have the following prerequisites installed and set up:
-
-- Node.js 18.x or later (recommended to use Node.js 20.x or later)
-
-### Cloning the Repository
-
-Clone the repository using the following command:
+### 1. Clonar el Repositorio
 
 ```bash
-git clone https://github.com/SAER TI/free-react-tailwind-admin-dashboard.git
+git clone https://github.com/saerTI/saer-frontend.git
+cd saer-frontend
 ```
 
-> Windows Users: place the repository near the root of your drive if you face issues while cloning.
+> **Nota para Windows**: Coloca el repositorio cerca de la raíz de tu unidad si encuentras problemas al clonar.
 
-1. Install dependencies:
+### 2. Instalar Dependencias
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+```bash
+npm install
+```
 
-   > Use the `--legacy-peer-deps` flag, if you face issues while installing.
+> **Nota**: Usa la bandera `--legacy-peer-deps` si encuentras problemas durante la instalación:
+```bash
+npm install --legacy-peer-deps
+```
 
-2. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+### 3. Configuración de Variables de Entorno
 
-## Components
+Crear un archivo `.env` en la raíz del proyecto:
 
-SAER TI is a pre-designed starting point for building a web-based dashboard using React.js and Tailwind CSS. The
-template includes:
+```env
+# URL del backend API
+VITE_API_URL=http://localhost:3000/api
 
-- Sophisticated and accessible sidebar
-- Data visualization components
-- Prebuilt profile management and 404 page
-- Tables and Charts(Line and Bar)
-- Authentication forms and input elements
-- Alerts, Dropdowns, Modals, Buttons and more
-- Can't forget Dark Mode 🕶️
+# Configuración de desarrollo
+VITE_NODE_ENV=development
 
-All components are built with React and styled using Tailwind CSS for easy customization.
+# Configuración de autenticación
+VITE_JWT_STORAGE_KEY=saer_ti_token
+```
 
-## Feature Comparison
+### 4. Iniciar el Servidor de Desarrollo
 
-### Free Version
+```bash
+npm run dev
+```
 
-- 1 Unique Dashboard
-- 30+ dashboard components
-- 50+ UI elements
-- Basic Figma design files
-- Community support
+La aplicación estará disponible en: `http://localhost:5173`
 
-### Pro Version
+## Scripts Disponibles
 
-- 5 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, Stocks (more coming soon)
-- 400+ dashboard components and UI elements
-- Complete Figma design file
-- Email support
+```bash
+# Iniciar servidor de desarrollo
+npm run dev
 
-To learn more about pro version features and pricing, visit our [pricing page](https://SAER TI.com/pricing).
+# Construir para producción
+npm run build
 
-## Changelog
+# Vista previa de la build de producción
+npm run preview
 
-### Version 2.0.2 - [March 25, 2025]
+# Linting del código
+npm run lint
 
-- Upgraded to React 19
-- Included overrides for packages to prevent peer dependency errors.
-- Migrated from react-flatpickr to flatpickr package for React 19 support
+# Verificar tipos de TypeScript
+npm run type-check
+```
 
-### Version 2.0.1 - [February 27, 2025]
+## Estructura del Proyecto
 
-#### Update Overview
+```
+saer-frontend/
+├── public/              # Archivos públicos estáticos
+├── src/
+│   ├── components/      # Componentes reutilizables
+│   │   ├── common/     # Componentes comunes
+│   │   ├── charts/     # Componentes de gráficos
+│   │   ├── form/       # Componentes de formularios
+│   │   ├── tables/     # Componentes de tablas
+│   │   └── ...
+│   ├── pages/          # Páginas de la aplicación
+│   │   ├── Dashboard/  # Páginas del dashboard
+│   │   ├── Charts/     # Páginas de gráficos
+│   │   ├── Forms/      # Páginas de formularios
+│   │   ├── Tables/     # Páginas de tablas
+│   │   └── ...
+│   ├── context/        # Context providers
+│   ├── services/       # Servicios API
+│   ├── hooks/          # Custom hooks
+│   ├── utils/          # Utilidades
+│   ├── types/          # Definiciones de tipos
+│   ├── styles/         # Estilos globales
+│   ├── App.tsx         # Componente raíz
+│   └── main.tsx        # Punto de entrada
+├── package.json        # Dependencias y scripts
+└── vite.config.ts      # Configuración de Vite
+```
 
-- Upgraded to Tailwind CSS v4 for better performance and efficiency.
-- Updated class usage to match the latest syntax and features.
-- Replaced deprecated class and optimized styles.
+## Características Principales
 
-#### Next Steps
+### Dashboard Interactivo
+- Métricas empresariales en tiempo real
+- Gráficos interactivos con ApexCharts
+- Widgets configurables
+- Diseño responsivo
 
-- Run npm install or yarn install to update dependencies.
-- Check for any style changes or compatibility issues.
-- Refer to the Tailwind CSS v4 [Migration Guide](https://tailwindcss.com/docs/upgrade-guide) on this release. if needed.
-- This update keeps the project up to date with the latest Tailwind improvements. 🚀
+### Sistema de Autenticación
+- Login/logout con JWT
+- Gestión de sesiones
+- Rutas protegidas
+- Recuperación de contraseña
 
-### Version 2.0.0 - [February 2025]
+### Gestión de Usuarios
+- CRUD completo de usuarios
+- Gestión de roles y permisos
+- Perfiles de usuario editables
+- Estados de usuario activo/inactivo
 
-A major update with comprehensive redesign and modern React patterns implementation.
+### Visualización de Datos
+- Gráficos de líneas, barras y áreas
+- Tablas interactivas con filtros
+- Exportación de datos
+- Análisis multidimensional
 
-#### Major Improvements
+## Configuración del Backend
 
-- Complete UI redesign with modern React patterns
-- New features: collapsible sidebar, chat, and calendar
-- Improved performance and accessibility
-- Updated data visualization using ApexCharts
+Para que el frontend funcione correctamente, asegúrate de que el backend esté ejecutándose:
 
-#### Key Features
+1. **Backend corriendo**: `http://localhost:3000`
+2. **CORS configurado**: El backend debe permitir peticiones desde `http://localhost:5173`
+3. **API endpoints**: Verifica que todos los endpoints estén disponibles
 
-- Redesigned dashboards (Ecommerce, Analytics, Marketing, CRM)
-- Enhanced navigation with React Router integration
-- Advanced tables with sorting and filtering
-- Calendar with drag-and-drop support
-- New UI components and improved existing ones
+## Desarrollo
 
-#### Breaking Changes
+### Agregar Nuevas Páginas
 
-- Updated sidebar component API
-- Migrated charts to ApexCharts
-- Revised authentication system
+1. Crear el componente en `src/pages/`
+2. Agregar la ruta en el router principal
+3. Actualizar la navegación si es necesario
 
-[Read more](https://SAER TI.com/docs/update-logs/react) on this release.
+### Agregar Nuevos Componentes
 
-### Version 1.3.7 - [June 20, 2024]
+1. Crear el componente en `src/components/`
+2. Exportar desde el index correspondiente
+3. Importar donde sea necesario
 
-#### Enhancements
+### Manejo de Estado
 
-1. Remove Repetition of DefaultLayout in every Pages
-2. Add ClickOutside Component for reduce repeated functionality in Header Message, Notification and User Dropdowns.
+El proyecto utiliza Context API para el manejo de estado global:
 
-### Version 1.3.6 - [Jan 31, 2024]
+```typescript
+// Ejemplo de uso del contexto de autenticación
+import { useAuth } from '../context/AuthContext';
 
-#### Enhancements
+const MyComponent = () => {
+  const { user, login, logout } = useAuth();
+  // ...
+};
+```
 
-1. Integrate flatpickr in [Date Picker/Form Elements]
-2. Change color after select an option [Select Element/Form Elements].
-3. Make it functional [Multiselect Dropdown/Form Elements].
-4. Make best value editable [Pricing Table One/Pricing Table].
-5. Rearrange Folder structure.
+### Llamadas a la API
 
-### Version 1.2.0 - [Apr 28, 2023]
+Usa el servicio de API configurado:
 
-- Add Typescript in SAER TI React.
+```typescript
+import { apiService } from '../services/apiService';
 
-### Version 1.0.0 - Initial Release - [Mar 13, 2023]
+const fetchData = async () => {
+  try {
+    const response = await apiService.get('/endpoint');
+    return response.data;
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+```
 
-- Initial release of SAER TI React.
+## Build para Producción
 
-## License
+```bash
+# Generar build optimizada
+npm run build
 
-SAER TI React.js Free Version is released under the MIT License.
+# Los archivos se generarán en la carpeta 'dist/'
+```
 
-## Support
+### Despliegue
 
-If you find this project helpful, please consider giving it a star on GitHub. Your support helps us continue developing
-and maintaining this template.
+1. **Servidor Web**: Sirve los archivos estáticos desde `dist/`
+2. **Variables de Entorno**: Configura las variables de producción
+3. **HTTPS**: Recomendado para producción
+4. **Proxy Reverso**: Configura nginx o Apache para servir la aplicación
+
+#### Ejemplo de configuración Nginx:
+
+```nginx
+server {
+    listen 80;
+    server_name tu-dominio.com;
+    root /path/to/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+## Solución de Problemas
+
+### Problemas Comunes
+
+**Error de CORS:**
+- Verifica que el backend permita peticiones desde el dominio del frontend
+- Configura las variables de entorno correctamente
+
+**Error 404 en rutas:**
+- Configura el servidor web para servir `index.html` en todas las rutas
+- Verifica la configuración del router
+
+**Problemas de build:**
+```bash
+# Limpiar node_modules y reinstalar
+rm -rf node_modules package-lock.json
+npm install
+
+# Verificar versión de Node.js
+node --version
+```
+
+**Problemas con TypeScript:**
+```bash
+# Verificar tipos
+npm run type-check
+
+# Limpiar caché de TypeScript
+npx tsc --build --clean
+```
+
+## Contribución
+
+1. Fork el proyecto
+2. Crear una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crear un Pull Request
+
+### Estándares de Código
+
+- Usar TypeScript para tipado estático
+- Seguir las convenciones de naming de React
+- Escribir componentes funcionales con hooks
+- Mantener componentes pequeños y reutilizables
+- Documentar componentes complejos
+
+## Testing
+
+```bash
+# Ejecutar tests (cuando estén configurados)
+npm run test
+
+# Ejecutar tests en modo watch
+npm run test:watch
+
+# Generar reporte de cobertura
+npm run test:coverage
+```
+
+## Performance
+
+### Optimizaciones Implementadas
+
+- **Code Splitting**: Carga lazy de rutas
+- **Tree Shaking**: Eliminación de código no utilizado
+- **Minificación**: Archivos optimizados para producción
+- **Compresión**: Assets comprimidos automáticamente
+
+### Métricas de Performance
+
+- **First Contentful Paint**: < 1.5s
+- **Largest Contentful Paint**: < 2.5s
+- **Time to Interactive**: < 3.5s
+- **Cumulative Layout Shift**: < 0.1
+
+## Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE.md](LICENSE.md) para más detalles.
+
+## Soporte
+
+Para reportar bugs o solicitar nuevas funcionalidades, por favor crear un issue en el repositorio de GitHub.

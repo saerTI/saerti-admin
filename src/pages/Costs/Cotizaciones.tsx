@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { gastosApiService, Cotizacion, GastoFilter } from '../../services/costsService';
+import { costsApiService, Cotizacion, GastoFilter } from '../../services/costsService';
 import Button from '../../components/ui/button/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
@@ -27,7 +27,7 @@ const Cotizaciones = () => {
     const fetchCotizaciones = async () => {
       try {
         setLoading(true);
-        const data = await gastosApiService.getCotizaciones(filters);
+        const data = await costsApiService.getCotizaciones(filters);
         setCotizaciones(data || []); // Ensure we always have an array even if data is undefined
         setError(null);
       } catch (err) {
@@ -50,7 +50,7 @@ const Cotizaciones = () => {
     }
 
     try {
-      await gastosApiService.deleteCotizacion(id);
+      await costsApiService.deleteCotizacion(id);
       // Remove the deleted cotizacion from the state
       setCotizaciones(cotizaciones.filter(cotizacion => cotizacion.id !== id));
     } catch (err) {

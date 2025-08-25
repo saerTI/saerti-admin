@@ -18,6 +18,7 @@ import {
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
+import { Calculator } from "lucide-react";
 
 type NavItem = {
   name: string;
@@ -63,6 +64,11 @@ const navItems: NavItem[] = [
       { name: "Previsionales", path: "/gastos/previsionales", pro: false },
       { name: "Empleados", path: "/gastos/empleados", pro: false },
     ],
+  },
+  {
+    icon: <Calculator />,
+    name: 'Análisis IA',
+    path: '/budget-analysis', // Cambiar href por path
   },
   {
     name: "Forms",

@@ -22,7 +22,7 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem('auth_token');
     
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;      
     }
 
     // Ensure path starts with /api, but doesn't duplicate it
@@ -85,22 +85,34 @@ export const api = {
     return response.data;
   },
   
-  post: async <T>(url: string, data = {}, config = {}) => {
+  post: async <T>(url: string, data = {}, config: any = {}) => {
     const response = await apiClient.post<T>(url, data, config);
     return response.data;
   },
   
-  put: async <T>(url: string, data = {}, config = {}) => {
+  // ✅ NUEVO: Método específico para FormData
+  postFormData: async <T>(url: string, formData: FormData, config: any = {}) => {
+    const response = await apiClient.post<T>(url, formData, {
+      ...config,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...config.headers,
+      },
+    });
+    return response.data;
+  },
+  
+  put: async <T>(url: string, data = {}, config: any = {}) => {
     const response = await apiClient.put<T>(url, data, config);
     return response.data;
   },
   
-  patch: async <T>(url: string, data = {}, config = {}) => {
+  patch: async <T>(url: string, data = {}, config: any = {}) => {
     const response = await apiClient.patch<T>(url, data, config);
     return response.data;
   },
   
-  delete: async <T>(url: string, config = {}) => {
+  delete: async <T>(url: string, config: any = {}) => {
     const response = await apiClient.delete<T>(url, config);
     return response.data;
   },

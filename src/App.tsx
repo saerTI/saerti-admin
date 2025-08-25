@@ -25,29 +25,31 @@ import CashFlow from "./pages/CashFlow/CashFlow";
 import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
 
 // Import placeholder components for Gastos pages
-// These will need to be created
-import Cotizaciones from "./pages/Egresos/Cotizaciones";
-import Previsionales from "./pages/Egresos/Previsionales";
-import SubcontratosCredito from "./pages/Egresos/SubcontratosCredito";
-import SubcontratosContado from "./pages/Egresos/SubcontratosContado";
-import Remuneraciones from "./pages/Egresos/Remuneraciones";
-import GastosImprevistos from "./pages/Egresos/GastosImprevistos";
-import OrdenesCompra from "./pages/Egresos/OrdenesCompra";
-import EgresossIndex from "./pages/Egresos/EgresosIndex";
-import IngresosIndex from "./pages/Ingresos/IngresosIndex";
-import Factoring from "./pages/Egresos/Factoring";
-import CostosFijos from "./pages/Egresos/CostosFijos";
-import OrdenCompraDetail from "./pages/Egresos/OrdenCompraDetail";
-import { RemuneracionesDetail } from "./pages/Egresos/RemuneracionesDetail";
-import RemuneracionesForm from "./pages/Egresos/RemuneracionesForm";
-import { CostosFijosDetail } from "./pages/Egresos/CostosFijosDetail";
-import { CostosFijosEdicion } from "./pages/Egresos/CostosFijosEdicion";
-import Empleados from "./pages/Egresos/Empleados";
-import EmpleadosNuevo from "./pages/Egresos/EmpleadosNuevo";
-import EmpleadosDetalle from "./pages/Egresos/EmpleadosDetalle";
-import EmpleadosEdición from "./pages/Egresos/EmpleadosEdicion";
-import OrdenCompraEdicion from "./pages/Egresos/OrdenCompraEdicion";
-import OrdenCompraForm from "./pages/Egresos/OrdenCompraForm";
+
+import Cotizaciones from "./pages/Costs/Cotizaciones";
+import Previsionales from "./pages/Costs/Previsionales";
+import SubcontratosCredito from "./pages/Costs/SubcontratosCredito";
+import SubcontratosContado from "./pages/Costs/SubcontratosContado";
+import Remuneraciones from "./pages/Costs/Remuneraciones";
+import GastosImprevistos from "./pages/Costs/GastosImprevistos";
+import OrdenesCompra from "./pages/Costs/OrdenesCompra";
+import EgresossIndex from "./pages/Costs/CostsIndex";
+import Factoring from "./pages/Costs/Factoring";
+import CostosFijos from "./pages/Costs/CostosFijos";
+import { RemuneracionesDetail } from "./pages/Costs/RemuneracionesDetail";
+import RemuneracionesForm from "./pages/Costs/RemuneracionesForm";
+import OrdenCompraDetail from "./pages/Costs/OrdenCompraDetail";
+import { CostosFijosDetail } from "./pages/Costs/CostosFijosDetail";
+import Empleados from "./pages/Costs/Empleados";
+import EmpleadosNuevo from "./pages/Costs/EmpleadosNuevo";
+import EmpleadosDetalle from "./pages/Costs/EmpleadosDetalle";
+import EmpleadosEdición from "./pages/Costs/EmpleadosEdicion";
+import { CostosFijosEdicion } from "./pages/Costs/CostosFijosEdicion";
+import IncomeIndex from "./pages/Income/IncomeIndex";
+import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
+import OrdenCompraForm from "./pages/Costs/OrdenCompraForm";
+import OrdenCompraEdicion from "./pages/Costs/OrdenCompraEdicion";
+
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
 // import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";
@@ -330,6 +332,12 @@ export default function App() {
               </PrivateRoute>
             } />
 
+            <Route path="/budget-analysis" element={
+              <PrivateRoute>
+                <BudgetAnalyzer />
+              </PrivateRoute>
+            } />
+
             {/* <Route path="/gastos/oc-contado" element={
               <PrivateRoute>
                 <OCContado />
@@ -385,7 +393,7 @@ export default function App() {
             {/* Rutas de Ingresos */}
             <Route path="/ingresos/index" element={
               <PrivateRoute>
-                <IngresosIndex />
+                <IncomeIndex />
               </PrivateRoute>
             } />
             
