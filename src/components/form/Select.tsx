@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Option {
   value: string;
@@ -11,7 +11,8 @@ interface SelectProps {
   onChange: (value: string) => void;
   className?: string;
   defaultValue?: string;
-  disabled?: boolean; // ✅ AGREGADO
+  value?: string; // ✅ AGREGADO para uso controlado
+  disabled?: boolean;
 }
 
 const Select: React.FC<SelectProps> = ({
@@ -20,15 +21,39 @@ const Select: React.FC<SelectProps> = ({
   onChange,
   className = "",
   defaultValue = "",
-  disabled = false, // ✅ AGREGADO
+  value, // ✅ AGREGADO
+  disabled = false,
 }) => {
-  // Manage the selected value
-  const [selectedValue, setSelectedValue] = useState<string>(defaultValue);
+  // Use controlled value if provided, otherwise use defaultValue
+  const [selectedValue, setSelectedValue] = useState<string>(
+    value !== undefined ? value : defaultValue
+  );
+
+  // Sync internal state with controlled value prop changes
+  useEffect(() => {
+    if (value !== undefined) {
+      console.log('Select - controlled value changed:', value);
+      setSelectedValue(value);
+    }
+  }, [value]);
+
+  // Sync internal state with defaultValue changes (for uncontrolled mode)
+  useEffect(() => {
+    if (value === undefined) {
+      setSelectedValue(defaultValue);
+    }
+  }, [defaultValue, value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setSelectedValue(value);
-    onChange(value); // Trigger parent handler
+    const newValue = e.target.value;
+    console.log('Select - handleChange:', newValue, 'controlled mode:', value !== undefined);
+    
+    // Only update internal state if not controlled
+    if (value === undefined) {
+      setSelectedValue(newValue);
+    }
+    
+    onChange(newValue); // Always trigger parent handler
   };
 
   return (
@@ -40,7 +65,7 @@ const Select: React.FC<SelectProps> = ({
       } ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
       value={selectedValue}
       onChange={handleChange}
-      disabled={disabled} // ✅ AGREGADO
+      disabled={disabled}
     >
       {/* Placeholder option */}
       <option

@@ -37,6 +37,9 @@ import EgresossIndex from "./pages/Egresos/EgresosIndex";
 import IngresosIndex from "./pages/Ingresos/IngresosIndex";
 import Factoring from "./pages/Egresos/Factoring";
 import CostosFijos from "./pages/Egresos/CostosFijos";
+import { IngresosForm } from "./pages/Ingresos/IngresosForm";
+import IngresosFormDetail from "./pages/Ingresos/IngresosDetail";
+import IngresosCategoryDetail from "./pages/Ingresos/IngresosCategoryDetail";
 
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
 // import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";
@@ -206,9 +209,34 @@ export default function App() {
             } /> */}
 
             {/* Rutas de Ingresos */}
+            <Route path="/ingresos" element={
+              <PrivateRoute>
+                <IngresosIndex />
+              </PrivateRoute>
+            } />
             <Route path="/ingresos/index" element={
               <PrivateRoute>
                 <IngresosIndex />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/new" element={
+              <PrivateRoute>
+                <IngresosForm />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/categoria/:category" element={
+              <PrivateRoute>
+                <IngresosCategoryDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/:id" element={
+              <PrivateRoute>
+                <IngresosFormDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/editar/:id" element={
+              <PrivateRoute>
+                <IngresosForm />
               </PrivateRoute>
             } />
             

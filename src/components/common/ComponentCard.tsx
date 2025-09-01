@@ -5,6 +5,7 @@ interface ComponentCardProps {
   desc?: string;
   titleCenter?: boolean;
   centerContent?: boolean;
+  compact?: boolean; // Nueva prop para diseño compacto
 }
 
 const ComponentCard: React.FC<ComponentCardProps> = ({
@@ -14,6 +15,7 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
   desc = "",
   titleCenter = true,
   centerContent = true,
+  compact = false, // Por defecto false para mantener compatibilidad
 }) => {
   // Check if we have a header (title or description)
   const hasHeader = title || desc;
@@ -24,7 +26,7 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
     >
       {/* Card Header - only render if title or desc exists */}
       {hasHeader && (
-        <div className="px-6 py-5">
+        <div className={compact ? "px-4 py-3" : "px-6 py-5"}>
           {title && (
             <h3 className={`text-base font-medium text-gray-800 dark:text-white/90 ${titleCenter ? 'text-center' : ''}`}>
               {title}
@@ -39,8 +41,8 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
       )}
 
       {/* Card Body - conditionally apply border-t only if there's a header */}
-      <div className={`p-4 ${hasHeader ? 'border-t border-gray-100 dark:border-gray-800' : ''} sm:p-6`}>
-        <div className={`space-y-6 ${centerContent ? 'flex flex-col items-center justify-center' : ''}`}>
+      <div className={`${compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'} ${hasHeader ? 'border-t border-gray-100 dark:border-gray-800' : ''}`}>
+        <div className={`${compact ? 'space-y-4' : 'space-y-6'} ${centerContent ? 'flex flex-col items-center justify-center' : ''}`}>
           {children}
         </div>
       </div>
