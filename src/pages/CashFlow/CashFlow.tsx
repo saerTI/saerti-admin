@@ -5,6 +5,7 @@ import ChartTab from '../../components/common/ChartTab';
 import CashFlowSummary from './CashFlowSummary';
 import CashFlowDetails from './CashFlowDetails';
 import CashFlowChart from './CashFlowChart';
+import CashFlowFinancialTable from '../../components/tables/CashFlowFinancialTable';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import {
@@ -21,6 +22,10 @@ const CashFlow: React.FC = () => {
   const [cashFlowData, setCashFlowData] = useState<CashFlowData | null>(null);
   const [error, setError] = useState<string | null>(null);
   
+  // Financial table controls
+  const [periodType, setPeriodType] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [year, setYear] = useState<number>(new Date().getFullYear());
+  
   const { user, isAuthenticated } = useAuth();
   const { currentTenant } = useTenant();
   
@@ -29,6 +34,7 @@ const CashFlow: React.FC = () => {
     { id: 'overview', label: 'Vista General' },
     { id: 'details', label: 'Detalles' },
     { id: 'chart', label: 'Gráficos' },
+    { id: 'historical', label: 'Tabla Financiera' },
   ];
   
   useEffect(() => {
@@ -59,6 +65,14 @@ const CashFlow: React.FC = () => {
   
   const handleDateChange = (newRange: DateRange) => {
     setDateRange(newRange);
+  };
+
+  const handlePeriodTypeChange = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
+    setPeriodType(newPeriodType);
+  };
+
+  const handleYearChange = (newYear: number) => {
+    setYear(newYear);
   };
   
   const renderTabContent = () => {
@@ -99,6 +113,18 @@ const CashFlow: React.FC = () => {
         return <CashFlowDetails items={cashFlowData.items} dateRange={dateRange} onDateChange={handleDateChange} />;
       case 'chart':
         return <CashFlowChart data={cashFlowData.chartData} />;
+      case 'historical':
+        return (
+          <CashFlowFinancialTable
+            title="Análisis Financiero de Flujo de Caja"
+            periodType={periodType}
+            year={year}
+            onPeriodTypeChange={handlePeriodTypeChange}
+            onYearChange={handleYearChange}
+            loading={false}
+            showExpenses={true}
+          />
+        );
       default:
         return null;
     }
