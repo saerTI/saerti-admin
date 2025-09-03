@@ -163,7 +163,7 @@ export const IngresosFullTable: React.FC<IngresosFullTableProps> = ({
               Listado de Ingresos
             </h3>
             <Link
-              to="/ingresos/nuevo"
+              to="/ingresos/new"
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
             >
               Nuevo Ingreso
@@ -259,7 +259,7 @@ export const IngresosFullTable: React.FC<IngresosFullTableProps> = ({
             }
           </p>
           <Link
-            to="/ingresos/nuevo"
+            to="/ingresos/new"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Crear primer ingreso
