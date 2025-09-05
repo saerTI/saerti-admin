@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   OrdenCompraFilter,
   ORDEN_COMPRA_STATUS_MAP,
-  PAYMENT_TYPE_MAP,
   GRUPOS_CUENTAS,
   OrdenCompraEstado
 } from '../../types/CC/ordenCompra';
@@ -26,6 +25,8 @@ const OrdenesCompra = () => {
   // Estados locales
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [ordenToDelete, setOrdenToDelete] = useState<{ id: number; orderNumber: string; supplierName: string } | null>(null);
   const [filters, setFilters] = useState<OrdenCompraFilter>({});
   
   // Referencias
@@ -53,16 +54,27 @@ const OrdenesCompra = () => {
   const { deleteOrden, loading: operationLoading } = useOrdenCompraOperations();
   const { costCenters, loading: costCentersLoading } = useCostCenters();
 
-  // Función para eliminar
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Está seguro que desea eliminar esta orden de compra? Esta acción no se puede deshacer.')) {
-      return;
-    }
+  // Función para abrir el modal de eliminación
+  const openDeleteModal = (orden: { id: number; orderNumber: string; supplierName: string }) => {
+    setOrdenToDelete(orden);
+    setDeleteModalOpen(true);
+  };
+
+  // Función para cerrar el modal de eliminación
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setOrdenToDelete(null);
+  };
+
+  // Función para confirmar eliminación
+  const confirmDelete = async () => {
+    if (!ordenToDelete) return;
 
     try {
-      const success = await deleteOrden(id);
+      const success = await deleteOrden(ordenToDelete.id);
       if (success) {
         refresh();
+        closeDeleteModal();
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al eliminar la orden de compra');
@@ -140,14 +152,6 @@ const OrdenesCompra = () => {
   const grupoOptions = [
     { value: '', label: 'Todos los grupos' },
     ...GRUPOS_CUENTAS.map(grupo => ({ value: grupo, label: grupo }))
-  ];
-
-  const paymentTypeOptions = [
-    { value: '', label: 'Todos los tipos' },
-    ...Object.entries(PAYMENT_TYPE_MAP).map(([value, config]) => ({
-      value,
-      label: config.label
-    }))
   ];
 
   const costCenterOptions = [
@@ -276,7 +280,7 @@ const OrdenesCompra = () => {
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
-                    navigate('/cuentas/ordenes-compra/nueva');
+                    navigate('/gastos/ordenes-compra/new');
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                 >
@@ -307,6 +311,66 @@ const OrdenesCompra = () => {
         onClose={closeImportModal}
         onSuccess={handleImportSuccess}
       />
+
+      {/* Modal de Confirmación de Eliminación */}
+      {deleteModalOpen && ordenToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={closeDeleteModal}>
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800" onClick={(e) => e.stopPropagation()}>
+            <div className="mt-3 text-center">
+              {/* Icono de advertencia */}
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20">
+                <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              
+              {/* Título */}
+              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mt-2">
+                Eliminar Orden de Compra
+              </h3>
+              
+              {/* Contenido */}
+              <div className="mt-4 px-7 py-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  ¿Está seguro que desea eliminar la siguiente orden de compra?
+                </p>
+                <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    <strong>N° OC:</strong> {ordenToDelete.orderNumber}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    <strong>Proveedor:</strong> {ordenToDelete.supplierName}
+                  </div>
+                </div>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-3">
+                  Esta acción no se puede deshacer.
+                </p>
+              </div>
+              
+              {/* Botones */}
+              <div className="items-center px-4 py-3">
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={closeDeleteModal}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={operationLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={confirmDelete}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    disabled={operationLoading}
+                  >
+                    {operationLoading ? 'Eliminando...' : 'Eliminar'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <ComponentCard title="Filtros">
@@ -339,16 +403,6 @@ const OrdenesCompra = () => {
               defaultValue={filters.grupoCuenta || ''}
               onChange={handleFilterChange('grupoCuenta')}
               placeholder="Seleccione grupo"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="paymentType">Tipo de Pago</Label>
-            <Select
-              options={paymentTypeOptions}
-              defaultValue={filters.paymentType || ''}
-              onChange={handleFilterChange('paymentType')}
-              placeholder="Seleccione tipo"
             />
           </div>
           
@@ -438,9 +492,6 @@ const OrdenesCompra = () => {
                   Fecha
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Tipo Pago
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Estado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -456,7 +507,7 @@ const OrdenesCompra = () => {
                 <tr key={oc.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
                   <td className="sticky-first-column px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-gray-100">
                     <Link 
-                      to={`/cuentas/ordenes-compra/${oc.id}`}
+                      to={`/gastos/ordenes-compra/${oc.id}`}
                       className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                     >
                       {oc.orderNumber}
@@ -472,31 +523,12 @@ const OrdenesCompra = () => {
                     {oc.centroCostoNombre || 'Sin asignar'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {oc.accountCategoryId ? (
-                      <Link
-                        to={`/cuentas-contables/${oc.accountCategoryId}`}
-                        className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
-
-                      >
-                        {oc.grupoCuenta || 'Sin grupo'}
-                      </Link>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                        {oc.grupoCuenta || 'Sin grupo'}
-                      </span>
-                    )}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                      {oc.grupoCuenta || 'Sin grupo'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {formatDate(oc.date)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      oc.paymentType === 'credit' 
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                        : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    }`}>
-                      {PAYMENT_TYPE_MAP[oc.paymentType]?.label || oc.paymentType}
-                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white">
                     <Badge
@@ -514,13 +546,17 @@ const OrdenesCompra = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex space-x-2">
                       <Link 
-                        to={`/cuentas/ordenes-compra/${oc.id}/editar`}
+                        to={`/gastos/ordenes-compra/${oc.id}/edit`}
                         className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                       >
                         Editar
                       </Link>
                       <button
-                        onClick={() => handleDelete(oc.id)}
+                        onClick={() => openDeleteModal({
+                          id: oc.id,
+                          orderNumber: oc.orderNumber,
+                          supplierName: oc.supplierName
+                        })}
                         disabled={operationLoading}
                         className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
                       >
@@ -613,7 +649,7 @@ const OrdenesCompra = () => {
           </p>
           <div className="mt-6">
             <Button 
-              onClick={() => navigate('/cuentas/ordenes-compra/nueva')}
+              onClick={() => navigate('/gastos/ordenes-compra/new')}
               className="bg-brand-500 hover:bg-brand-600 text-white"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

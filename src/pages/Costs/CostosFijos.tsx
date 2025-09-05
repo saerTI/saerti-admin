@@ -1,6 +1,6 @@
-// src/pages/Egresos/CostosFijos.tsx
+// src/pages/Gastos/CostosFijos.tsx - Con filtros dinámicos corregidos
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FixedCostFilter,
@@ -14,13 +14,12 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
 import Badge from '../../components/ui/badge/Badge';
-import Select from '../../components/form/Select';
-import Label from '../../components/form/Label';
-import DatePicker from '../../components/form/date-picker';
 import SimpleResponsiveTable from '../../components/tables/SimpleResponsiveTable';
 import CostoFijoModal from '../../components/CC/NuevoCostoFijoModal';
+import FilterPanel, { FilterConfig } from '../../components/common/FilterPanel';
 import { useFixedCosts, useFixedCostOperations } from '../../hooks/useFixedCosts';
 import { useCostCenters } from '../../hooks/useCostCenters';
+import config from '../../utils/config'; // ✅ AÑADIDO: Import del archivo de configuración
 
 const CostosFijos = () => {
   // ✅ Estados locales
@@ -48,7 +47,7 @@ const CostosFijos = () => {
     pageSize: 15
   });
 
-  // ✅ Hook de operaciones - DEBE estar al nivel superior
+  // ✅ Hook de operaciones
   const { 
     createFixedCost, 
     deleteFixedCost, 
@@ -57,6 +56,19 @@ const CostosFijos = () => {
   } = useFixedCostOperations();
   
   const { costCenters, loading: costCentersLoading } = useCostCenters();
+
+  // ✅ CORREGIDO: Sincronizar filtros locales con el hook cuando cambian
+  useEffect(() => {
+    updateFilters(filters);
+  }, [filters, updateFilters]);
+
+  // ✅ DEBUG: Verificar datos de costCenters
+  useEffect(() => {
+    if (!costCentersLoading && costCenters.length > 0) {
+      console.log('✅ Cost Centers cargados:', costCenters);
+      console.log('✅ Tipos de centros:', [...new Set(costCenters.map(cc => cc.type))]);
+    }
+  }, [costCenters, costCentersLoading]);
 
   // ✅ Función para eliminar
   const handleDelete = async (id: number) => {
@@ -102,12 +114,11 @@ const CostosFijos = () => {
     }
   };
 
-  // ✅ CORREGIDO: Manejador para el envío del formulario del modal
+  // ✅ Manejador para el envío del formulario del modal
   const handleSubmitCostoFijo = async (formData: CostoFijoCreateData) => {
     try {
       console.log("Datos de nuevo costo fijo:", formData);
       
-      // ✅ Mapear los datos del modal al formato esperado por la API
       const fixedCostData = {
         name: formData.name,
         description: formData.description,
@@ -120,11 +131,9 @@ const CostosFijos = () => {
         state: 'active' as FixedCostState
       };
       
-      // ✅ Usar el hook que ya está declarado arriba
       const newId = await createFixedCost(fixedCostData);
       
       if (newId) {
-        // ✅ Cerrar modal y refrescar datos
         setModalOpen(false);
         refresh();
         alert("Costo fijo creado con éxito");
@@ -136,28 +145,26 @@ const CostosFijos = () => {
     }
   };
 
-  // ✅ Manejador para cambios en filtros
-  const handleFilterChange = (filterName: keyof FixedCostFilter) => (value: string) => {
+  // ✅ CORREGIDO: Manejador para cambios en filtros usando el componente FilterPanel
+  const handleFilterChange = (filterKey: string, value: string) => {
     const newFilters = { ...filters };
     
-    if (value === '') {
-      delete newFilters[filterName];
+    if (value === '' || value === null || value === undefined) {
+      delete (newFilters as any)[filterKey];
     } else {
-      if (filterName === 'costCenterId') {
-        (newFilters as any)[filterName] = parseInt(value, 10);
+      if (filterKey === 'costCenterId') {
+        (newFilters as any)[filterKey] = parseInt(value, 10);
       } else {
-        (newFilters as any)[filterName] = value;
+        (newFilters as any)[filterKey] = value;
       }
     }
     
     setFilters(newFilters);
-    updateFilters(newFilters);
   };
 
   // ✅ Limpiar todos los filtros
   const clearFilters = () => {
     setFilters({});
-    updateFilters({});
   };
 
   // ✅ Calcular métricas del dashboard usando stats
@@ -167,32 +174,74 @@ const CostosFijos = () => {
   const totalCount = stats?.total || fixedCosts.length;
   const remainingAmount = stats?.remainingAmount || 0;
 
-  // ✅ Opciones para dropdowns
-  const stateOptions = [
-    { value: '', label: 'Todos los estados' },
-    ...Object.entries(FIXED_COST_STATUS_MAP).map(([value, config]) => ({
-      value,
-      label: config.label
-    }))
-  ];
+  // ✅ CORREGIDO: Configuración de filtros con opciones DINÁMICAS
+  const filterConfigs: FilterConfig[] = useMemo(() => [
+    {
+      key: 'state',
+      label: 'Estado',
+      type: 'select',
+      options: [
+        { value: '', label: 'Todos los estados' },
+        ...Object.entries(FIXED_COST_STATUS_MAP).map(([value, config]) => ({
+          value,
+          label: config.label
+        }))
+      ]
+    },
+    {
+      key: 'costCenterId',
+      label: 'Centro de Costo',
+      type: 'select',
+      loading: costCentersLoading,
+      // ✅ FUNCIÓN DINÁMICA que se ejecuta cada vez que se necesitan las opciones
+      options: () => {
+        if (costCentersLoading || !costCenters) {
+          return [{ value: '', label: 'Cargando...' }];
+        }
 
-  const paymentStatusOptions = [
-    { value: '', label: 'Todos los estados de pago' },
-    ...Object.entries(PAYMENT_STATUS_MAP).map(([value, config]) => ({
-      value,
-      label: config.label
-    }))
-  ];
+        const baseOptions = [{ value: '', label: 'Todos los centros' }];
+        
+        // ✅ CORREGIDO: Usar los tipos en español que devuelve tu hook
+        const filteredCenters = costCenters.filter(cc => 
+          cc.type === 'proyecto' || cc.type === 'administrativo' || cc.type === 'project' || cc.type === 'administrative'
+        );
 
-  const costCenterOptions = [
-    { value: '', label: 'Todos los centros' },
-    ...costCenters
-      .filter(cc => cc.type === 'project' || cc.type === 'administrative')
-      .map(cc => ({
-        value: cc.id.toString(),
-        label: `${cc.code} - ${cc.name}`
-      }))
-  ];
+        console.log('✅ Centros filtrados para opciones:', filteredCenters);
+
+        const centerOptions = filteredCenters.map(cc => ({
+          value: cc.id.toString(),
+          label: `${cc.code} - ${cc.name}`,
+          disabled: cc.status === 'inactive' // Opcional: deshabilitar centros inactivos
+        }));
+
+        return [...baseOptions, ...centerOptions];
+      }
+    },
+    {
+      key: 'paymentStatus',
+      label: 'Estado de Pago',
+      type: 'select',
+      options: [
+        { value: '', label: 'Todos los estados de pago' },
+        ...Object.entries(PAYMENT_STATUS_MAP).map(([value, config]) => ({
+          value,
+          label: config.label
+        }))
+      ]
+    },
+    {
+      key: 'startDate',
+      label: 'Fecha Inicio',
+      type: 'date',
+      placeholder: 'Seleccione fecha inicio'
+    },
+    {
+      key: 'endDate',
+      label: 'Fecha Fin',
+      type: 'date',
+      placeholder: 'Seleccione fecha fin'
+    }
+  ], [costCenters, costCentersLoading]); // ✅ DEPENDENCIAS para recalcular cuando cambien los datos
 
   // ✅ Funciones de paginación
   const handlePageChange = (page: number) => {
@@ -299,89 +348,48 @@ const CostosFijos = () => {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmitCostoFijo}
-        projects={costCenterOptions.filter(p => p.value !== '').map(p => ({ 
-          id: parseInt(p.value), 
-          name: p.label 
-        }))}
+        projects={costCenters
+          .filter(cc => cc.type === 'proyecto' || cc.type === 'project')
+          .map(cc => ({ 
+            id: cc.id, 
+            name: `${cc.code} - ${cc.name}` 
+          }))
+        }
       />
 
-      {/* Filtros */}
-      <ComponentCard title="Filtros">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <Label htmlFor="state">Estado</Label>
-            <Select
-              options={stateOptions}
-              defaultValue={filters.state || ''}
-              onChange={handleFilterChange('state')}
-              placeholder="Seleccione estado"
-            />
-          </div>
+      {/* ✅ NUEVO: Panel de filtros con opciones dinámicas */}
+      <FilterPanel
+        filters={filters}
+        filterConfigs={filterConfigs}
+        onFilterChange={handleFilterChange}
+        onClearFilters={clearFilters}
+      />
 
-          <div>
-            <Label htmlFor="costCenter">Centro de Costo</Label>
-            <Select
-              options={costCenterOptions}
-              defaultValue={filters.costCenterId ? filters.costCenterId.toString() : ''}
-              onChange={handleFilterChange('costCenterId')}
-              placeholder="Seleccione centro"
-              disabled={costCentersLoading}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="paymentStatus">Estado de Pago</Label>
-            <Select
-              options={paymentStatusOptions}
-              defaultValue={filters.paymentStatus || ''}
-              onChange={handleFilterChange('paymentStatus')}
-              placeholder="Seleccione estado"
-            />
-          </div>
-          
-          <div>
-            <DatePicker
-              id="startDate"
-              label="Fecha Inicio"
-              placeholder="Seleccione fecha inicio"
-              defaultDate={filters.startDate || undefined}
-              onChange={(selectedDates, dateStr) => {
-                handleFilterChange('startDate')(dateStr);
-              }}
-            />
-          </div>
-          
-          <div>
-            <DatePicker
-              id="endDate"
-              label="Fecha Fin"
-              placeholder="Seleccione fecha fin"
-              defaultDate={filters.endDate || undefined}
-              onChange={(selectedDates, dateStr) => {
-                handleFilterChange('endDate')(dateStr);
-              }}
-            />
+      {/* ✅ DEBUG: Mostrar información de costCenters para debugging */}
+      {config.isDevelopment && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+          <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+            Debug Info - Cost Centers:
+          </h4>
+          <div className="text-xs text-blue-600 dark:text-blue-300">
+            <p>Loading: {costCentersLoading ? 'Sí' : 'No'}</p>
+            <p>Total: {costCenters.length}</p>
+            <p>Tipos: {[...new Set(costCenters.map(cc => cc.type))].join(', ')}</p>
+            {costCenters.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer">Ver todos los centros</summary>
+                <pre className="mt-2 text-xs overflow-auto max-h-32">
+                  {JSON.stringify(costCenters, null, 2)}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
-
-        {/* Botón para limpiar filtros */}
-        {Object.keys(filters).length > 0 && (
-          <div className="mt-4 flex justify-end">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={clearFilters}
-              className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            >
-              Limpiar filtros
-            </Button>
-          </div>
-        )}
-      </ComponentCard>
+      )}
 
       {/* Mensaje de error */}
       {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
           <div className="flex items-center">
             <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -425,6 +433,9 @@ const CostosFijos = () => {
                   Estado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Estado Pago
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Monto Total
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -454,7 +465,7 @@ const CostosFijos = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     <button
                       onClick={() => handleUpdatePaidQuotas(costo.id, costo.paid_quotas, costo.quota_count)}
-                      className="hover:text-brand-500 cursor-pointer"
+                      className="hover:text-brand-500 cursor-pointer transition-colors"
                       title="Actualizar cuotas pagadas"
                     >
                       {costo.paid_quotas}/{costo.quota_count}
@@ -475,6 +486,14 @@ const CostosFijos = () => {
                       color={FIXED_COST_STATUS_MAP[costo.state]?.color || 'light'}
                     >
                       {FIXED_COST_STATUS_MAP[costo.state]?.label || costo.state}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <Badge
+                      size="sm"
+                      color={costo.payment_status ? PAYMENT_STATUS_MAP[costo.payment_status]?.color || 'light' : 'light'}
+                    >
+                      {costo.payment_status ? PAYMENT_STATUS_MAP[costo.payment_status]?.label || costo.payment_status : 'N/A'}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white">

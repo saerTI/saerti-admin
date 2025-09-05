@@ -623,9 +623,8 @@ const Remuneraciones = () => {
                       {rem.period}
                     </td>
                     
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
                       <Badge
-                        size="sm"
                         color={GASTO_STATUS_MAP[rem.state]?.color || 'secondary'}
                       >
                         {GASTO_STATUS_MAP[rem.state]?.label || rem.state}

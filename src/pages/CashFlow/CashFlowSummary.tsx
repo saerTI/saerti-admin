@@ -2,63 +2,74 @@
 import React, { useState, useEffect } from 'react';
 import ingresosApiService from '../../services/ingresosService';
 import { formatCurrency } from '../../utils/formatters';
+import { CashFlowItem, CashFlowSummary as CashFlowSummaryData } from '../../services/cashFlowService';
+
+interface CashFlowSummaryProps {
+  summary: CashFlowSummaryData;
+  items: CashFlowItem[];
+}
 
 interface SummaryCardProps {
   title: string;
   value: string;
-  change?: number;
+  icon: React.ReactNode;
   textColor?: string;
-  icon?: React.ReactNode;
   isLoading?: boolean;
-}
-
-interface CashFlowSummaryProps {
-  summary: {
-    totalExpense: number;
-    netCashFlow: number;
-    previousPeriodChange: number;
-  };
-  items: Array<{
-    id: number;
-    date: string;
-    description: string;
-    category: string;
-    amount: number;
-    type: 'income' | 'expense';
-  }>;
+  trend?: 'up' | 'down' | 'stable';
+  change?: number;
 }
 
 const SummaryCard: React.FC<SummaryCardProps> = ({ 
   title, 
   value, 
-  change, 
   textColor = "text-gray-800 dark:text-white/90",
   icon,
-  isLoading = false
+  isLoading = false,
+  trend,
+  change
 }) => {
-  const getChangeColor = () => {
-    if (!change) return "text-gray-500";
-    return change >= 0 ? "text-green-500" : "text-red-500";
+  const getTrendIcon = () => {
+    if (!trend) return null;
+
+    switch (trend) {
+      case 'up':
+        return (
+          <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l10-10M7 7h10v10" />
+          </svg>
+        );
+      case 'down':
+        return (
+          <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 7l-10 10M7 17h10V7" />
+          </svg>
+        );
+      case 'stable':
+        return (
+          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+          </svg>
+        );
+      default:
+        return null;
+    }
   };
 
-  const getChangeIcon = () => {
-    if (!change) return null;
-    return change >= 0 ? (
-      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-      </svg>
-    ) : (
-      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-      </svg>
-    );
-  };
+  function getChangeIcon(): React.ReactNode {
+    throw new Error('Function not implemented.');
+  }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</h4>
-        {icon && <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">{icon}</div>}
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="flex items-start justify-between">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+          {icon}
+        </div>
+        {trend && (
+          <div className="flex items-center">
+            {getTrendIcon()}
+          </div>
+        )}
       </div>
       
       <div className="mt-4">
@@ -69,11 +80,206 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
         )}
         
         {!isLoading && change !== undefined && (
-          <div className={`mt-1 flex items-center gap-1 ${getChangeColor()}`}>
+          <div className={`mt-1 flex items-center gap-1 ${getChangeIcon()}`}>
             {getChangeIcon()}
             <span className="text-sm font-medium">
               {Math.abs(change).toFixed(1)}% vs. período anterior
             </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Componente para categorías top (adaptado para solo gastos)
+const TopCategoriesCard: React.FC<{ items: CashFlowItem[] }> = ({ items }) => {
+  // Calcular categorías más importantes (solo gastos por ahora)
+  const categoryTotals = items.reduce((acc, item) => {
+    const key = item.category;
+    if (!acc[key]) {
+      acc[key] = {
+        category: item.category,
+        type: item.type,
+        total: 0,
+        count: 0
+      };
+    }
+    acc[key].total += item.amount;
+    acc[key].count += 1;
+    return acc;
+  }, {} as Record<string, any>);
+
+  const topCategories = Object.values(categoryTotals)
+    .sort((a: any, b: any) => b.total - a.total)
+    .slice(0, 5);
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+      <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
+        Top Categorías de Gastos
+      </h4>
+      
+      <div className="space-y-3">
+        {topCategories.map((cat: any, index) => (
+          <div key={`${cat.category}-${index}`} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-red-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                  {cat.category}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {cat.count} transacciones
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-red-600">
+                {formatCurrency(cat.total)}
+              </p>
+            </div>
+          </div>
+        ))}
+        
+        {topCategories.length === 0 && (
+          <div className="text-center py-4">
+            <p className="text-sm text-gray-500">No hay datos disponibles</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Componente para análisis por tipo de datos (rediseñado para incluir ingresos futuros)
+const DataTypeAnalysisCard: React.FC<{ items: CashFlowItem[], summary: CashFlowSummaryData }> = ({ items, summary }) => {
+  // Análisis por estados (Real vs Proyectado)
+  const stateAnalysis = items.reduce((acc, item) => {
+    const state = item.state || 'actual';
+    if (!acc[state]) {
+      acc[state] = { income: 0, expense: 0, count: 0 };
+    }
+    
+    if (item.type === 'income') {
+      acc[state].income += item.amount;
+    } else {
+      acc[state].expense += item.amount;
+    }
+    acc[state].count += 1;
+    return acc;
+  }, {} as Record<string, any>);
+
+  const getStateLabel = (state: string) => {
+    switch (state) {
+      case 'forecast': return 'Proyectado';
+      case 'actual': return 'Real';
+      case 'budget': return 'Presupuesto';
+      default: return 'Otros';
+    }
+  };
+
+  const getStateIcon = (state: string) => {
+    switch (state) {
+      case 'forecast': 
+        return (
+          <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        );
+      case 'actual': 
+        return (
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'budget': 
+        return (
+          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        );
+      default: 
+        return (
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+    }
+  };
+
+  const getDescription = (state: string) => {
+    switch (state) {
+      case 'forecast': return 'Montos estimados o planificados';
+      case 'actual': return 'Montos ya ejecutados';
+      case 'budget': return 'Montos presupuestados';
+      default: return 'Otros tipos de movimientos';
+    }
+  };
+
+  const hasIncomes = summary.totalIncome > 0;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+      <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
+        Real vs Proyectado
+      </h4>
+      
+      <div className="space-y-4">
+        {Object.entries(stateAnalysis).map(([state, data]: [string, any]) => (
+          <div key={state} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                {getStateIcon(state)}
+                <div>
+                  <h5 className="font-medium text-gray-800">
+                    {getStateLabel(state)}
+                  </h5>
+                  <p className="text-xs text-gray-500">
+                    {getDescription(state)}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs text-gray-500">
+                {data.count} transacciones
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">Ingresos</p>
+                <p className="font-semibold text-green-600">
+                  {hasIncomes ? formatCurrency(data.income) : formatCurrency(0)}
+                </p>
+                {!hasIncomes && (
+                  <p className="text-xs text-gray-400">Próximamente</p>
+                )}
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">Gastos</p>
+                <p className="font-semibold text-red-600">
+                  {formatCurrency(data.expense)}
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">Balance Neto</p>
+                <p className={`font-bold ${
+                  data.income - data.expense >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(data.income - data.expense)}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+        
+        {Object.keys(stateAnalysis).length === 0 && (
+          <div className="text-center py-4">
+            <p className="text-sm text-gray-500">No hay datos disponibles</p>
           </div>
         )}
       </div>

@@ -45,9 +45,6 @@ export type OrdenCompraEstado =
   | 'delivered'
   | 'cancelled';
 
-// Type for different payment types
-export type OrdenCompraPaymentType = 'credit' | 'cash';
-
 // Type for different estado pago values
 export type OrdenCompraEstadoPago = 'pendiente' | 'parcial' | 'pagado';
 
@@ -71,7 +68,6 @@ export interface OrdenCompra extends OrdenCompraBase {
   providerId: number;
   supplierName: string;
   orderNumber: string;
-  paymentType: OrdenCompraPaymentType;
   deliveryDate?: string;
   paymentTerms?: string;
   
@@ -97,12 +93,12 @@ export interface OrdenCompraCreateData {
   providerId?: number;
   amount: number;
   date: string;
-  paymentType: OrdenCompraPaymentType;
   state: OrdenCompraEstado; // ✅ Usar tipo específico
   cuentaContable?: string;
   grupoCuenta?: string;
   centroCostoId?: number;
   centroCostoNombre?: string;
+  accountCategoryId?: number; // ✅ NUEVO: ID de categoría contable
   deliveryDate?: string;
   paymentTerms?: string;
   tieneFactura?: boolean;
@@ -396,7 +392,6 @@ export const VALIDATION_RULES = {
 
 // Constantes para formularios
 export const FORM_DEFAULTS = {
-  PAYMENT_TYPE: 'credit' as OrdenCompraPaymentType,
   STATE: 'draft' as OrdenCompraEstado, // ✅ Usar estado frontend
   ESTADO_PAGO: 'pendiente' as OrdenCompraEstadoPago,
   WORK_DAYS: 30,
@@ -410,7 +405,6 @@ export interface OrdenCompraImportData {
   supplierName: string;
   amount: number;
   date: string;
-  paymentType?: OrdenCompraPaymentType;
   state?: OrdenCompraEstado;
   cuentaContable?: string;
   grupoCuenta?: string;
@@ -432,7 +426,6 @@ export interface ValidationResult {
 export interface ImportConfig {
   skipEmptyRows: boolean;
   validateRequired: boolean;
-  defaultPaymentType: OrdenCompraPaymentType;
   defaultState: OrdenCompraEstado;
   maxBatchSize: number;
 }
@@ -442,7 +435,6 @@ export interface OrdenCompraUtilities {
   formatAmount: (amount: number) => string;
   formatDate: (date: string) => string;
   getStatusColor: (status: OrdenCompraEstado) => string;
-  getPaymentTypeLabel: (type: OrdenCompraPaymentType) => string;
   validateOrdenCompra: (data: OrdenCompraCreateData) => ValidationResult;
 }
 
@@ -495,7 +487,8 @@ export interface ApiOrdenCompra {
   cost_center_id?: number;
   account_category_id?: number;
   provider_name: string;
-  amount: number;
+  amount?: number;          // ahora opcional
+  total_amount?: number;    // agregado para montos agregados por ítems
   date: string;
   payment_type: 'credit' | 'cash';
   state: string;
@@ -515,19 +508,17 @@ export interface ApiOrdenCompraCreateData {
   po_date?: string;
   description?: string;
   supplierName?: string;
-  total?: number;
-  amount?: number;
-  subtotal?: number;
   categoryName?: string;
   category?: string;
   categoriaNombre?: string;
   costCenterCode?: string;
   centerCode?: string;
   centroCosto?: string;
+  cost_center_id?: number; // ✅ NUEVO: ID de centro de costo
+  account_category_id?: number; // ✅ NUEVO: ID de categoría contable
   paymentType?: string;
   status?: string;
   state?: string;
-  currency?: string;
   notes?: string;
 }
 
@@ -589,15 +580,16 @@ export function isSuccessResponse(response: any): boolean {
 
 // ✅ FUNCIONES DE TRANSFORMACIÓN CON MAPEO DE ESTADOS
 export function transformApiOrdenCompra(apiOrden: ApiOrdenCompra): OrdenCompra {
+  const amount = (apiOrden.amount !== undefined ? apiOrden.amount : (apiOrden as any).total_amount) || 0;
+  
   return {
     id: apiOrden.id,
     name: apiOrden.name,
     orderNumber: apiOrden.order_number,
     supplierName: apiOrden.provider_name,
     providerId: 0,
-    amount: apiOrden.amount || 0,
+    amount,
     date: apiOrden.date || '',
-    paymentType: apiOrden.payment_type || 'credit',
     state: ESTADO_MAPPING.DB_TO_FRONTEND[apiOrden.state as keyof typeof ESTADO_MAPPING.DB_TO_FRONTEND] || 'draft',
     centroCostoId: apiOrden.cost_center_id,
     centroCostoNombre: apiOrden.center_name,
@@ -626,19 +618,15 @@ export function transformToApiOrdenCompraCreateData(data: OrdenCompraCreateData)
     po_date: data.date,
     description: data.name,
     supplierName: data.supplierName,
-    total: data.amount,
-    amount: data.amount,
-    subtotal: data.amount,
     categoryName: data.cuentaContable || data.grupoCuenta,
     category: data.cuentaContable || data.grupoCuenta,
     categoriaNombre: data.cuentaContable || data.grupoCuenta,
     costCenterCode: data.centroCostoNombre,
     centerCode: data.centroCostoNombre,
     centroCosto: data.centroCostoNombre,
-    paymentType: data.paymentType,
+    cost_center_id: data.centroCostoId, // ✅ NUEVO: ID del centro de costo
     status: ESTADO_MAPPING.FRONTEND_TO_DB[data.state as keyof typeof ESTADO_MAPPING.FRONTEND_TO_DB] || 'borrador',
     state: ESTADO_MAPPING.FRONTEND_TO_DB[data.state as keyof typeof ESTADO_MAPPING.FRONTEND_TO_DB] || 'borrador',
-    currency: 'CLP',
     notes: data.notes
   };
 }

@@ -1,7 +1,8 @@
 // src/utils/ordenCompraUtils.ts
 import * as XLSX from 'xlsx';
-import { OrdenCompra, OrdenCompraCreateData, OrdenCompraPaymentType, OrdenCompraEstado, OrdenCompraBatchCreateResponse } from '../types/CC/ordenCompra.ts';
+import { OrdenCompra, OrdenCompraCreateData, OrdenCompraEstado, OrdenCompraBatchCreateResponse } from '../types/CC/ordenCompra.ts';
 import { createOrdenesCompraBatch } from '../services/CC/ordenesCompraService.ts';
+import { getReferenceData } from '../services/CC/ordenesCompraItemService.ts';
 
 // Definir interfaces para los datos de cada archivo
 interface OrdenCompraBasica {
@@ -19,6 +20,8 @@ interface OrdenCompraDetalle {
   codigoCC: string;
   cuentaCosto: string;
   descripcion?: string;
+  glosa?: string; // ✅ NUEVO: Campo para glosa del Excel
+  monto?: number; // ✅ NUEVO: Campo para monto del detalle
 }
 
 interface OrdenCompraConsolidada extends OrdenCompraBasica {
@@ -53,8 +56,105 @@ const DETAIL_COLUMNS = {
   nOC: ['N OC', 'NUMERO OC', 'OC', 'NÚMERO OC', 'N° OC', 'No OC', 'NO OC'],
   codigoCC: ['CODIGO C.C.', 'CÓDIGO C.C.', 'CC', 'CODIGO CC', 'CÓDIGO CC', 'CÓDIGO DE C.C.'],
   cuentaCosto: ['CUENTA DE COSTO', 'CUENTA COSTO', 'CUENTA CONTABLE', 'CUENTA', 'CATEGORY'],
-  descripcion: ['DESCRIPCION', 'DESCRIPCIÓN', 'DESCRIPTION', 'DESC', 'DETALLE']
+  descripcion: ['DESCRIPCION', 'DESCRIPCIÓN', 'DESCRIPTION', 'DESC', 'DETALLE'],
+  glosa: ['GLOSA', 'GLOSSA', 'OBSERVACION', 'OBSERVACIÓN', 'COMENTARIO', 'OBSERVACIONES'],
+  monto: ['MONTO', 'VALOR', 'TOTAL', 'AMOUNT', 'SUB TOTAL', 'SUBTOTAL']
 };
+
+/**
+ * Funciones auxiliares para buscar IDs de referencia
+ */
+async function findCostCenterId(centroCostoNombre: string, costCenters: any[]): Promise<number | null> {
+  if (!centroCostoNombre || !costCenters || costCenters.length === 0) return null;
+  
+  const normalized = centroCostoNombre.trim().toLowerCase();
+  
+  // Buscar por nombre exacto
+  let found = costCenters.find(cc => 
+    cc.name?.toLowerCase().trim() === normalized
+  );
+  
+  if (found) {
+    console.log(`✅ Centro de costo encontrado por nombre: "${centroCostoNombre}" -> ID ${found.id}`);
+    return found.id;
+  }
+  
+  // Buscar por código
+  found = costCenters.find(cc => 
+    cc.code?.toLowerCase().trim() === normalized
+  );
+  
+  if (found) {
+    console.log(`✅ Centro de costo encontrado por código: "${centroCostoNombre}" -> ID ${found.id}`);
+    return found.id;
+  }
+  
+  // Búsqueda parcial por nombre
+  found = costCenters.find(cc => 
+    cc.name?.toLowerCase().includes(normalized) || 
+    normalized.includes(cc.name?.toLowerCase())
+  );
+  
+  if (found) {
+    console.log(`✅ Centro de costo encontrado por coincidencia parcial: "${centroCostoNombre}" -> ID ${found.id}`);
+    return found.id;
+  }
+  
+  console.log(`⚠️ Centro de costo NO encontrado: "${centroCostoNombre}"`);
+  return null;
+}
+
+async function findAccountCategoryId(cuentaCosto: string | undefined, accountCategories: any[]): Promise<number | null> {
+  if (!cuentaCosto || !accountCategories || accountCategories.length === 0) return null;
+  
+  const normalized = cuentaCosto.trim().toLowerCase();
+  
+  // Buscar por código exacto
+  let found = accountCategories.find(ac => 
+    ac.code?.toLowerCase().trim() === normalized
+  );
+  
+  if (found) {
+    console.log(`✅ Categoría contable encontrada por código: "${cuentaCosto}" -> ID ${found.id}`);
+    return found.id;
+  }
+  
+  // Buscar por nombre exacto
+  found = accountCategories.find(ac => 
+    ac.name?.toLowerCase().trim() === normalized
+  );
+  
+  if (found) {
+    console.log(`✅ Categoría contable encontrada por nombre: "${cuentaCosto}" -> ID ${found.id}`);
+    return found.id;
+  }
+  
+  // Buscar por grupo
+  found = accountCategories.find(ac => 
+    ac.group_name?.toLowerCase().trim() === normalized
+  );
+  
+  if (found) {
+    console.log(`✅ Categoría contable encontrada por grupo: "${cuentaCosto}" -> ID ${found.id}`);
+    return found.id;
+  }
+  
+  // Búsqueda parcial
+  found = accountCategories.find(ac => 
+    ac.name?.toLowerCase().includes(normalized) || 
+    ac.code?.toLowerCase().includes(normalized) ||
+    normalized.includes(ac.name?.toLowerCase()) ||
+    normalized.includes(ac.code?.toLowerCase())
+  );
+  
+  if (found) {
+    console.log(`✅ Categoría contable encontrada por coincidencia parcial: "${cuentaCosto}" -> ID ${found.id}`);
+    return found.id;
+  }
+  
+  console.log(`⚠️ Categoría contable NO encontrada: "${cuentaCosto}"`);
+  return null;
+}
 
 /**
  * Lee archivo Excel y devuelve los datos de la primera hoja
@@ -183,21 +283,6 @@ function formatAmount(amountValue: any): number {
   return 0;
 }
 
-/**
- * Normaliza el tipo de pago
- */
-function normalizePaymentType(paymentTerms: string): OrdenCompraPaymentType {
-  if (!paymentTerms) return 'cash';
-  
-  const terms = paymentTerms.toLowerCase();
-  if (terms.includes('contado') || terms.includes('inmediato')) {
-    return 'cash';
-  } else if (terms.includes('día') || terms.includes('crédito') || terms.includes('plazo')) {
-    return 'credit';
-  }
-  
-  return 'cash';
-}
 
 /**
  * Procesa archivo de órdenes básicas (oc_1.xlsx)
@@ -250,6 +335,62 @@ function processOrdenesDetalles(data: any[], fileName: string): OrdenCompraDetal
   const headers = data[headerRowIndex].map((header: any) => header?.toString() || '');
   const rows = data.slice(headerRowIndex + 1);
   const columnMapping = findColumnMapping(headers, DETAIL_COLUMNS);
+
+  // ====== NUEVO: Logs detallados de lo leído ======
+  try {
+    const headerStrings = headers.map((h: any) => (h ?? '').toString());
+    console.log(`🧭 [Detalles] Archivo: ${fileName}`);
+    console.log(`🧭 [Detalles] Fila de headers detectada: ${headerRowIndex}`);
+    console.log('🧭 [Detalles] Headers:', headerStrings);
+
+    console.log(`📚 [Detalles] Total de filas leídas (excluyendo headers): ${rows.length}`);
+
+    // Log de cada fila como arreglo crudo
+    rows.forEach((row: any[], i: number) => {
+      console.log(`➡️ [Detalles] Fila #${headerRowIndex + 1 + i + 1}:`, row);
+    });
+
+    // Log tabular mapeando cada columna por índice y nombre de header
+    const rowsAsObjects = rows.map((row: any[], i: number) => {
+      const obj: Record<string, any> = { '#fila': headerRowIndex + 1 + i + 1 };
+      headerStrings.forEach((h: string, idx: number) => {
+        obj[`[${idx}] ${h || '(sin header)'}`] = row?.[idx];
+      });
+      return obj;
+    });
+    console.log('📋 [Detalles] Tabla completa leída:');
+      // ====== NUEVO: Logs detallados de lo leído ======
+  try {
+    const headerStrings = headers.map((h: any) => (h ?? '').toString());
+    console.log(`🧭 [Detalles] Archivo: ${fileName}`);
+    console.log(`🧭 [Detalles] Fila de headers detectada: ${headerRowIndex}`);
+    console.log('🧭 [Detalles] Headers:', headerStrings);
+
+    console.log(`📚 [Detalles] Total de filas leídas (excluyendo headers): ${rows.length}`);
+
+    // Log de cada fila como arreglo crudo
+    rows.forEach((row: any[], i: number) => {
+      console.log(`➡️ [Detalles] Fila #${headerRowIndex + 1 + i + 1}:`, row);
+    });
+
+    // Log tabular mapeando cada columna por índice y nombre de header
+    const rowsAsObjects = rows.map((row: any[], i: number) => {
+      const obj: Record<string, any> = { '#fila': headerRowIndex + 1 + i + 1 };
+      headerStrings.forEach((h: string, idx: number) => {
+        obj[`[${idx}] ${h || '(sin header)'}`] = row?.[idx];
+      });
+      return obj;
+    });
+    console.log('📋 [Detalles] Tabla completa leída:');
+    console.table(rowsAsObjects);
+  } catch (logErr) {
+    console.warn('⚠️ [Detalles] Error al generar logs detallados:', logErr);
+  }
+  // ====== FIN NUEVO ======ble(rowsAsObjects);
+  } catch (logErr) {
+    console.warn('⚠️ [Detalles] Error al generar logs detallados:', logErr);
+  }
+  // ====== FIN NUEVO ======
   
   // Verificar campos requeridos
   const requiredFields = ['nOC', 'codigoCC'];
@@ -259,13 +400,25 @@ function processOrdenesDetalles(data: any[], fileName: string): OrdenCompraDetal
     throw new Error(`Columnas requeridas no encontradas: ${missingFields.join(', ')}`);
   }
   
+  // ✅ NUEVO: Log del mapeo de columnas incluyendo glosa y monto
+  console.log('🗂️ [Detalles] Mapeo de columnas:', {
+    nOC: columnMapping.nOC !== undefined ? `Columna ${columnMapping.nOC}` : 'NO ENCONTRADA',
+    codigoCC: columnMapping.codigoCC !== undefined ? `Columna ${columnMapping.codigoCC}` : 'NO ENCONTRADA', 
+    cuentaCosto: columnMapping.cuentaCosto !== undefined ? `Columna ${columnMapping.cuentaCosto}` : 'NO ENCONTRADA',
+    descripcion: columnMapping.descripcion !== undefined ? `Columna ${columnMapping.descripcion}` : 'NO ENCONTRADA',
+    glosa: columnMapping.glosa !== undefined ? `Columna ${columnMapping.glosa}` : 'NO ENCONTRADA',
+    monto: columnMapping.monto !== undefined ? `Columna ${columnMapping.monto}` : 'NO ENCONTRADA'
+  });
+  
   return rows
     .filter((row: any[]) => row && row.length > 0 && row.some(cell => cell !== null && cell !== undefined && cell !== ''))
     .map((row: any[]) => ({
       nOC: row[columnMapping.nOC]?.toString().trim() || '',
       codigoCC: row[columnMapping.codigoCC]?.toString().trim() || '',
       cuentaCosto: row[columnMapping.cuentaCosto]?.toString().trim() || '',
-      descripcion: row[columnMapping.descripcion]?.toString().trim()
+      descripcion: row[columnMapping.descripcion]?.toString().trim(),
+      glosa: row[columnMapping.glosa]?.toString().trim(), // ✅ NUEVO: Capturar glosa del Excel
+      monto: columnMapping.monto !== undefined ? formatAmount(row[columnMapping.monto]) : undefined // ✅ NUEVO: Capturar monto del detalle
     }))
     .filter(detalle => detalle.nOC && detalle.codigoCC);
 }
@@ -359,34 +512,56 @@ function consolidateOrderData(
 /**
  * Convierte datos consolidados a formato para API
  */
-function convertToApiFormat(consolidadas: OrdenCompraConsolidada[]): OrdenCompraCreateData[] {
-  return consolidadas.map(orden => {
+async function convertToApiFormat(
+  consolidadas: OrdenCompraConsolidada[], 
+  costCenters: any[], 
+  accountCategories: any[]
+): Promise<OrdenCompraCreateData[]> {
+  const results: OrdenCompraCreateData[] = [];
+  
+  for (const orden of consolidadas) {
+    // Buscar IDs de referencia
+    const costCenterId = await findCostCenterId(orden.obra, costCenters);
+    const accountCategoryId = await findAccountCategoryId(orden.cuentaCosto || orden.codigoCC, accountCategories);
     
-    return {
+    results.push({
       name: orden.nombreOC || `Orden ${orden.nOC}`,
       orderNumber: orden.nOC,
       supplierName: orden.proveedor,
       providerId: 0,
       amount: orden.monto,
       date: orden.fecha,
-      paymentType: normalizePaymentType(orden.condicionPago),
       state: 'draft' as OrdenCompraEstado,
       cuentaContable: orden.codigoCC || '',
       grupoCuenta: orden.cuentaCosto || '',
-      centroCostoId: undefined,
+      centroCostoId: costCenterId || undefined,
       centroCostoNombre: orden.obra,
+      accountCategoryId: accountCategoryId || undefined, // ✅ NUEVO
       deliveryDate: undefined,
       paymentTerms: orden.condicionPago,
       tieneFactura: false,
       estadoPago: 'pendiente',
       fechaVencimiento: undefined,
       notes: `Consolidado de ${orden.detalles.length} detalles: ${orden.detalles.map(d => d.codigoCC).join(', ')}`
-    };
-  });
+    });
+  }
+  
+  return results;
 }
 
 /**
- * Función principal para procesar ambos archivos
+ * Función principal para procesar ambos archivos Excel con búsqueda automática de IDs
+ * 
+ * ✅ NUEVAS FUNCIONALIDADES:
+ * - Carga automática de datos de referencia (centros de costo y categorías contables)
+ * - Búsqueda inteligente de IDs basada en códigos/nombres del Excel
+ * - Asignación automática de cost_center_id y account_category_id
+ * - Creación de items detallados con IDs de referencia
+ * - Logging detallado del proceso de búsqueda y asignación
+ * 
+ * @param mainFile - Archivo Excel principal con datos básicos de órdenes
+ * @param detailFile - Archivo Excel con detalles y códigos de centros de costo
+ * @returns Promise<OrdenCompra[]> - Órdenes creadas con información de IDs asignados
  */
 export const handleConsolidatedExcelUpload = async (
   mainFile: File,
@@ -396,6 +571,13 @@ export const handleConsolidatedExcelUpload = async (
     console.log('🚀 Iniciando procesamiento consolidado...');
     console.log('📄 Archivo principal:', mainFile.name);
     console.log('📄 Archivo detalles:', detailFile.name);
+    
+    // ✅ NUEVO: Cargar datos de referencia al inicio
+    console.log('📚 Cargando datos de referencia...');
+    const referenceData = await getReferenceData();
+    const { costCenters, accountCategories } = referenceData;
+    
+    console.log(`✅ Cargados ${costCenters.length} centros de costo y ${accountCategories.length} categorías contables`);
     
     // Leer ambos archivos
     const [mainData, detailData] = await Promise.all([
@@ -414,8 +596,8 @@ export const handleConsolidatedExcelUpload = async (
       throw new Error('No se encontraron órdenes válidas para consolidar');
     }
     
-    // Convertir a formato API
-    const apiData = convertToApiFormat(consolidadas);
+    // ✅ ACTUALIZADO: Convertir a formato API con búsqueda de IDs
+    const apiData = await convertToApiFormat(consolidadas, costCenters, accountCategories);
     
     console.log(`✅ Procesadas ${apiData.length} órdenes consolidadas, enviando a API...`);
     
@@ -449,16 +631,81 @@ export const handleConsolidatedExcelUpload = async (
     if (ids.length === 0) {
       throw new Error('No se crearon registros en el servidor');
     }
+
+    // ✅ NUEVO: CREAR ITEMS DE DETALLE PARA CADA ORDEN
+    console.log('🔧 Creando items de detalle para las órdenes...');
     
-    // ✅ CREAR OBJETOS OrdenCompra CON INFORMACIÓN DE UPSERT
+    // Importar servicio de items dinámicamente para evitar problemas de importación circular
+    const { bulkCreateItems } = await import('../services/CC/ordenesCompraItemService');
+    
+    let totalItemsCreated = 0;
+    const itemCreationErrors: string[] = [];
+    
+    // Procesar cada orden con sus detalles
+    for (let i = 0; i < ids.length; i++) {
+      const purchaseOrderId = ids[i];
+      const consolidada = consolidadas[i];
+      
+      if (consolidada && consolidada.detalles && consolidada.detalles.length > 0) {
+        try {
+          // ✅ NUEVO: Buscar IDs para cada detalle
+          const itemsPromises = consolidada.detalles.map(async (detalle) => {
+            const detalleCostCenterId = await findCostCenterId(consolidada.obra, costCenters);
+            const detalleAccountCategoryId = await findAccountCategoryId(detalle.cuentaCosto || detalle.codigoCC, accountCategories);
+            
+            // ✅ Log para verificar glosa y monto
+            const glosaSaved = detalle.glosa || `Código CC: ${detalle.codigoCC} | Cuenta: ${detalle.cuentaCosto}`;
+            const itemTotal = detalle.monto && detalle.monto > 0 
+              ? detalle.monto 
+              : Math.round(consolidada.monto / consolidada.detalles.length);
+            
+            console.log(`📝 [Item] OC ${detalle.nOC}: Glosa = "${glosaSaved}" ${detalle.glosa ? '(del Excel)' : '(generada)'}, Monto = ${itemTotal} ${detalle.monto ? '(del detalle)' : '(distribuido)'}`);
+            
+            return {
+              cost_center_id: detalleCostCenterId,
+              account_category_id: detalleAccountCategoryId,
+              date: consolidada.fecha,
+              description: detalle.descripcion || `${detalle.codigoCC} - ${detalle.cuentaCosto}`,
+              glosa: glosaSaved, // ✅ ACTUALIZADO: Usar glosa del Excel
+              currency: 'CLP',
+              total: itemTotal // ✅ ACTUALIZADO: Usar monto del detalle o distribuir
+            };
+          });
+          
+          // Esperar a que se resuelvan todas las búsquedas de IDs
+          const items = await Promise.all(itemsPromises);
+          
+          const itemsResult = await bulkCreateItems(purchaseOrderId, items);
+          totalItemsCreated += itemsResult.inserted;
+          
+          console.log(`✅ Creados ${itemsResult.inserted} items para OC ${consolidada.nOC} (ID: ${purchaseOrderId})`);
+          
+        } catch (error) {
+          const errorMsg = `Error creando items para OC ${consolidada.nOC}: ${error instanceof Error ? error.message : 'Error desconocido'}`;
+          console.error('❌', errorMsg);
+          itemCreationErrors.push(errorMsg);
+        }
+      }
+    }
+    
+    console.log(`🎯 Resumen de items: ${totalItemsCreated} items creados en total`);
+    if (itemCreationErrors.length > 0) {
+      console.warn('⚠️ Errores en creación de items:', itemCreationErrors);
+    }
+    
+    // ✅ CREAR OBJETOS OrdenCompra CON INFORMACIÓN DE UPSERT E ITEMS
     const savedOrdenesCompra: OrdenCompra[] = ids.map((id: number, index: number) => {
       const apiItem = apiData[index];
+      const consolidada = consolidadas[index];
       
       // ✅ DETERMINAR SI FUE ACTUALIZACIÓN BASADO EN LA RESPUESTA
       let isUpdate = false;
       if (response && typeof response === 'object' && 'data' in response && response.data?.details) {
         isUpdate = response.data.details.updatedIds?.includes(id) || false;
       }
+      
+      // Contar items de detalle para esta orden
+      const itemsCount = consolidada?.detalles?.length || 0;
       
       return {
         id: id,
@@ -468,7 +715,6 @@ export const handleConsolidatedExcelUpload = async (
         providerId: apiItem.providerId || 0,
         amount: apiItem.amount,
         date: apiItem.date,
-        paymentType: apiItem.paymentType,
         state: apiItem.state,
         cuentaContable: apiItem.cuentaContable || '',
         grupoCuenta: apiItem.grupoCuenta || '',
@@ -479,17 +725,20 @@ export const handleConsolidatedExcelUpload = async (
         tieneFactura: apiItem.tieneFactura || false,
         estadoPago: apiItem.estadoPago || 'pendiente',
         fechaVencimiento: apiItem.fechaVencimiento,
-        notes: apiItem.notes,
+        notes: `${apiItem.notes} | Items creados: ${itemsCount}`,
         companyId: 1, // Valor por defecto
-        isUpdate: isUpdate // ✅ NUEVO: Indicador de si fue actualización
-      } as OrdenCompra & { isUpdate?: boolean };
+        isUpdate: isUpdate, // ✅ INDICADOR DE SI FUE ACTUALIZACIÓN
+        itemsCount: itemsCount // ✅ NUEVO: Número de items de detalle creados
+      } as OrdenCompra & { isUpdate?: boolean; itemsCount?: number };
     });
     
     console.log('✅ Procesamiento consolidado completado:', {
       total: savedOrdenesCompra.length,
       created: created,
       updated: updated,
-      'órdenes procesadas': savedOrdenesCompra.length
+      'órdenes procesadas': savedOrdenesCompra.length,
+      'items creados': totalItemsCreated,
+      'errores de items': itemCreationErrors.length
     });
     
     return savedOrdenesCompra;
@@ -656,7 +905,9 @@ export const getDetailOrdersPreview = async (file: File): Promise<{
         nOC: row[columnMapping.nOC]?.toString() || '',
         codigoCC: row[columnMapping.codigoCC]?.toString() || '',
         cuentaCosto: row[columnMapping.cuentaCosto]?.toString() || '',
-        descripcion: row[columnMapping.descripcion]?.toString() || ''
+        descripcion: row[columnMapping.descripcion]?.toString() || '',
+        glosa: row[columnMapping.glosa]?.toString() || '', // ✅ NUEVO: Incluir glosa en preview
+        monto: columnMapping.monto !== undefined ? formatAmount(row[columnMapping.monto]) : undefined // ✅ NUEVO: Incluir monto en preview
       }));
     
     return {
@@ -675,9 +926,17 @@ export const getDetailOrdersPreview = async (file: File): Promise<{
 export const handleOrdenCompraExcelUpload = async (file: File): Promise<OrdenCompra[]> => {
   console.log('⚠️ Usando función individual - considera usar handleConsolidatedExcelUpload');
   
+  // Cargar datos de referencia
+  const referenceData = await getReferenceData();
+  const { costCenters, accountCategories } = referenceData;
+  
   const data = await readExcelFile(file);
   const ordenesBasicas = processOrdenesBasicas(data, file.name);
-  const apiData = convertToApiFormat(ordenesBasicas.map(orden => ({ ...orden, detalles: [] })));
+  const apiData = await convertToApiFormat(
+    ordenesBasicas.map(orden => ({ ...orden, detalles: [] })),
+    costCenters,
+    accountCategories
+  );
   
   const response = await createOrdenesCompraBatch(apiData);
   
@@ -698,7 +957,6 @@ export const handleOrdenCompraExcelUpload = async (file: File): Promise<OrdenCom
       providerId: apiItem.providerId || 0,
       amount: apiItem.amount,
       date: apiItem.date,
-      paymentType: apiItem.paymentType,
       state: apiItem.state,
       cuentaContable: apiItem.cuentaContable || '',
       grupoCuenta: apiItem.grupoCuenta || '',
@@ -718,6 +976,10 @@ export const handleOrdenCompraExcelUpload = async (file: File): Promise<OrdenCom
 export const handleOrdenCompraDetalladoExcelUpload = async (file: File): Promise<OrdenCompra[]> => {
   console.log('⚠️ Usando función individual - considera usar handleConsolidatedExcelUpload');
   
+  // Cargar datos de referencia
+  const referenceData = await getReferenceData();
+  const { costCenters, accountCategories } = referenceData;
+  
   const data = await readExcelFile(file);
   const ordenesDetalles = processOrdenesDetalles(data, file.name);
   
@@ -733,7 +995,7 @@ export const handleOrdenCompraDetalladoExcelUpload = async (file: File): Promise
     detalles: [detalle]
   }));
   
-  const apiData = convertToApiFormat(ordenesBasicas);
+  const apiData = await convertToApiFormat(ordenesBasicas, costCenters, accountCategories);
   
   const response = await createOrdenesCompraBatch(apiData);
   
@@ -754,7 +1016,6 @@ export const handleOrdenCompraDetalladoExcelUpload = async (file: File): Promise
       providerId: apiItem.providerId || 0,
       amount: apiItem.amount,
       date: apiItem.date,
-      paymentType: apiItem.paymentType,
       state: apiItem.state,
       cuentaContable: apiItem.cuentaContable || '',
       grupoCuenta: apiItem.grupoCuenta || '',
