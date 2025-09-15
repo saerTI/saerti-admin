@@ -1,74 +1,68 @@
-// src/utils/previsionalUtils.ts
 import * as XLSX from 'xlsx';
-import { Previsional } from '../types/CC/previsional';
+import { PrevisionalType } from '../types/CC/previsional';
+
+export interface PrevisionalImportData {
+  rut: string;
+  nombre: string;
+  tipo_previsional: PrevisionalType;
+  centro_costo: string;
+  monto: number;
+  mes: number;
+  año: number;
+  fecha_pago?: string;
+  notas?: string;
+}
 
 /**
- * Procesa un archivo Excel de previsionales y genera un array de objetos Previsional
+ * Procesa un archivo Excel de previsionales y genera un array de objetos para importar
  * @param file Archivo Excel a procesar
- * @returns Array de objetos Previsional
+ * @returns Array de objetos PrevisionalImportData
  */
-export const handlePrevisionalExcelUpload = async (file: File): Promise<Previsional[]> => {
+export const handlePrevisionalExcelUpload = async (file: File): Promise<PrevisionalImportData[]> => {
   try {
-    // Leer el archivo Excel usando el método que ya funciona
     const data = await readExcelFile(file);
-    
-    // Procesar y transformar los datos
-    const previsionales = processProvisionalesData(data, file.name);
-    
+    const previsionales = processProvisionalesDataForImport(data, file.name);
     return previsionales;
   } catch (error) {
-    // Re-lanzar el error para que sea manejado por el componente
     throw error;
   }
 };
 
-// Función para leer archivos Excel
+/**
+ * Función para leer archivos Excel
+ */
 export const readExcelFile = (file: File): Promise<any[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
-    reader.onload = (e: ProgressEvent<FileReader>) => {
+    reader.onload = (event) => {
       try {
-        if (!e.target || !e.target.result) {
-          throw new Error("Error al leer el archivo");
-        }
-        
-        // Usar ArrayBuffer en lugar de binary string (evita la advertencia de deprecated)
-        const data = e.target.result;
-        const workbook = XLSX.read(new Uint8Array(data as ArrayBuffer), { type: 'array' });
-        
-        // Asumimos que los datos están en la primera hoja
+        const arrayBuffer = event.target?.result as ArrayBuffer;
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Convertir a JSON con encabezados
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        resolve(jsonData as any[]);
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        resolve(data);
       } catch (error) {
         reject(error);
       }
     };
     
-    reader.onerror = () => {
-      reject(new Error("Error al leer el archivo"));
-    };
-    
-    // Usar readAsArrayBuffer en lugar de readAsBinaryString
+    reader.onerror = () => reject(new Error("Error al leer el archivo"));
     reader.readAsArrayBuffer(file);
   });
 };
 
-// Función para procesar los datos de previsionales
-export const processProvisionalesData = (data: any[], fileName: string, existingPrevisionales: Previsional[] = []): Previsional[] => {
-  // Buscar encabezados
+/**
+ * Función para procesar los datos de previsionales para importación masiva
+ */
+export const processProvisionalesDataForImport = (data: any[], fileName: string): PrevisionalImportData[] => {
   let headerRowIndex = findHeaderRow(data);
   
   if (headerRowIndex === -1) {
     throw new Error("No se encontraron encabezados en el archivo");
   }
   
-  // Mapear encabezados a índices de columna
   const headers = data[headerRowIndex] as any[];
   const getColumnIndex = (searchTerms: string[]) => {
     return headers.findIndex((header: any) => 
@@ -77,242 +71,128 @@ export const processProvisionalesData = (data: any[], fileName: string, existing
     );
   };
   
-  // Buscar índices de columnas con términos más específicos
+  // Buscar índices de columnas específicos para la plantilla
+  const rutIndex = getColumnIndex(['RUT']);
   const nombreIndex = getColumnIndex(['NOMBRE']);
-  const rutIndex = getColumnIndex(['RUT DEL TRABAJADOR', 'RUT TRABAJADOR', 'RUT']);
-  const tipoIndex = getColumnIndex(['TIPO', 'TIPO PREVISIONAL']);
-  const montoIndex = getColumnIndex(['MONTO', 'VALOR']);
-  
-  const centroCostoCodigoIndex = getColumnIndex(['CENTRO COSTO (COD)', 'CENTRO COSTO COD']);
-  const centroCostoNombreIndex = getColumnIndex(['CENTRO COSTO']);
-  const areaIndex = getColumnIndex(['ÁREA', 'AREA']);
+  const tipoIndex = getColumnIndex(['TIPO PREVISIONAL', 'TIPO']);
+  const centroCostoIndex = getColumnIndex(['CENTRO DE COSTO', 'CENTRO COSTO']);
+  const montoIndex = getColumnIndex(['MONTO']);
   const mesIndex = getColumnIndex(['MES']);
   const añoIndex = getColumnIndex(['AÑO', 'ANO']);
-  const descuentosLegalesIndex = getColumnIndex(['DESCUENTOS LEGALES', 'DESCUENTOS']);
-  
-  // Debug: Mostrar qué columnas se encontraron
-  console.log('Índices encontrados para previsionales:', {
-    nombre: nombreIndex,
-    rut: rutIndex,
-    tipo: tipoIndex,
-    monto: montoIndex,
-    headers: headers
-  });
+  const fechaPagoIndex = getColumnIndex(['FECHA DE PAGO', 'FECHA PAGO']);
+  const notasIndex = getColumnIndex(['NOTAS', 'OBSERVACIONES']);
   
   // Verificar columnas requeridas
-  if (nombreIndex === -1) {
-    throw new Error("No se encontró la columna 'Nombre'");
+  const requiredColumns = [
+    { index: rutIndex, name: 'RUT' },
+    { index: nombreIndex, name: 'NOMBRE' },
+    { index: tipoIndex, name: 'TIPO PREVISIONAL' },
+    { index: centroCostoIndex, name: 'CENTRO DE COSTO' },
+    { index: montoIndex, name: 'MONTO' },
+    { index: mesIndex, name: 'MES' },
+    { index: añoIndex, name: 'AÑO' }
+  ];
+
+  const missingColumns = requiredColumns.filter(col => col.index === -1);
+  if (missingColumns.length > 0) {
+    const missingNames = missingColumns.map(col => col.name).join(', ');
+    throw new Error(`No se encontraron las columnas requeridas: ${missingNames}`);
   }
   
-  if (rutIndex === -1) {
-    throw new Error("No se encontró la columna 'RUT'");
-  }
-  
-  if (tipoIndex === -1) {
-    throw new Error("No se encontró la columna 'Tipo'");
-  }
-  
-  if (montoIndex === -1) {
-    throw new Error("No se encontró la columna 'Monto'");
-  }
-  
-  // Procesar filas de datos
-  const previsionales: Previsional[] = [];
+  const previsionales: PrevisionalImportData[] = [];
   
   for (let i = headerRowIndex + 1; i < data.length; i++) {
     const row = data[i] as any[];
     
     if (!row || !row[nombreIndex] || !row[rutIndex]) continue;
     
-    // Extraer valores específicos de cada columna
-    const monto = montoIndex !== -1 && row[montoIndex] !== undefined && row[montoIndex] !== null
-      ? (typeof row[montoIndex] === 'number' 
-          ? row[montoIndex] 
-          : parseFloat(String(row[montoIndex]).replace(/[^0-9.-]/g, '')) || 0) 
-      : 0;
-    
-    const descuentosLegales = descuentosLegalesIndex !== -1 && row[descuentosLegalesIndex] !== undefined && row[descuentosLegalesIndex] !== null
-      ? (typeof row[descuentosLegalesIndex] === 'number' 
-          ? row[descuentosLegalesIndex] 
-          : parseFloat(String(row[descuentosLegalesIndex]).replace(/[^0-9.-]/g, '')) || 0) 
-      : 0;
-    
-    // Debug: Mostrar valores extraídos para las primeras filas
-    if (i <= headerRowIndex + 3) {
-      console.log(`Fila ${i}:`, {
-        nombreRaw: row[nombreIndex],
-        rutRaw: row[rutIndex],
-        tipoRaw: row[tipoIndex],
-        montoRaw: row[montoIndex],
-        montoParsed: monto
-      });
-    }
-    
-    // Extraer nombre y tipo
-    const nombreCompleto = String(row[nombreIndex] || '');
-    const rutTrabajador = String(row[rutIndex] || '');
-    
-    // Determinar el tipo de previsional
-    let tipo = tipoIndex !== -1 ? String(row[tipoIndex] || '') : '';
-    if (!tipo) {
-      tipo = 'AFP'; // Valor por defecto
-    } else {
-      // Normalizar el tipo
-      const tipoUpper = tipo.toUpperCase();
-      if (tipoUpper.includes('AFP')) {
-        tipo = 'AFP';
-      } else if (tipoUpper.includes('ISAPRE') && tipoUpper.includes('7%')) {
-        tipo = 'Isapre 7%';
-      } else if (tipoUpper.includes('ISAPRE')) {
-        tipo = 'Isapre';
-      } else if (tipoUpper.includes('SEGURO') || tipoUpper.includes('CESANTIA')) {
-        tipo = 'Seguro Cesantía';
-      } else if (tipoUpper.includes('MUTUAL')) {
-        tipo = 'Mutual';
+    try {
+      // Extraer y validar valores
+      const rut = String(row[rutIndex] || '').trim();
+      const nombre = String(row[nombreIndex] || '').trim();
+      const tipoStr = String(row[tipoIndex] || '').toLowerCase().trim();
+      const centroCosto = String(row[centroCostoIndex] || '').trim();
+      const montoValue = parseFloat(String(row[montoIndex] || '0').replace(/[,\.]/g, ''));
+      const mes = parseInt(String(row[mesIndex] || '0'));
+      const año = parseInt(String(row[añoIndex] || new Date().getFullYear()));
+      
+      // Validar tipo previsional
+      const validTypes: PrevisionalType[] = ['afp', 'isapre', 'isapre_7', 'fonasa', 'seguro_cesantia', 'mutual'];
+      const tipo = validTypes.find(t => t === tipoStr) || 'afp';
+      
+      // Validar datos requeridos
+      if (!rut || !nombre || !centroCosto || isNaN(montoValue) || isNaN(mes) || isNaN(año)) {
+        console.warn(`Fila ${i + 1} omitida: datos incompletos`);
+        continue;
       }
-    }
-    
-    // Solo procesar si hay un nombre válido, RUT y monto
-    if (nombreCompleto.trim() && rutTrabajador && monto > 0) {
-      // Construir periodo desde mes y año
-      let periodo = '';
-      if (mesIndex !== -1 && añoIndex !== -1 && row[mesIndex] && row[añoIndex]) {
-        const mes = String(row[mesIndex]).padStart(2, '0');
-        const año = String(row[añoIndex]);
-        periodo = `${mes}/${año}`;
-      } else {
-        periodo = extractPeriod(row, -1, fileName);
+
+      // Validar mes (1-12)
+      if (mes < 1 || mes > 12) {
+        console.warn(`Fila ${i + 1} omitida: mes inválido (${mes})`);
+        continue;
       }
-      
-      // Centro de Costo
-      const centroCostoCodigo = centroCostoCodigoIndex !== -1 ? String(row[centroCostoCodigoIndex] || '') : '';
-      const centroCostoNombre = centroCostoNombreIndex !== -1 ? String(row[centroCostoNombreIndex] || '') : '';
-      
-      // Área
-      const area = areaIndex !== -1 ? String(row[areaIndex] || '') : '';
-      
-      // Crear ID único
-      const newId = -(i); // ID negativo para indicar que es un registro nuevo
-      
-      // Crear objeto Previsional
-      const previsional: Previsional = {
-        id: newId,
-        name: `${tipo} ${periodo} - ${nombreCompleto}`,
-        employeeId: 0, // Valor temporal
-        employeeName: nombreCompleto,
-        employeeRut: rutTrabajador,
-        type: tipo,
-        amount: monto,
-        descuentosLegales: descuentosLegales,
-        date: periodo ? `${periodo.split('/')[1]}-${periodo.split('/')[0]}-01` : new Date().toISOString().split('T')[0],
-        period: periodo,
-        state: 'pending',
-        companyId: 1,
-        projectId: undefined,
-        projectName: centroCostoNombre,
-        projectCode: centroCostoCodigo,
-        area: area,
-        centroCosto: centroCostoCodigo,
-        centroCostoNombre: centroCostoNombre,
-        notes: ''
+
+      // Datos opcionales
+      const fechaPago = fechaPagoIndex !== -1 && row[fechaPagoIndex] ? 
+        String(row[fechaPagoIndex]).trim() : undefined;
+      const notas = notasIndex !== -1 && row[notasIndex] ? 
+        String(row[notasIndex]).trim() : undefined;
+
+      const previsional: PrevisionalImportData = {
+        rut,
+        nombre,
+        tipo_previsional: tipo,
+        centro_costo: centroCosto,
+        monto: montoValue,
+        mes,
+        año,
+        fecha_pago: fechaPago,
+        notas
       };
       
       previsionales.push(previsional);
+      
+    } catch (error) {
+      console.warn(`Error procesando fila ${i + 1}:`, error);
+      continue;
     }
   }
   
-  console.log(`Procesados ${previsionales.length} registros de previsionales`);
+  if (previsionales.length === 0) {
+    throw new Error("No se pudieron procesar registros válidos del archivo");
+  }
+  
+  console.log(`Procesados ${previsionales.length} registros válidos`);
   return previsionales;
 };
 
-// Función auxiliar mejorada para encontrar la fila de encabezados
+/**
+ * Función para encontrar la fila de encabezados
+ */
 function findHeaderRow(data: any[]): number {
-  // Buscar específicamente por "Rut" o "Nombre" que son columnas comunes
-  for (let i = 0; i < Math.min(10, data.length); i++) {
-    const row = data[i];
-    if (Array.isArray(row)) {
-      const hasRut = row.some((cell: any) => 
-        typeof cell === 'string' && 
-        (cell.toUpperCase().includes('RUT DEL TRABAJADOR') || 
-         cell.toUpperCase().includes('RUT TRABAJADOR') ||
-         cell.toUpperCase() === 'RUT')
-      );
-      
-      const hasNombre = row.some((cell: any) => 
-        typeof cell === 'string' && 
-        cell.toUpperCase() === 'NOMBRE'
-      );
-      
-      if (hasRut || hasNombre) {
-        console.log(`Encabezados encontrados en la fila ${i}:`, row);
-        return i;
-      }
+  const commonHeaders = ['RUT', 'NOMBRE', 'TIPO', 'MONTO', 'MES', 'AÑO'];
+  
+  for (let i = 0; i < Math.min(data.length, 10); i++) {
+    const row = data[i] as any[];
+    if (!row) continue;
+    
+    const headerCount = row.filter((cell: any) => {
+      if (!cell || typeof cell !== 'string') return false;
+      const cellUpper = cell.toUpperCase();
+      return commonHeaders.some(header => cellUpper.includes(header));
+    }).length;
+    
+    if (headerCount >= 3) {
+      return i;
     }
   }
   
   return -1;
 }
 
-// Función auxiliar para extraer periodo en formato correcto (MM/YYYY)
-function extractPeriod(row: any[], periodoIndex: number, fileName: string): string {
-  if (periodoIndex !== -1 && row[periodoIndex]) {
-    const periodStr = String(row[periodoIndex]);
-    
-    // Primero intentamos detectar si es un formato incorrecto como "20/2504"
-    if (/^\d{2}\/\d{4}$/.test(periodStr)) {
-      return periodStr;
-    }
-    else if (/^\d{2}\/\d{2}$/.test(periodStr)) {
-      // Formato MM/YY - convertir a MM/YYYY
-      const [month, shortYear] = periodStr.split('/');
-      const fullYear = parseInt(shortYear) < 50 ? `20${shortYear}` : `19${shortYear}`;
-      return `${month}/${fullYear}`;
-    }
-    else if (/^\d{1,2}\/\d{4}$/.test(periodStr)) {
-      // Ya es MM/YYYY pero aseguramos que mes tenga cero inicial
-      const [month, year] = periodStr.split('/');
-      return `${month.padStart(2, '0')}/${year}`;
-    }
-    else if (/^\d{4}-\d{1,2}$/.test(periodStr) || /^\d{4}\/\d{1,2}$/.test(periodStr)) {
-      // Formato YYYY-MM o YYYY/MM
-      const parts = periodStr.split(/[-\/]/);
-      return `${parts[1].padStart(2, '0')}/${parts[0]}`;
-    }
-    else if (/^\d{1,2}-\d{4}$/.test(periodStr) || /^\d{1,2}\/\d{4}$/.test(periodStr)) {
-      // Formato MM-YYYY o MM/YYYY
-      const parts = periodStr.split(/[-\/]/);
-      return `${parts[0].padStart(2, '0')}/${parts[1]}`;
-    }
-    else if (/^(20\d{2})(0[1-9]|1[0-2])$/.test(periodStr)) {
-      // Formato YYYYMM (como 202505)
-      const year = periodStr.substring(0, 4);
-      const month = periodStr.substring(4, 6);
-      return `${month}/${year}`;
-    }
-    
-    // Si no coincide con ningún formato reconocido, intentamos extraer de una fecha
-    try {
-      const date = new Date(periodStr);
-      if (!isNaN(date.getTime())) {
-        return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
-      }
-    } catch (e) {
-      // Ignorar error de parseo
-    }
-  }
-  
-  // Intentar extraer del nombre del archivo
-  const match = fileName.match(/(\d{2})[-_]?(\d{4})/);
-  if (match) {
-    return `${match[1]}/${match[2]}`;
-  }
-  
-  // Usar fecha actual como último recurso
-  const now = new Date();
-  return `${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
-}
-
-// Función auxiliar para obtener el período actual en formato MM/YYYY
+/**
+ * Función auxiliar para obtener el período actual en formato MM/YYYY
+ */
 export const getCurrentPeriod = (): string => {
   const now = new Date();
   return `${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
@@ -321,6 +201,6 @@ export const getCurrentPeriod = (): string => {
 export default {
   handlePrevisionalExcelUpload,
   readExcelFile,
-  processProvisionalesData,
+  processProvisionalesDataForImport,
   getCurrentPeriod
 };

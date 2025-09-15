@@ -1,154 +1,110 @@
-// src/services/CC/previsionalesService.ts
+// saer-frontend/src/services/CC/previsionalesService.ts
+
 import api from '../apiService';
-import { 
-  Previsional, 
-  PrevisionalFilter, 
-  PrevisionalCreateData, 
-  PrevisionalUpdateData,
-  PrevisionalesResponse
+import {
+  Previsional,
+  PrevisionalImportItem,
+  ImportResponse,
+  NewPrevisionalData,
+  UpdatePrevisionalData,
+  PrevisionalStatus
 } from '../../types/CC/previsional';
-import { removeFromApiCache } from '../../hooks/useApi';
+import { ApiPaginatedResponse } from '../../types/CC/apiResponses';
 
-// Get previsionales with optional filters
-export const getPrevisionales = async (filters: PrevisionalFilter = {}): Promise<Previsional[]> => {
-  try {
-    const queryParams = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (Array.isArray(value)) {
-          value.forEach(val => queryParams.append(`${key}[]`, val.toString()));
-        } else {
-          queryParams.append(key, value.toString());
-        }
-      }
-    });
+// CORRECCIÓN: Ajustar la URL base para que coincida con las rutas del backend
+const BASE_URL = '/previsionales';
 
-    const queryString = queryParams.toString();
-    const endpoint = `/api/previsionales${queryString ? `?${queryString}` : ''}`;
+// Tipos para los filtros de la API
+interface PrevisionalFilters {
+  page?: number;
+  limit?: number;
+  status?: string;
+  type?: string;
+  cost_center_id?: number;
+  month_period?: number;
+  year_period?: number;
+  start_date?: string;
+  end_date?: string;
+  search?: string;
+}
 
-    // api.get already returns the data part of the axios response
-    const response = await api.get<PrevisionalesResponse>(endpoint);
-    
-    // Return just the data array
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching previsionales:', error);
-    throw new Error('Failed to fetch previsionales');
-  }
-};
-
-// Get previsional by ID
-export const getPrevisionalById = async (id: number): Promise<Previsional> => {
-  try {
-    interface ApiSingleResponse {
-      success: boolean;
-      data: Previsional;
+/**
+ * Servicio para gestionar los pagos previsionales
+ */
+export const previsionalesService = {
+  /**
+   * Obtiene la lista de previsionales con filtros y paginación
+   */
+  async getPrevisionales(filters: PrevisionalFilters = { page: 1, limit: 20 }): Promise<ApiPaginatedResponse<Previsional>> {
+    try {
+      const response = await api.get<ApiPaginatedResponse<Previsional>>(BASE_URL, { params: filters });
+      // CORRECCIÓN: 'response' ya es el objeto ApiPaginatedResponse que necesitamos.
+      return response;
+    } catch (error) {
+      console.error('Error fetching previsionales:', error);
+      throw error;
     }
-    
-    // api.get already returns the data part of the axios response
-    const response = await api.get<ApiSingleResponse>(`/api/previsionales/${id}`);
-    
-    // Return just the data object
+  },
+
+  /**
+   * Obtiene un registro previsional por su ID
+   */
+  async getPrevisionalById(id: number): Promise<Previsional> {
+    const response = await api.get<{ data: Previsional }>(`${BASE_URL}/${id}`);
+    // Esta estructura parece esperar un objeto { data: ... }, así que la mantenemos.
     return response.data;
-  } catch (error) {
-    console.error(`Error fetching previsional ${id}:`, error);
-    throw new Error('Failed to fetch previsional details');
-  }
-};
+  },
 
-// Create new previsional
-export const createPrevisional = async (data: PrevisionalCreateData): Promise<number> => {
-  try {
-    // Realizar ajustes de mapeo si son necesarios
-    const backendData = {
-      ...data,
-      // Asegurarse de que los campos estén en el formato correcto
-    };
+  /**
+   * Crea un nuevo registro previsional
+   */
+  async createPrevisional(data: NewPrevisionalData): Promise<Previsional> {
+    const response = await api.post<{ data: Previsional }>(BASE_URL, data);
+    return response.data;
+  },
 
-    interface ApiCreateResponse {
-      success: boolean;
-      data: {
-        id: number;
-      };
+  /**
+   * Actualiza un registro previsional existente
+   */
+  async updatePrevisional(id: number, data: UpdatePrevisionalData): Promise<Previsional> {
+    const response = await api.put<{ data: Previsional }>(`${BASE_URL}/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Elimina un registro previsional
+   */
+  async deletePrevisional(id: number): Promise<void> {
+    await api.delete(`${BASE_URL}/${id}`);
+  },
+
+  /**
+   * Actualiza el estado de un registro previsional
+   */
+  async updatePrevisionalStatus(id: number, status: PrevisionalStatus): Promise<Previsional> {
+    const response = await api.patch<{ data: Previsional }>(`${BASE_URL}/${id}/status`, { status });
+    return response.data;
+  },
+
+  /**
+   * Importación masiva de previsionales
+   */
+  async importPrevisionales(previsionales: PrevisionalImportItem[]): Promise<ImportResponse> {
+    try {
+      console.log(`📤 Enviando importación masiva de ${previsionales.length} registros.`);
+      
+      const payload = { previsionales };
+      const response = await api.post<ImportResponse>(`${BASE_URL}/import`, payload);
+      
+      // CORRECCIÓN: 'response' ya es el objeto ImportResponse, no tiene una propiedad '.data'.
+      console.log('✅ Importación procesada por el servidor:', response);
+      return response;
+
+    } catch (error: any) {
+      console.error('❌ Error en la solicitud de importación masiva:', error);
+      throw new Error(
+        error.response?.data?.message || 'Error desconocido al importar los registros.'
+      );
     }
-    
-    // api.post already returns the data part of the axios response
-    const response = await api.post<ApiCreateResponse>(`/api/previsionales`, backendData);
-    
-    // Invalidar cualquier caché de lista de previsionales
-    removeFromApiCache(/previsionales-list/);
-    
-    // Return just the id
-    return response.data.id;
-  } catch (error) {
-    console.error('Error creating previsional:', error);
-    throw new Error('Failed to create previsional');
   }
-};
-
-// Update previsional
-export const updatePrevisional = async (id: number, data: PrevisionalUpdateData): Promise<boolean> => {
-  try {
-    await api.put(`/api/previsionales/${id}`, data);
-    
-    // Invalidar cachés relacionadas con este previsional
-    removeFromApiCache(`previsional-detail-${id}`);
-    removeFromApiCache(/previsionales-list/);
-    
-    return true;
-  } catch (error) {
-    console.error(`Error updating previsional ${id}:`, error);
-    throw new Error('Failed to update previsional');
-  }
-};
-
-// Delete previsional
-export const deletePrevisional = async (id: number): Promise<boolean> => {
-  try {
-    await api.delete(`/api/previsionales/${id}`);
-    
-    // Invalidar cachés relacionadas con este previsional
-    removeFromApiCache(`previsional-detail-${id}`);
-    removeFromApiCache(/previsionales-list/);
-    
-    return true;
-  } catch (error) {
-    console.error(`Error deleting previsional ${id}:`, error);
-    throw new Error('Failed to delete previsional');
-  }
-};
-
-// Update previsional status
-export const updatePrevisionalStatus = async (id: number, status: string): Promise<boolean> => {
-  try {
-    await api.put(`/api/previsionales/${id}/state`, { state: status });
-    
-    // Invalidar cachés relacionadas con este previsional
-    removeFromApiCache(`previsional-detail-${id}`);
-    removeFromApiCache(/previsionales-list/);
-    
-    return true;
-  } catch (error) {
-    console.error(`Error updating previsional status ${id}:`, error);
-    throw new Error('Failed to update previsional status');
-  }
-};
-
-// Export types for individual use
-export { 
-  type Previsional,
-  type PrevisionalFilter,
-  type PrevisionalCreateData,
-  type PrevisionalUpdateData,
-  type PrevisionalesResponse
-};
-
-// Export as default object
-export default {
-  getPrevisionales,
-  getPrevisionalById,
-  createPrevisional,
-  updatePrevisional,
-  deletePrevisional,
-  updatePrevisionalStatus
 };

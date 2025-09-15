@@ -365,27 +365,7 @@ const CostosFijos = () => {
         onClearFilters={clearFilters}
       />
 
-      {/* ✅ DEBUG: Mostrar información de costCenters para debugging */}
-      {config.isDevelopment && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
-          <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-            Debug Info - Cost Centers:
-          </h4>
-          <div className="text-xs text-blue-600 dark:text-blue-300">
-            <p>Loading: {costCentersLoading ? 'Sí' : 'No'}</p>
-            <p>Total: {costCenters.length}</p>
-            <p>Tipos: {[...new Set(costCenters.map(cc => cc.type))].join(', ')}</p>
-            {costCenters.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer">Ver todos los centros</summary>
-                <pre className="mt-2 text-xs overflow-auto max-h-32">
-                  {JSON.stringify(costCenters, null, 2)}
-                </pre>
-              </details>
-            )}
-          </div>
-        </div>
-      )}
+      
 
       {/* Mensaje de error */}
       {error && (
