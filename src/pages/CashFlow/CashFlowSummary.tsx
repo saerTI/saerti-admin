@@ -55,9 +55,36 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
     }
   };
 
-  function getChangeIcon(): React.ReactNode {
-    throw new Error('Function not implemented.');
-  }
+  const getChangeIcon = () => {
+    if (change === undefined) return null;
+    
+    if (change > 0) {
+      return (
+        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l10-10M7 7h10v10" />
+        </svg>
+      );
+    } else if (change < 0) {
+      return (
+        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 7l-10 10M7 17h10V7" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+        </svg>
+      );
+    }
+  };
+
+  const getChangeColor = () => {
+    if (change === undefined) return 'text-gray-500';
+    if (change > 0) return 'text-green-500';
+    if (change < 0) return 'text-red-500';
+    return 'text-gray-500';
+  };
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
@@ -80,7 +107,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
         )}
         
         {!isLoading && change !== undefined && (
-          <div className={`mt-1 flex items-center gap-1 ${getChangeIcon()}`}>
+          <div className={`mt-1 flex items-center gap-1 ${getChangeColor()}`}>
             {getChangeIcon()}
             <span className="text-sm font-medium">
               {Math.abs(change).toFixed(1)}% vs. período anterior
