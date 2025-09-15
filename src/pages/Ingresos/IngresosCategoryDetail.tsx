@@ -27,7 +27,7 @@ const INCOME_CATEGORIES = {
   'estados-pago': {
     id: 3,
     title: 'Estados de Pago',
-    description: 'Ingresos relacionados con estados de pago de contratos y proyectos.',
+    description: 'Ingresos relacionados con estados de pago de contratos y centros de costos.',
     icon: '📄'
   },
   'venta-activos': {

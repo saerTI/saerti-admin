@@ -93,23 +93,23 @@ export default function App() {
               </PrivateRoute>
             } />
 
-            {/* Rutas de Proyectos */}
-            <Route path="/projects" element={
+            {/* Rutas de Centros de Costo */}
+            <Route path="/cost-centers" element={
               <PrivateRoute>
                 <ProjectList />
               </PrivateRoute>
             } />
-            <Route path="/projects/new" element={
+            <Route path="/cost-centers/new" element={
               <PrivateRoute>
                 <ProjectForm />
               </PrivateRoute>
             } />
-            <Route path="/projects/:id" element={
+            <Route path="/cost-centers/:id" element={
               <PrivateRoute>
                 <ProjectDetails />
               </PrivateRoute>
             } />
-            <Route path="/projects/:id/edit" element={
+            <Route path="/cost-centers/:id/edit" element={
               <PrivateRoute>
                 <ProjectForm />
               </PrivateRoute>

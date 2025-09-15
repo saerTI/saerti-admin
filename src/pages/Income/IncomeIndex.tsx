@@ -79,7 +79,7 @@ const IncomeIndex = () => {
       key: 'projectId',
       label: 'Proyecto',
       type: 'select',
-      options: [{ value: 'all', label: 'Todos los Proyectos' }, ...filterOptions.projects],
+      options: [{ value: 'all', label: 'Todos los Centros de costos' }, ...filterOptions.projects],
       loading: filterOptions.projects.length === 0,
       width: 'md'
     },

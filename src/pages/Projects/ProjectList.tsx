@@ -94,12 +94,12 @@ const ProjectList = () => {
   return (
     <div className="container px-4 py-6 mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Proyectos</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Centro de Costos</h1>
         <Button 
           onClick={() => navigate('/projects/new')}
           className="bg-brand-500 hover:bg-brand-600 text-white"
         >
-          Nuevo Proyecto
+          Nuevo Centro de Costo
         </Button>
       </div>
 
@@ -149,7 +149,7 @@ const ProjectList = () => {
         <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
           {projects.length === 0 ? (
             <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              No se encontraron proyectos con los filtros seleccionados.
+              No se encontraron centros de costos con los filtros seleccionados.
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

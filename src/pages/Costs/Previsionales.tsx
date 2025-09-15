@@ -253,7 +253,7 @@ const Previsionales = () => {
   ];
 
   const projectOptions = [
-    { value: '', label: 'Todos los proyectos' },
+    { value: '', label: 'Todos los Centros de costos' },
     ...projects.map(project => ({
       value: project.id.toString(),
       label: project.name

@@ -292,7 +292,7 @@ const Remuneraciones = () => {
 
   // TODO: Cuando se implemente proyectos, usar projects reales
   const projectOptions = [
-    { value: '', label: 'Todos los proyectos' }
+    { value: '', label: 'Todos los Centros de costos' }
   ];
 
   // Combinar errores

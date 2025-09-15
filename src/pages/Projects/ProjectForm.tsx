@@ -67,7 +67,7 @@ const ProjectForm = () => {
         setFormattedBudget(formatNumberWithDots(projectData.totalBudget));
         
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al cargar los datos del proyecto');
+        setError(err instanceof Error ? err.message : 'Error al cargar los datos del centro de costo');
         console.error('Error loading project data:', err);
       } finally {
         setLoading(false);
@@ -97,8 +97,8 @@ const ProjectForm = () => {
     fetchClients();
   }, [id, isEditMode]);
 
-    
-  // Código para validar el código del proyecto
+
+  // Código para validar el código del centro de costo
   const validateCode = useCallback(
     async (code: string) => {
       if (!code || code.length < 3 || isEditMode) {
@@ -229,7 +229,7 @@ const ProjectForm = () => {
     
     // Evitar envío si el código está siendo validado o no está disponible
     if (!isEditMode && (codeValidating || codeAvailable === false)) {
-      setError('Por favor corrija los errores del código del proyecto antes de continuar');
+      setError('Por favor corrija los errores del código del centro de costo antes de continuar');
       return;
     }
     
@@ -246,9 +246,9 @@ const ProjectForm = () => {
       }
       
       // Navigate back to projects list
-      navigate('/projects');
+      navigate('/cost-centers');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar el proyecto');
+      setError(err instanceof Error ? err.message : 'Error al guardar el centro de costo');
       console.error('Error saving project:', err);
     } finally {
       setSubmitting(false);
@@ -267,7 +267,7 @@ const ProjectForm = () => {
     <div className="container px-4 py-6 mx-auto">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
-          {isEditMode ? 'Editar Proyecto' : 'Nuevo Proyecto'}
+          {isEditMode ? 'Editar Centro de Costo' : 'Nuevo Centro de Costo'}
         </h1>
         
         {error && (
@@ -284,7 +284,7 @@ const ProjectForm = () => {
             {/* Project Name */}
             <div className="col-span-2">
               <Label htmlFor="name">
-                Nombre del Proyecto <span className="text-red-500">*</span>
+                Nombre del Centro de Costo <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
@@ -414,7 +414,7 @@ const ProjectForm = () => {
                 onChange={handleInputChange}
                 rows={4}
                 className="w-full rounded-lg border border-gray-300 appearance-none px-4 py-2.5 text-sm shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:bg-gray-900 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-800"
-                placeholder="Descripción detallada del proyecto"
+                placeholder="Descripción detallada del centro de costo"
               />
             </div>
           </div>
@@ -422,7 +422,7 @@ const ProjectForm = () => {
           {/* Form Actions */}
           <div className="mt-8 flex justify-end space-x-4">
             <Button
-              onClick={() => navigate('/projects')}
+              onClick={() => navigate('/cost-centers')}
               variant="outline"
               disabled={submitting}
             >
@@ -442,7 +442,7 @@ const ProjectForm = () => {
                   Guardando...
                 </>
               ) : (
-                'Guardar Proyecto'
+                'Guardar Centro de Costo'
               )}
             </Button>
           </div>

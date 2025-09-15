@@ -47,8 +47,8 @@ const navItems: NavItem[] = [
   },
   {
     icon: <UserCircleIcon />,
-    name: "Proyectos",
-    path: "/projects",
+    name: "Centros de Costo",
+    path: "/cost-centers",
   },
   {
     // New Gastos menu with all the required sub-items

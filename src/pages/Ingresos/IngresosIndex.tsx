@@ -79,7 +79,7 @@ const IngresosIndex = () => {
   
   // Project filter options
   const projectOptions = [
-    { value: 'all', label: 'Todos los Proyectos' },
+    { value: 'all', label: 'Todos los Centros de Costos' },
     { value: 'proyecto-a', label: 'Proyecto A' },
     { value: 'proyecto-b', label: 'Proyecto B' },
     { value: 'proyecto-c', label: 'Proyecto C' },
@@ -518,12 +518,12 @@ const IngresosIndex = () => {
             </div>
             
             <div>
-              <Label htmlFor="projectFilter">Proyecto</Label>
+              <Label htmlFor="projectFilter">Centro de Costo</Label>
               <Select
                 options={projectOptions}
                 defaultValue={projectFilter}
                 onChange={(value) => setProjectFilter(value)}
-                placeholder="Seleccione proyecto"
+                placeholder="Seleccione centro de costo"
               />
             </div>
           </div>
@@ -568,41 +568,9 @@ const IngresosIndex = () => {
           ))}
         </div>
       )}
-      
-      {/* Recent Incomes Table
-      <h2 className="text-xl font-bold text-gray-800 dark:text-white my-6">Ingresos Recientes</h2>
-      <IngresosRecentTable /> */}
-      
-      {/* Acceso rápido al Flujo de Caja */}
-      <div className="mt-8 mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-              <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Flujo de Caja Detallado
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Visualiza el histórico completo de transacciones con filtros avanzados y análisis temporal
-              </p>
-            </div>
-          </div>
-          <Link 
-            to="/cash-flow" 
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
-          >
-            <span>Ver Histórico</span>
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
-      </div>
+    
 
+      
       {/* Full Incomes Table with Pagination */}
       <div className="mt-8">
         <IngresosFullTable 
