@@ -27,7 +27,7 @@ const CashFlow: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Financial table controls
-  const [periodType, setPeriodType] = useState<'weekly' | 'monthly' | 'quarterly' | 'annual'>('monthly');
+  const [periodType, setPeriodType] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState<string>('overview');
 
@@ -103,28 +103,20 @@ const CashFlow: React.FC = () => {
     }
   };
 
-  const handlePeriodTypeChange = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'annual') => {
+  const handlePeriodTypeChange = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
     setPeriodType(newPeriodType);
-    // También actualizamos los filtros para mantener consistencia
-    setFilters(prev => ({
-      ...prev,
-      periodType: newPeriodType
-    }));
-  };
-
-  // Función adaptadora para el componente CashFlowFinancialTable que usa 'yearly' en lugar de 'annual'
-  const handlePeriodTypeChangeForTable = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
-    const mappedPeriodType = newPeriodType === 'yearly' ? 'annual' : newPeriodType;
-    handlePeriodTypeChange(mappedPeriodType);
   };
 
   const handleYearChange = (newYear: number) => {
     setYear(newYear);
-    // También actualizamos los filtros para mantener consistencia
-    setFilters(prev => ({
-      ...prev,
-      year: newYear.toString()
-    }));
+  };
+
+  const handlePeriodTypeChange = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
+    setPeriodType(newPeriodType);
+  };
+
+  const handleYearChange = (newYear: number) => {
+    setYear(newYear);
   };
   
   const renderTabContent = () => {
@@ -180,9 +172,9 @@ const CashFlow: React.FC = () => {
         return (
           <CashFlowFinancialTable
             title="Análisis Financiero de Flujo de Caja"
-            periodType={periodType === 'annual' ? 'yearly' : periodType}
+            periodType={periodType}
             year={year}
-            onPeriodTypeChange={handlePeriodTypeChangeForTable}
+            onPeriodTypeChange={handlePeriodTypeChange}
             onYearChange={handleYearChange}
             loading={false}
             showExpenses={true}
