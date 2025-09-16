@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Remuneracion, RemuneracionCreateData } from '../types/CC/remuneracion';
-import { createRemuneracionesBatch } from '../services/CC/remuneracionesService';
+import { createRemuneracionesBatch, importRemuneraciones, type RemuneracionImportItem } from '../services/CC/remuneracionesService';
 
 // Definir el tipo de respuesta esperada de la API
 interface BatchCreateResponse {
@@ -41,76 +41,50 @@ export const handleRemuneracionExcelUpload = async (file: File): Promise<Remuner
     
     console.log(`Procesados ${remuneracionesTemp.length} registros, enviando a API...`);
     
-    // ✅ CLAVE: Preparar array con manejo defensivo de datos faltantes
+    // ✅ ACTUALIZADO: Preparar array con nueva estructura para la API payroll
     const batchData: RemuneracionCreateData[] = remuneracionesTemp.map((remuneracion, index) => {
       
-      // 🔧 Estrategia: Crear valores predeterminados inteligentes para datos críticos
+      // 🔧 NUEVA ESTRUCTURA: Usar employee_id en lugar de campos separados
+      // NOTA: Por ahora usamos 1 como employee_id por defecto
+      // TODO: Implementar búsqueda de empleado por RUT cuando esté disponible la tabla employees
       
-      // Para el nombre, crear un valor predeterminado basado en información disponible
-      const nombreFinal = remuneracion.employeeName || 
-                         (remuneracion.employeeRut ? `Empleado ${remuneracion.employeeRut}` : '') || 
-                         `Empleado ${index + 1}`;
-      
-      // Para el RUT, asegurar que siempre tengamos algo, aunque sea vacío
-      const rutFinal = remuneracion.employeeRut || '';
-      
-      // Para el cargo, proporcionar un valor predeterminado profesional
-      const cargoFinal = remuneracion.employeePosition || 'No especificado';
-      
-      // Debug para verificar transformación en casos problemáticos
-      if (!remuneracion.employeeName || !remuneracion.employeeRut) {
-        console.warn(`⚠️ Datos incompletos en registro ${index + 1}:`, {
-          original: {
-            employeeName: remuneracion.employeeName,
-            employeeRut: remuneracion.employeeRut
-          },
-          corregido: {
-            nombre: nombreFinal,
-            rut: rutFinal
-          }
-        });
-      }
+      const monthYear = remuneracion.period ? remuneracion.period.split('/') : [new Date().getMonth() + 1, new Date().getFullYear()];
       
       return {
-        // ✅ CORREGIDO: Usar valores con garantía de no ser undefined
-        rut: rutFinal,                    // ✅ Siempre string, nunca undefined
-        nombre: nombreFinal,              // ✅ Siempre string, nunca undefined - ESTO RESUELVE EL ERROR
-        cargo: cargoFinal,                // ✅ Siempre string, nunca undefined
+        // ✅ CAMPO REQUERIDO: employee_id (debe existir en tabla employees)
+        employee_id: 1, // TODO: Buscar empleado por RUT cuando esté implementado
         
-        // Determinar tipo basado en los valores monetarios
+        // ✅ CAMPOS DE LA NUEVA ESTRUCTURA PAYROLL
+        type: remuneracion.sueldoLiquido && remuneracion.sueldoLiquido > 0 ? 'remuneracion' : 'anticipo',
+        amount: remuneracion.amount || 0,
+        net_salary: remuneracion.sueldoLiquido || 0,
+        advance_payment: remuneracion.anticipo || 0,
+        date: remuneracion.date || new Date().toISOString().split('T')[0],
+        month_period: parseInt(String(monthYear[0])) || new Date().getMonth() + 1,
+        year_period: parseInt(String(monthYear[1])) || new Date().getFullYear(),
+        work_days: remuneracion.workDays || 30,
+        payment_method: (remuneracion.paymentMethod || 'transferencia').toLowerCase() as 'transferencia' | 'cheque' | 'efectivo',
+        status: 'pendiente' as const,
+        notes: `Importado desde Excel: ${file.name}`,
+        
+        // ✅ CAMPOS LEGACY PARA COMPATIBILIDAD (el backend los mapea)
+        rut: remuneracion.employeeRut || ``,
+        nombre: remuneracion.employeeName || `Empleado ${index + 1}`,
         tipo: remuneracion.sueldoLiquido && remuneracion.sueldoLiquido > 0 ? 'REMUNERACION' : 'ANTICIPO',
-        
-        // Campos monetarios con valores predeterminados seguros
         sueldoLiquido: remuneracion.sueldoLiquido || 0,
         anticipo: remuneracion.anticipo || 0,
-        
-        // TODO: Implementar funcionalidad de proyectos
-        // Cuando se implemente, descomentar:
-        // proyectoId: remuneracion.projectId?.toString() || '',
-        proyectoId: '', // TEMPORAL: Siempre vacío hasta implementar proyectos
-        
-        // Campos de fecha y estado con valores predeterminados
         fecha: remuneracion.date || new Date().toISOString().split('T')[0],
-        estado: remuneracion.state || 'pending',
+        estado: remuneracion.state || 'pendiente',
         diasTrabajados: remuneracion.workDays || 30,
-        metodoPago: remuneracion.paymentMethod || 'Transferencia',
-        
-        // TEMPORAL: Usar estos campos para guardar info de centro de costo
-        centroCosto: remuneracion.projectCode || '',
-        centroCostoNombre: remuneracion.projectName || '',
-        area: remuneracion.area || '',
-        
-        // Monto total con validación adicional
+        metodoPago: remuneracion.paymentMethod || 'transferencia',
         montoTotal: remuneracion.amount || 0
       };
-    });
-    
-    // ✅ Validación adicional: verificar que tenemos datos válidos antes de enviar
+    });    // ✅ Validación adicional: verificar que tenemos datos válidos antes de enviar
     const validRecords = batchData.filter(record => {
       const hasValidAmount = (record.montoTotal ?? 0) > 0 || 
       (record.sueldoLiquido ?? 0) > 0 || 
       (record.anticipo ?? 0) > 0;
-      const hasValidName = record.nombre.trim().length > 0;
+      const hasValidName = record.nombre && record.nombre.trim().length > 0;
       
       if (!hasValidAmount || !hasValidName) {
         console.warn('⚠️ Registro inválido filtrado:', record);
@@ -571,9 +545,114 @@ export const getCurrentPeriod = (): string => {
   return `${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 };
 
+/**
+ * Nueva función para manejar importación masiva con creación automática de empleados
+ * Similar a la funcionalidad de previsionales
+ */
+export const handleRemuneracionImportWithEmployeeCreation = async (file: File): Promise<any> => {
+  try {
+    const data = await readExcelFile(file);
+    const remuneraciones = processRemuneracionesDataForImport(data, file.name);
+    
+    console.log(`📤 Procesando ${remuneraciones.length} remuneraciones para importación masiva...`);
+    
+    const response = await importRemuneraciones(remuneraciones);
+    
+    console.log('✅ Importación completada:', response);
+    return response;
+    
+  } catch (error) {
+    console.error('❌ Error en importación masiva de remuneraciones:', error);
+    throw error;
+  }
+};
+
+/**
+ * Procesa los datos del Excel para importación masiva con creación automática de empleados
+ */
+export const processRemuneracionesDataForImport = (data: any[], fileName: string): RemuneracionImportItem[] => {
+  let headerRowIndex = findHeaderRow(data);
+  
+  if (headerRowIndex === -1) {
+    throw new Error("No se encontraron encabezados en el archivo");
+  }
+  
+  const headers = data[headerRowIndex] as any[];
+  const getColumnIndex = (searchTerms: string[]) => {
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i]?.toString().toLowerCase() || '';
+      if (searchTerms.some(term => header.includes(term))) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  // Mapeo de columnas
+  const rutIndex = getColumnIndex(['rut', 'cedula', 'ci']);
+  const nombreIndex = getColumnIndex(['nombre', 'name', 'empleado', 'employee']);
+  const tipoIndex = getColumnIndex(['tipo', 'type', 'remuneracion', 'concepto']);
+  const montoIndex = getColumnIndex(['monto', 'amount', 'valor', 'sueldo']);
+  const mesIndex = getColumnIndex(['mes', 'month', 'periodo']);
+  const añoIndex = getColumnIndex(['año', 'ano', 'year', 'anio']);
+  const cargoIndex = getColumnIndex(['cargo', 'position', 'puesto']);
+  const departamentoIndex = getColumnIndex(['departamento', 'department', 'area']);
+  const sueldoLiquidoIndex = getColumnIndex(['sueldo_liquido', 'neto', 'liquido']);
+  const anticipoIndex = getColumnIndex(['anticipo', 'advance', 'adelanto']);
+  const diasIndex = getColumnIndex(['dias', 'days', 'trabajados']);
+  const metodoPagoIndex = getColumnIndex(['metodo_pago', 'payment', 'forma_pago']);
+  const estadoIndex = getColumnIndex(['estado', 'status', 'state']);
+  const notasIndex = getColumnIndex(['notas', 'notes', 'observaciones']);
+
+  const remuneraciones: RemuneracionImportItem[] = [];
+
+  for (let i = headerRowIndex + 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row || row.length === 0) continue;
+
+    const rut = rutIndex !== -1 ? String(row[rutIndex] || '').trim() : '';
+    const nombre = nombreIndex !== -1 ? String(row[nombreIndex] || '').trim() : '';
+    const monto = montoIndex !== -1 ? parseFloat(row[montoIndex]) || 0 : 0;
+
+    // Validaciones básicas
+    if (!rut || !nombre || monto <= 0) {
+      console.warn(`Fila ${i + 1} ignorada: datos incompletos (RUT: "${rut}", Nombre: "${nombre}", Monto: ${monto})`);
+      continue;
+    }
+
+    // Extraer mes y año
+    let mes = mesIndex !== -1 ? parseInt(row[mesIndex]) || new Date().getMonth() + 1 : new Date().getMonth() + 1;
+    let año = añoIndex !== -1 ? parseInt(row[añoIndex]) || new Date().getFullYear() : new Date().getFullYear();
+
+    const remuneracion: RemuneracionImportItem = {
+      rut,
+      nombre,
+      tipo: tipoIndex !== -1 ? String(row[tipoIndex] || 'sueldo').trim() : 'sueldo',
+      monto,
+      mes,
+      año,
+      cargo: cargoIndex !== -1 ? String(row[cargoIndex] || '').trim() : '',
+      departamento: departamentoIndex !== -1 ? String(row[departamentoIndex] || '').trim() : '',
+      sueldoLiquido: sueldoLiquidoIndex !== -1 ? parseFloat(row[sueldoLiquidoIndex]) || monto : monto,
+      anticipo: anticipoIndex !== -1 ? parseFloat(row[anticipoIndex]) || 0 : 0,
+      diasTrabajados: diasIndex !== -1 ? parseInt(row[diasIndex]) || 30 : 30,
+      metodoPago: metodoPagoIndex !== -1 ? String(row[metodoPagoIndex] || 'transferencia').trim() : 'transferencia',
+      estado: estadoIndex !== -1 ? String(row[estadoIndex] || 'pendiente').trim() : 'pendiente',
+      notas: notasIndex !== -1 ? String(row[notasIndex] || '').trim() : `Importado desde ${fileName} - ${new Date().toISOString()}`
+    };
+
+    remuneraciones.push(remuneracion);
+  }
+
+  console.log(`📋 Procesadas ${remuneraciones.length} remuneraciones válidas de ${data.length - headerRowIndex - 1} filas`);
+  return remuneraciones;
+};
+
 export default {
   handleRemuneracionExcelUpload,
+  handleRemuneracionImportWithEmployeeCreation,
   readExcelFile,
   processRemuneracionesData,
+  processRemuneracionesDataForImport,
   getCurrentPeriod
 };

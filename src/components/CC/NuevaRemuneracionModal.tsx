@@ -1,7 +1,8 @@
 import { useState, useEffect, ChangeEvent, FormEvent, useCallback } from "react";
 import { Project } from "../../types/project";
 import { RemuneracionCreateData } from "../../types/CC/remuneracion";
-
+import { Empleado } from "../../types/CC/empleados";
+import { getEmpleados } from "../../services/CC/empleadosService";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
@@ -15,13 +16,15 @@ interface NuevaRemuneracionModalProps {
 }
 
 interface FormErrorState {
+  employee_id?: string;
   rut?: string;
   nombre?: string;
   tipo?: string;
   sueldoLiquido?: string;
   anticipo?: string;
-  proyectoId?: string;
   fecha?: string;
+  diasTrabajados?: string;
+  metodoPago?: string;
 }
 
 const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({ 
@@ -30,14 +33,30 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
   onSubmit, 
   projects = [] 
 }) => {
-  // Estado para los datos del formulario
+  // ✅ ACTUALIZADO: Estado para los datos del formulario con nueva estructura
   const [formData, setFormData] = useState<RemuneracionCreateData>({
+    // ✅ NUEVO CAMPO REQUERIDO: employee_id
+    employee_id: 0, // Inicializar en 0 para que el usuario deba seleccionar un empleado
+    
+    // ✅ CAMPOS DE LA NUEVA ESTRUCTURA PAYROLL
+    type: "remuneracion",
+    amount: 0,
+    net_salary: 0,
+    advance_payment: 0,
+    date: "",
+    month_period: new Date().getMonth() + 1,
+    year_period: new Date().getFullYear(),
+    work_days: 30,
+    payment_method: "transferencia",
+    status: "pendiente",
+    notes: "",
+    
+    // ✅ CAMPOS LEGACY PARA COMPATIBILIDAD
     rut: "",
     nombre: "",
     tipo: "REMUNERACION",
     sueldoLiquido: 0,
     anticipo: 0,
-    proyectoId: "",
     fecha: ""
   });
 
@@ -48,9 +67,13 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>("");
   
-  // Estados para mantener los valores seleccionados de los Select
+  // Estados para mantener los valores seleccionados de los Select  
   const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("REMUNERACION");
-  const [proyectoSeleccionado, setProyectoSeleccionado] = useState<string>("");
+  
+  // Estados para manejar empleados
+  const [empleadoEncontrado, setEmpleadoEncontrado] = useState<Empleado | null>(null);
+  const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [loadingEmpleados, setLoadingEmpleados] = useState(false);
   
   // Estado para errores de validación
   const [errors, setErrors] = useState<FormErrorState>({});
@@ -78,6 +101,31 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
       setSelectedMonth(currentMonth);
       setSelectedYear(currentYear);
       updateFechaValue(currentMonth, currentYear);
+    } else {
+      // Limpiar datos cuando se cierre el modal
+      setEmpleadoEncontrado(null);
+      setMontoFormateado("");
+      setErrors({});
+      setFormData({
+        employee_id: 0,
+        type: "remuneracion",
+        amount: 0,
+        net_salary: 0,
+        advance_payment: 0,
+        date: "",
+        month_period: new Date().getMonth() + 1,
+        year_period: new Date().getFullYear(),
+        work_days: 30,
+        payment_method: "transferencia",
+        status: "pendiente",
+        notes: "",
+        rut: "",
+        nombre: "",
+        tipo: "REMUNERACION",
+        sueldoLiquido: 0,
+        anticipo: 0,
+        fecha: ""
+      });
     }
     
     return () => {
@@ -87,6 +135,24 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
       document.body.style.overflow = '';
     };
   }, [isOpen, handleEscKey]);
+
+  // Cargar empleados cuando se abre el modal
+  useEffect(() => {
+    const fetchEmpleados = async () => {
+      if (isOpen) {
+        try {
+          setLoadingEmpleados(true);
+          const empleadosResponse = await getEmpleados({ per_page: 1000 });
+          setEmpleados(empleadosResponse.items || []);
+        } catch (error) {
+          console.error("Error al cargar empleados", error);
+        } finally {
+          setLoadingEmpleados(false);
+        }
+      }
+    };
+    fetchEmpleados();
+  }, [isOpen]);
   
   // Opciones para el tipo de remuneración
   const tipoOptions = [
@@ -121,26 +187,73 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
   const formatearNumero = (numero: number): string => {
     return numero.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
+
+  // Función para manejar la selección de empleado
+  const handleEmpleadoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const employeeId = Number(e.target.value);
+    if (employeeId) {
+      const empleado = empleados.find(emp => emp.id === employeeId);
+      if (empleado) {
+        setEmpleadoEncontrado(empleado);
+        setFormData(prev => ({ 
+          ...prev, 
+          employee_id: employeeId,
+          // Actualizar también los campos legacy
+          rut: empleado.tax_id || '',
+          nombre: empleado.full_name || ''
+        }));
+        setErrors(prev => ({ ...prev, employee_id: '' }));
+      }
+    } else {
+      setEmpleadoEncontrado(null);
+      setFormData(prev => ({ 
+        ...prev, 
+        employee_id: 0,
+        rut: '',
+        nombre: ''
+      }));
+    }
+  };
   
-  // Manejar cambios en los campos del formulario
+  // ✅ ACTUALIZADO: Manejar cambios en los inputs con nueva estructura
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Para los campos de monto, aplicar formato
-    if (name === "sueldoLiquido" || name === "anticipo") {
-      const numeroLimpio = value.replace(/\D/g, "");
+    // Si es un campo de monto (sueldoLiquido o anticipo)
+    if (name === 'sueldoLiquido' || name === 'anticipo') {
+      // Lógica de formateo de números (mantener igual)
+      const numeroLimpio = value.replace(/\D/g, '');
+      
       if (numeroLimpio) {
         const numeroEntero = parseInt(numeroLimpio, 10);
         setMontoFormateado(formatearNumero(numeroEntero));
+        
+        // ✅ ACTUALIZAR AMBAS ESTRUCTURAS
         setFormData(prev => ({
           ...prev,
-          [name]: numeroEntero
+          // Campos legacy
+          [name]: numeroEntero,
+          // Campos nuevos
+          ...(name === 'sueldoLiquido' ? {
+            net_salary: numeroEntero,
+            amount: numeroEntero
+          } : {
+            advance_payment: numeroEntero,
+            amount: numeroEntero
+          })
         }));
       } else {
         setMontoFormateado("");
         setFormData(prev => ({
           ...prev,
-          [name]: 0
+          [name]: 0,
+          ...(name === 'sueldoLiquido' ? {
+            net_salary: 0,
+            amount: 0
+          } : {
+            advance_payment: 0,
+            amount: 0
+          })
         }));
       }
     } else {
@@ -158,36 +271,25 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
         [name]: undefined
       }));
     }
-  };
-  
-  // Manejar cambio en el tipo de remuneración
+  };  // ✅ ACTUALIZADO: Manejar cambio en el tipo de remuneración
   const handleTipoChange = (value: string) => {
     setTipoSeleccionado(value);
+    const newType = value === 'REMUNERACION' ? 'remuneracion' : 'anticipo';
+    
     setFormData(prev => ({
       ...prev,
+      // ✅ NUEVOS CAMPOS
+      type: newType,
+      // Resetear campos monetarios
+      net_salary: 0,
+      advance_payment: 0,
+      amount: 0,
+      // ✅ CAMPOS LEGACY
       tipo: value as 'REMUNERACION' | 'ANTICIPO',
-      // Resetear los campos de monto al cambiar el tipo
       sueldoLiquido: 0,
       anticipo: 0
     }));
     setMontoFormateado("");
-  };
-  
-  // Manejar cambio en el proyecto
-  const handleProyectoChange = (value: string) => {
-    setProyectoSeleccionado(value);
-    setFormData(prev => ({
-      ...prev,
-      proyectoId: value
-    }));
-    
-    // Limpiar error si existía
-    if (errors.proyectoId) {
-      setErrors(prev => ({
-        ...prev,
-        proyectoId: undefined
-      }));
-    }
   };
   
   // Manejar cambio en el mes
@@ -202,14 +304,20 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
     updateFechaValue(selectedMonth, value);
   };
   
-  // Actualizar el valor de fecha en formato YYYY-MM-DD (para la API)
+  // ✅ ACTUALIZADO: Actualizar valores de fecha y período
   const updateFechaValue = (month: string, year: string) => {
     if (month && year) {
-      // Crear fecha en formato YYYY-MM-DD para la API
-      const formattedDate = `${year}-${month}-01`;
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(year);
+      
+      // ✅ NUEVA ESTRUCTURA: Actualizar month_period y year_period
       setFormData(prev => ({
         ...prev,
-        fecha: formattedDate
+        date: `${year}-${month}-01`, // Formato YYYY-MM-DD para la API
+        month_period: monthNum,
+        year_period: yearNum,
+        // También actualizar campos legacy
+        fecha: `${year}-${month}-01`
       }));
       
       // Limpiar error si existía
@@ -222,13 +330,20 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
     }
   };
   
-  // Validar el formulario
+  // ✅ ACTUALIZADO: Validar el formulario con nueva estructura
   const validateForm = (): boolean => {
     const newErrors: FormErrorState = {};
     
+    // Validar selección de empleado
+    if (!formData.employee_id || formData.employee_id <= 0) {
+      newErrors.employee_id = "Debe seleccionar un empleado";
+    }
+    
+    // Validar campos legacy para compatibilidad
     if (!formData.rut) newErrors.rut = "El RUT es obligatorio";
     if (!formData.nombre) newErrors.nombre = "El nombre es obligatorio";
     
+    // Validar montos según el tipo
     if (formData.tipo === "REMUNERACION" && formData.sueldoLiquido === 0) {
       newErrors.sueldoLiquido = "El sueldo líquido es obligatorio";
     }
@@ -237,56 +352,106 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
       newErrors.anticipo = "El anticipo es obligatorio";
     }
     
-    // TODO: Implementar funcionalidad de proyectos
-    // Cuando se implemente, descomentar:
-    // if (!formData.proyectoId) newErrors.proyectoId = "El proyecto es obligatorio";
-    
+    // Validar período
     if (!formData.fecha) newErrors.fecha = "El período es obligatorio";
+    
+    // Validar campos de la nueva estructura
+    if (formData.employee_id <= 0) {
+      newErrors.rut = "Debe seleccionar un empleado válido";
+    }
+    
+    if (formData.amount <= 0) {
+      if (formData.type === "remuneracion") {
+        newErrors.sueldoLiquido = "El monto es obligatorio";
+      } else {
+        newErrors.anticipo = "El monto es obligatorio";
+      }
+    }
+
+    // Validar días trabajados
+    if (!formData.work_days || formData.work_days < 1 || formData.work_days > 31) {
+      newErrors.diasTrabajados = "Los días trabajados deben estar entre 1 y 31";
+    }
+
+    // Validar método de pago
+    if (!formData.payment_method) {
+      newErrors.metodoPago = "El método de pago es obligatorio";
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
-  // Manejar envío del formulario
+  // ✅ ACTUALIZADO: Manejar envío del formulario con nueva estructura
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     
-    // Asegurarse de que ambos campos tengan un valor numérico válido
-    const dataToSubmit = {
-      ...formData,
-      sueldoLiquido: formData.tipo === "REMUNERACION" ? (formData.sueldoLiquido || 0) : 0,
-      anticipo: formData.tipo === "ANTICIPO" ? (formData.anticipo || 0) : 0,
-      // TODO: Cuando se implemente proyectos, usar formData.proyectoId
-      proyectoId: "", // TEMPORAL: Siempre vacío
-      // Calcular monto total
-      montoTotal: formData.tipo === "REMUNERACION" ? (formData.sueldoLiquido || 0) : (formData.anticipo || 0)
+    // ✅ PREPARAR DATOS CON NUEVA ESTRUCTURA COMPLETA
+    const dataToSubmit: RemuneracionCreateData = {
+      // ✅ CAMPOS NUEVOS REQUERIDOS
+      employee_id: 1, // TODO: Implementar selección de empleado
+      type: formData.type,
+      amount: formData.amount,
+      net_salary: formData.net_salary,
+      advance_payment: formData.advance_payment,
+      date: formData.date,
+      month_period: formData.month_period,
+      year_period: formData.year_period,
+      work_days: formData.work_days || 30,
+      payment_method: formData.payment_method || "transferencia",
+      status: formData.status || "pendiente",
+      notes: formData.notes || `Creado desde formulario: ${formData.nombre}`,
+      
+      // ✅ CAMPOS LEGACY PARA COMPATIBILIDAD
+      rut: formData.rut,
+      nombre: formData.nombre,
+      tipo: formData.tipo,
+      sueldoLiquido: formData.sueldoLiquido,
+      anticipo: formData.anticipo,
+      fecha: formData.fecha,
+      estado: "pendiente",
+      diasTrabajados: formData.work_days || 30,
+      metodoPago: formData.payment_method || "transferencia",
+      montoTotal: formData.amount
     };
     
     if (validateForm()) {
-      // Log what we're submitting for debugging
-      console.log('Submitting form data:', dataToSubmit);
-      
+      console.log('✅ Submitting form data with new structure:', dataToSubmit);
       onSubmit(dataToSubmit);
       handleReset();
     }
   };
   
-  // Resetear el formulario
+  // ✅ ACTUALIZADO: Resetear el formulario con nueva estructura
   const handleReset = () => {
     setFormData({
+      // ✅ CAMPOS DE LA NUEVA ESTRUCTURA PAYROLL
+      employee_id: 1,
+      type: "remuneracion",
+      amount: 0,
+      net_salary: 0,
+      advance_payment: 0,
+      date: "",
+      month_period: new Date().getMonth() + 1,
+      year_period: new Date().getFullYear(),
+      work_days: 30,
+      payment_method: "transferencia",
+      status: "pendiente",
+      payment_date: "",
+      notes: "",
+      
+      // ✅ CAMPOS LEGACY PARA COMPATIBILIDAD
       rut: "",
       nombre: "",
       tipo: "REMUNERACION",
       sueldoLiquido: 0,
       anticipo: 0,
-      proyectoId: "",
       fecha: ""
     });
     setMontoFormateado("");
     setSelectedMonth("");
     setSelectedYear("");
     setTipoSeleccionado("REMUNERACION");
-    setProyectoSeleccionado("");
     setErrors({});
   };
   
@@ -299,11 +464,6 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
   
   // Si el modal no está abierto, no renderizar nada
   if (!isOpen) return null;
-  
-  // Crear opciones de proyectos - TEMPORAL: Solo mostrar mensaje informativo
-  const projectOptions = [
-    { value: "", label: "Funcionalidad en desarrollo..." }
-  ];
   
   // Handler para cerrar el modal cuando se hace clic en el fondo
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -332,148 +492,225 @@ const NuevaRemuneracionModal: React.FC<NuevaRemuneracionModalProps> = ({
         </div>
         
         <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            {/* RUT */}
+          <div className="space-y-6">
+            {/* Seleccionar Empleado */}
             <div>
-              <Label htmlFor="rut">
-                RUT <span className="text-red-500">*</span>
+              <Label htmlFor="empleado">
+                Seleccionar Empleado <span className="text-red-500">*</span>
               </Label>
-              <Input
-                type="text"
-                id="rut"
-                name="rut"
-                value={formData.rut}
-                onChange={handleInputChange}
-                placeholder="Ej: 12.345.678-9"
-                className={errors.rut ? "border-red-500" : ""}
-              />
-              {errors.rut && (
-                <span className="text-red-500 text-sm">{errors.rut}</span>
+              <select
+                value={formData.employee_id || ''}
+                onChange={handleEmpleadoChange}
+                disabled={loadingEmpleados}
+                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {loadingEmpleados ? 'Cargando empleados...' : 'Seleccionar empleado'}
+                </option>
+                {empleados.map(empleado => (
+                  <option key={empleado.id} value={empleado.id}>
+                    {empleado.full_name} - {empleado.tax_id}
+                  </option>
+                ))}
+              </select>
+              {errors.employee_id && (
+                <span className="text-red-500 text-sm">{errors.employee_id}</span>
+              )}
+              {/* Mostrar datos del empleado seleccionado */}
+              {empleadoEncontrado && (
+                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
+                  <p><strong>RUT:</strong> {empleadoEncontrado.tax_id}</p>
+                  <p><strong>Nombre:</strong> {empleadoEncontrado.full_name}</p>
+                  {empleadoEncontrado.position && (
+                    <p><strong>Cargo:</strong> {empleadoEncontrado.position}</p>
+                  )}
+                </div>
               )}
             </div>
             
-            {/* Nombre */}
-            <div>
-              <Label htmlFor="nombre">
-                Nombre <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                type="text"
-                id="nombre"
-                name="nombre"
-                value={formData.nombre}
-                onChange={handleInputChange}
-                placeholder="Nombre del empleado"
-                className={errors.nombre ? "border-red-500" : ""}
-              />
-              {errors.nombre && (
-                <span className="text-red-500 text-sm">{errors.nombre}</span>
-              )}
-            </div>
-            
-            {/* Tipo de Remuneración */}
-            <div>
-              <Label htmlFor="tipo">
-                Tipo <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                options={tipoOptions}
-                defaultValue={tipoSeleccionado}
-                onChange={handleTipoChange}
-                className={errors.tipo ? "border-red-500" : ""}
-              />
-              {errors.tipo && (
-                <span className="text-red-500 text-sm">{errors.tipo}</span>
-              )}
-            </div>
-            
-            {/* Sueldo Líquido o Anticipo (mostrar según el tipo) */}
-            {formData.tipo === "REMUNERACION" ? (
+            {/* FILA 1: Tipo y Sueldo Líquido/Anticipo */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="sueldoLiquido">
-                  Sueldo líquido <span className="text-red-500">*</span>
+                <Label htmlFor="tipo">
+                  Tipo <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  type="text"
-                  id="sueldoLiquido"
-                  name="sueldoLiquido"
-                  value={montoFormateado}
-                  onChange={handleInputChange}
-                  placeholder="Ej: 500.000"
-                  className={errors.sueldoLiquido ? "border-red-500" : ""}
-                />
-                {errors.sueldoLiquido && (
-                  <span className="text-red-500 text-sm">{errors.sueldoLiquido}</span>
-                )}
-              </div>
-            ) : (
-              <div>
-                <Label htmlFor="anticipo">
-                  Anticipo <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="text"
-                  id="anticipo"
-                  name="anticipo"
-                  value={montoFormateado}
-                  onChange={handleInputChange}
-                  placeholder="Ej: 200.000"
-                  className={errors.anticipo ? "border-red-500" : ""}
-                />
-                {errors.anticipo && (
-                  <span className="text-red-500 text-sm">{errors.anticipo}</span>
-                )}
-              </div>
-            )}
-            
-            {/* Proyecto - TEMPORAL: Deshabilitado visualmente pero sin usar prop disabled */}
-            <div>
-              <Label htmlFor="proyectoId">
-                Proyecto <span className="text-gray-400">(próximamente)</span>
-              </Label>
-              <div className="relative">
                 <Select
-                  options={projectOptions}
-                  defaultValue=""
-                  onChange={() => {}} // No hacer nada por ahora
-                  className="bg-gray-100 text-gray-500 cursor-not-allowed opacity-60"
+                  options={tipoOptions}
+                  defaultValue={tipoSeleccionado}
+                  onChange={handleTipoChange}
+                  className={errors.tipo ? "border-red-500" : ""}
                 />
-                {/* Overlay para evitar interacción */}
-                <div className="absolute inset-0 cursor-not-allowed" />
+                {errors.tipo && (
+                  <span className="text-red-500 text-sm">{errors.tipo}</span>
+                )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                📋 La selección de proyectos se habilitará próximamente
-              </p>
+              
+              {/* Sueldo Líquido o Anticipo (mostrar según el tipo) */}
+              {formData.tipo === "REMUNERACION" ? (
+                <div>
+                  <Label htmlFor="sueldoLiquido">
+                    Sueldo líquido <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    id="sueldoLiquido"
+                    name="sueldoLiquido"
+                    value={montoFormateado}
+                    onChange={handleInputChange}
+                    placeholder="Ej: 500.000"
+                    className={errors.sueldoLiquido ? "border-red-500" : ""}
+                  />
+                  {errors.sueldoLiquido && (
+                    <span className="text-red-500 text-sm">{errors.sueldoLiquido}</span>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="anticipo">
+                    Anticipo <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    id="anticipo"
+                    name="anticipo"
+                    value={montoFormateado}
+                    onChange={handleInputChange}
+                    placeholder="Ej: 200.000"
+                    className={errors.anticipo ? "border-red-500" : ""}
+                  />
+                  {errors.anticipo && (
+                    <span className="text-red-500 text-sm">{errors.anticipo}</span>
+                  )}
+                </div>
+              )}
             </div>
             
-            {/* Período - Selector de mes y año */}
-            <div>
-              <Label htmlFor="fecha">
-                Período <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Select
-                    options={monthOptions}
-                    defaultValue={selectedMonth}
-                    onChange={handleMonthChange}
-                    placeholder="Mes"
-                    className={errors.fecha ? "border-red-500" : ""}
-                  />
+            {/* FILA 2: Período y Días Trabajados */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="fecha">
+                  Período <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Select
+                      options={monthOptions}
+                      defaultValue={selectedMonth}
+                      onChange={handleMonthChange}
+                      placeholder="Mes"
+                      className={errors.fecha ? "border-red-500" : ""}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Select
+                      options={yearOptions}
+                      defaultValue={selectedYear}
+                      onChange={handleYearChange}
+                      placeholder="Año"
+                      className={errors.fecha ? "border-red-500" : ""}
+                    />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <Select
-                    options={yearOptions}
-                    defaultValue={selectedYear}
-                    onChange={handleYearChange}
-                    placeholder="Año"
-                    className={errors.fecha ? "border-red-500" : ""}
-                  />
-                </div>
+                {errors.fecha && (
+                  <span className="text-red-500 text-sm">{errors.fecha}</span>
+                )}
               </div>
-              {errors.fecha && (
-                <span className="text-red-500 text-sm">{errors.fecha}</span>
-              )}
+
+              <div>
+                <Label htmlFor="diasTrabajados">
+                  Días Trabajados <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="number"
+                  id="diasTrabajados"
+                  name="diasTrabajados"
+                  value={formData.work_days || ""}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 30;
+                    setFormData(prev => ({
+                      ...prev,
+                      work_days: value,
+                      diasTrabajados: value
+                    }));
+                  }}
+                  placeholder="30"
+                  min="1"
+                  max="31"
+                  className={errors.diasTrabajados ? "border-red-500" : ""}
+                />
+                {errors.diasTrabajados && (
+                  <span className="text-red-500 text-sm">{errors.diasTrabajados}</span>
+                )}
+              </div>
+            </div>
+
+            {/* FILA 3: Método de Pago y Fecha de Pago */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="metodoPago">
+                  Método de Pago <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  options={[
+                    { value: "transferencia", label: "Transferencia" },
+                    { value: "efectivo", label: "Efectivo" },
+                    { value: "cheque", label: "Cheque" }
+                  ]}
+                  defaultValue={formData.payment_method}
+                  onChange={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      payment_method: value as "transferencia" | "efectivo" | "cheque",
+                      metodoPago: value
+                    }));
+                  }}
+                  placeholder="Seleccionar método"
+                  className={errors.metodoPago ? "border-red-500" : ""}
+                />
+                {errors.metodoPago && (
+                  <span className="text-red-500 text-sm">{errors.metodoPago}</span>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="fechaPago">
+                  Fecha de Pago
+                </Label>
+                <Input
+                  type="date"
+                  id="fechaPago"
+                  name="fechaPago"
+                  value={formData.payment_date || ""}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      payment_date: e.target.value
+                    }));
+                  }}
+                  className=""
+                />
+              </div>
+            </div>
+
+            {/* Notas - campo que ocupe toda la fila */}
+            <div>
+              <Label htmlFor="notas">
+                Notas
+              </Label>
+              <textarea
+                id="notas"
+                name="notas"
+                value={formData.notes || ""}
+                onChange={(e) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    notes: e.target.value
+                  }));
+                }}
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Observaciones adicionales..."
+              />
             </div>
           </div>
           

@@ -207,6 +207,18 @@ const Empleados = () => {
     return new Intl.DateTimeFormat('es-CL').format(new Date(dateString));
   };
 
+  // Check if empleado has missing essential information
+  const hasIncompleteInfo = (empleado: Empleado) => {
+    // Check essential fields that are displayed in the table
+    const hasName = empleado.full_name || (empleado.first_name && empleado.last_name);
+    const hasTaxId = empleado.tax_id && empleado.tax_id.trim() !== '';
+    const hasPosition = empleado.position && empleado.position.trim() !== '';
+    const hasDepartment = empleado.department && empleado.department.trim() !== '';
+    const hasHireDate = empleado.hire_date;
+
+    return !hasName || !hasTaxId || !hasPosition || !hasDepartment || !hasHireDate;
+  };
+
   // Retry fetching if there was an error
   const handleRetry = () => {
     console.log('Retrying fetch...');
@@ -331,16 +343,38 @@ const Empleados = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                  {empleados.map((empleado) => (
-                    <tr key={empleado.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <button
-                          onClick={() => navigate(`/gastos/empleados/${empleado.id}`)}
-                          className="hover:text-brand-600 hover:underline"
-                        >
-                          {empleado.tax_id || '-'}
-                        </button>
-                      </td>
+                  {empleados.map((empleado) => {
+                    const isIncomplete = hasIncompleteInfo(empleado);
+                    return (
+                      <tr 
+                        key={empleado.id}
+                        className={isIncomplete ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center gap-2">
+                            {isIncomplete && (
+                              <div className="flex-shrink-0" title="Información incompleta">
+                                <svg 
+                                  className="w-4 h-4 text-yellow-500 dark:text-yellow-400" 
+                                  fill="currentColor" 
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path 
+                                    fillRule="evenodd" 
+                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" 
+                                    clipRule="evenodd" 
+                                  />
+                                </svg>
+                              </div>
+                            )}
+                            <button
+                              onClick={() => navigate(`/gastos/empleados/${empleado.id}`)}
+                              className="hover:text-brand-600 hover:underline"
+                            >
+                              {empleado.tax_id || '-'}
+                            </button>
+                          </div>
+                        </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         <button
                           onClick={() => navigate(`/gastos/empleados/${empleado.id}`)}
@@ -385,7 +419,8 @@ const Empleados = () => {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
 
