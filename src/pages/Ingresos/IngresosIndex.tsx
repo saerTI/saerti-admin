@@ -57,8 +57,6 @@ const IngresosIndex = () => {
     { title: 'Estados de Pago', amount: 0, count: 0, path: '/ingresos/categoria/estados-pago' },
     { title: 'Venta de Activos', amount: 0, count: 0, path: '/ingresos/categoria/venta-activos' },
     { title: 'Devoluciones', amount: 0, count: 0, path: '/ingresos/categoria/devoluciones' },
-    { title: 'Subsidios', amount: 0, count: 0, path: '/ingresos/categoria/subsidios' },
-    { title: 'Retorno de Inversiones', amount: 0, count: 0, path: '/ingresos/categoria/retorno-inversiones' },
     { title: 'Otros Ingresos', amount: 0, count: 0, path: '/ingresos/categoria/otros' },
   ];
 

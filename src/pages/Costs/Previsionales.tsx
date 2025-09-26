@@ -8,7 +8,6 @@ import ComponentCard from '../../components/common/ComponentCard';
 import Button from '../../components/ui/button/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import Badge from '../../components/ui/badge/Badge';
-import { useCostCenters } from '../../hooks/useCostCenters';
 
 const Previsionales: React.FC = () => {
   const [previsionales, setPrevisionales] = useState<Previsional[]>([]);
@@ -19,14 +18,10 @@ const Previsionales: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingPrevisional, setEditingPrevisional] = useState<Previsional | null>(null);
   
-  // Hook para centros de costo
-  const { costCenters } = useCostCenters();
-
   // Estados para filtros y paginación
-  const [filters, setFilters] = useState({ 
-    page: 1, 
-    limit: 10, 
-    cost_center_id: undefined as number | undefined,
+  const [filters, setFilters] = useState({
+    page: 1,
+    limit: 10,
     status: ''
   });
   const [pagination, setPagination] = useState({ total: 0, pages: 0, page: 1, limit: 10 });
@@ -87,7 +82,6 @@ const Previsionales: React.FC = () => {
     setFilters({
       page: 1,
       limit: 10,
-      cost_center_id: undefined,
       status: ''
     });
     setEmployeeSearchFilter('');
@@ -132,59 +126,47 @@ const Previsionales: React.FC = () => {
   // Función para filtrar previsionales visualmente
   const getFilteredPrevisionales = () => {
     let filtered = previsionales;
-    
+
     // Filtro por empleado (búsqueda de texto)
     if (employeeSearchFilter.trim()) {
       const searchTerm = employeeSearchFilter.toLowerCase().trim();
       filtered = filtered.filter(previsional => {
         const employeeName = (previsional.employee_name || '').toLowerCase();
         const employeeRut = (previsional.employee_rut || '').toLowerCase();
-        
+
         return employeeName.includes(searchTerm) || employeeRut.includes(searchTerm);
       });
     }
-    
-    // Filtro por centro de costo
-    if (filters.cost_center_id) {
-      filtered = filtered.filter(previsional => 
-        previsional.cost_center_id === filters.cost_center_id
-      );
-    }
-    
+
     // Filtro por estado
     if (filters.status) {
-      filtered = filtered.filter(previsional => 
+      filtered = filtered.filter(previsional =>
         previsional.status === filters.status
       );
     }
-    
+
     return filtered;
   };
 
   // Función para verificar si hay filtros activos
   const hasActiveFilters = () => {
-    return employeeSearchFilter.trim() || filters.cost_center_id || filters.status;
+    return employeeSearchFilter.trim() || filters.status;
   };
 
   // Función para obtener el mensaje de filtros
   const getNoResultsMessage = () => {
     const activeFilters = [];
-    
+
     if (employeeSearchFilter.trim()) {
       activeFilters.push(`empleado "${employeeSearchFilter}"`);
     }
-    
-    if (filters.cost_center_id) {
-      const centerName = costCenters.find(c => c.id === filters.cost_center_id)?.name;
-      activeFilters.push(`centro de costo "${centerName}"`);
-    }
-    
+
     if (filters.status) {
       activeFilters.push(`estado "${filters.status}"`);
     }
-    
+
     if (activeFilters.length === 0) return "No se encontraron registros";
-    
+
     if (activeFilters.length === 1) {
       return `No se encontraron registros para ${activeFilters[0]}.`;
     } else if (activeFilters.length === 2) {
@@ -214,8 +196,8 @@ const Previsionales: React.FC = () => {
       <PageBreadcrumb 
         pageTitle="Gastos Previsionales" 
         items={[
-          { label: 'Costos', path: '/costs' },
-          { label: 'Previsionales', path: '/costs/previsionales' }
+          { label: 'Costos', path: '/costos' },
+          { label: 'Previsionales', path: '/costos/previsionales' }
         ]} 
       />
 
@@ -248,7 +230,7 @@ const Previsionales: React.FC = () => {
 
       {/* Filtros de búsqueda */}
       <ComponentCard title="Filtros" compact>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Búsqueda por empleado */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -261,25 +243,6 @@ const Previsionales: React.FC = () => {
               onChange={(e) => setEmployeeSearchFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white text-sm"
             />
-          </div>
-
-          {/* Centro de costo */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Centro de Costo
-            </label>
-            <select
-              value={filters.cost_center_id || ''}
-              onChange={(e) => handleFilterChange('cost_center_id', e.target.value ? parseInt(e.target.value) : undefined)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white text-sm"
-            >
-              <option value="">Todos los centros</option>
-              {costCenters.map((center) => (
-                <option key={center.id} value={center.id}>
-                  {center.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Estado */}
@@ -381,9 +344,6 @@ const Previsionales: React.FC = () => {
                   Empleado
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Centro de Costo
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Periodo
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -410,9 +370,6 @@ const Previsionales: React.FC = () => {
                     <div className="text-sm text-gray-500 dark:text-gray-400">
                       {previsional.employee_rut}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {previsional.cost_center_name || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {formatPeriod(previsional.month_period, previsional.year_period)}

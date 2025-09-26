@@ -5,7 +5,6 @@ export interface PrevisionalImportData {
   rut: string;
   nombre: string;
   tipo_previsional: PrevisionalType;
-  centro_costo: string;
   monto: number;
   mes: number;
   año: number;
@@ -75,19 +74,17 @@ export const processProvisionalesDataForImport = (data: any[], fileName: string)
   const rutIndex = getColumnIndex(['RUT']);
   const nombreIndex = getColumnIndex(['NOMBRE']);
   const tipoIndex = getColumnIndex(['TIPO PREVISIONAL', 'TIPO']);
-  const centroCostoIndex = getColumnIndex(['CENTRO DE COSTO', 'CENTRO COSTO']);
   const montoIndex = getColumnIndex(['MONTO']);
   const mesIndex = getColumnIndex(['MES']);
   const añoIndex = getColumnIndex(['AÑO', 'ANO']);
   const fechaPagoIndex = getColumnIndex(['FECHA DE PAGO', 'FECHA PAGO']);
   const notasIndex = getColumnIndex(['NOTAS', 'OBSERVACIONES']);
-  
+
   // Verificar columnas requeridas
   const requiredColumns = [
     { index: rutIndex, name: 'RUT' },
     { index: nombreIndex, name: 'NOMBRE' },
     { index: tipoIndex, name: 'TIPO PREVISIONAL' },
-    { index: centroCostoIndex, name: 'CENTRO DE COSTO' },
     { index: montoIndex, name: 'MONTO' },
     { index: mesIndex, name: 'MES' },
     { index: añoIndex, name: 'AÑO' }
@@ -111,17 +108,16 @@ export const processProvisionalesDataForImport = (data: any[], fileName: string)
       const rut = String(row[rutIndex] || '').trim();
       const nombre = String(row[nombreIndex] || '').trim();
       const tipoStr = String(row[tipoIndex] || '').toLowerCase().trim();
-      const centroCosto = String(row[centroCostoIndex] || '').trim();
       const montoValue = parseFloat(String(row[montoIndex] || '0').replace(/[,\.]/g, ''));
       const mes = parseInt(String(row[mesIndex] || '0'));
       const año = parseInt(String(row[añoIndex] || new Date().getFullYear()));
-      
+
       // Validar tipo previsional
       const validTypes: PrevisionalType[] = ['afp', 'isapre', 'isapre_7', 'fonasa', 'seguro_cesantia', 'mutual'];
       const tipo = validTypes.find(t => t === tipoStr) || 'afp';
-      
+
       // Validar datos requeridos
-      if (!rut || !nombre || !centroCosto || isNaN(montoValue) || isNaN(mes) || isNaN(año)) {
+      if (!rut || !nombre || isNaN(montoValue) || isNaN(mes) || isNaN(año)) {
         console.warn(`Fila ${i + 1} omitida: datos incompletos`);
         continue;
       }
@@ -142,7 +138,6 @@ export const processProvisionalesDataForImport = (data: any[], fileName: string)
         rut,
         nombre,
         tipo_previsional: tipo,
-        centro_costo: centroCosto,
         monto: montoValue,
         mes,
         año,

@@ -52,7 +52,7 @@ const EmpleadosEdición: React.FC = () => {
     try {
       setLoading(true);
       await empleadosService.updateEmpleado(parseInt(id), empleado);
-      navigate(`/gastos/empleados/${id}`);
+      navigate(`/costos/empleados/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al actualizar el empleado');
     } finally {
@@ -93,7 +93,7 @@ const EmpleadosEdición: React.FC = () => {
             Editar Empleado
           </h1>
           <button
-            onClick={() => navigate(`/gastos/empleados/${id}`)}
+            onClick={() => navigate(`/costos/empleados/${id}`)}
             className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
           >
             Volver
@@ -272,7 +272,7 @@ const EmpleadosEdición: React.FC = () => {
           <div className="mt-8 flex justify-end space-x-2">
             <button
               type="button"
-              onClick={() => navigate(`/gastos/empleados/${id}`)}
+              onClick={() => navigate(`/costos/empleados/${id}`)}
               className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
             >
               Cancelar

@@ -60,7 +60,7 @@ const CostsRealSection: React.FC<CostsRealSectionProps> = ({
           >
             🔄 Actualizar
           </Button>
-          <Link to={`/gastos?cost_center_id=${projectId}`}>
+          <Link to={`/costos?cost_center_id=${projectId}`}>
             <Button variant="outline">
               📊 Ver Todos los Costos
             </Button>
@@ -416,13 +416,13 @@ const CostsTable: React.FC<CostsTableProps> = ({ costs }) => {
               <td className="px-4 py-4 text-sm">
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => window.open(`/costs/${cost.cost_id}`, '_blank')}
+                    onClick={() => window.open(`/costos/${cost.cost_id}`, '_blank')}
                     className="text-blue-600 hover:text-blue-800 text-xs"
                   >
                     👁️ Ver
                   </button>
                   <Link
-                    to={`/costs/edit/${cost.cost_id}`}
+                    to={`/costos/edit/${cost.cost_id}`}
                     className="text-gray-600 hover:text-gray-800 text-xs"
                   >
                     ✏️ Editar

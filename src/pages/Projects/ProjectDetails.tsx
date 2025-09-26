@@ -1,14 +1,15 @@
 // src/pages/Projects/ProjectDetails.tsx - Actualizado con costos multidimensionales
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import projectApiService, { 
-  ProjectDetail, 
-  Milestone, 
+import projectApiService, {
+  ProjectDetail,
+  Milestone,
   CashFlowLine,
   MultidimensionalCost,
   CostFilter,
   CostsSummary,
-  CostsDimensions 
+  CostsDimensions,
+  calculateProjectProgress
 } from '../../services/projectService';
 import Button from '../../components/ui/button/Button';
 import CostsRealSection from '../../components/costs/CostsRealSection';
@@ -32,6 +33,7 @@ const ProjectDetailView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'milestones' | 'cashflow'>('info');
+  const [projectProgress, setProjectProgress] = useState<number>(0);
   
   // Estados para costos multidimensionales
   const [costs, setCosts] = useState<MultidimensionalCost[]>([]);
@@ -81,6 +83,25 @@ const ProjectDetailView = () => {
     
     fetchProjectData();
   }, [id]);
+
+  // Calculate project progress based on Factoring/Budget
+  useEffect(() => {
+    const calculateProgress = async () => {
+      if (!project || !id) return;
+
+      try {
+        const projectId = parseInt(id);
+        const budget = project.budget || project.totalBudget || 0;
+        const progress = await calculateProjectProgress(projectId, budget);
+        setProjectProgress(Math.round(progress));
+      } catch (error) {
+        console.error('Error calculating project progress:', error);
+        setProjectProgress(0);
+      }
+    };
+
+    calculateProgress();
+  }, [project, id]);
 
   // Load costs data when cashflow tab is active and real costs sub-tab is selected
   useEffect(() => {
@@ -260,7 +281,7 @@ const ProjectDetailView = () => {
       income: project.cashFlow?.income || [],
       expense: project.cashFlow?.expense || []
     },
-    progress: project.progress || 0,
+    progress: projectProgress || 0,
     status: project.status || 'borrador',
     balance: project.balance || 0,
     totalBudget: project.totalBudget || 0,
@@ -290,7 +311,7 @@ const ProjectDetailView = () => {
             <Button
               variant="outline"
               className="border-brand-500 text-brand-500 dark:border-brand-400 dark:text-brand-400"
-              onClick={() => navigate(`/projects/${id}/edit`)}
+              onClick={() => navigate(`/cost-centers/${id}/edit`)}
             >
               Editar Centro de Costo
             </Button>

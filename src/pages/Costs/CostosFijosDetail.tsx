@@ -63,7 +63,7 @@ export const CostosFijosDetail = () => {
     try {
       const success = await deleteFixedCost(fixedCost.id);
       if (success) {
-        navigate('/egresos/costos-fijos');
+        navigate('/costos/costos-fijos');
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al eliminar el costo fijo');
@@ -148,7 +148,7 @@ export const CostosFijosDetail = () => {
           pageTitle="Error" 
           items={[
             { label: 'Egresos', path: '/egresos' },
-            { label: 'Costos Fijos', path: '/egresos/costos-fijos' },
+            { label: 'Costos Fijos', path: '/costos/costos-fijos' },
             { label: 'Error', path: '#' }
           ]}
         />
@@ -160,7 +160,7 @@ export const CostosFijosDetail = () => {
             {error}
           </div>
           <div className="mt-4">
-            <Link to="/egresos/costos-fijos">
+            <Link to="/costos/costos-fijos">
               <Button variant="outline">Volver a Costos Fijos</Button>
             </Link>
           </div>
@@ -176,7 +176,7 @@ export const CostosFijosDetail = () => {
           pageTitle="Costo Fijo no encontrado" 
           items={[
             { label: 'Egresos', path: '/egresos' },
-            { label: 'Costos Fijos', path: '/egresos/costos-fijos' },
+            { label: 'Costos Fijos', path: '/costos/costos-fijos' },
             { label: 'No encontrado', path: '#' }
           ]}
         />
@@ -189,7 +189,7 @@ export const CostosFijosDetail = () => {
             El costo fijo solicitado no existe o no tienes permisos para verlo.
           </p>
           <div className="mt-6">
-            <Link to="/egresos/costos-fijos">
+            <Link to="/costos/costos-fijos">
               <Button className="bg-brand-500 hover:bg-brand-600 text-white">
                 Volver a Costos Fijos
               </Button>
@@ -206,7 +206,7 @@ export const CostosFijosDetail = () => {
         pageTitle={fixedCost.name} 
         items={[
           { label: 'Egresos', path: '/egresos' },
-          { label: 'Costos Fijos', path: '/egresos/costos-fijos' },
+          { label: 'Costos Fijos', path: '/costos/costos-fijos' },
           { label: fixedCost.name, path: '#' }
         ]}
       />
@@ -221,7 +221,7 @@ export const CostosFijosDetail = () => {
         </div>
         
         <div className="flex space-x-3">
-          <Link to={`/egresos/costos-fijos/${fixedCost.id}/editar`}>
+          <Link to={`/costos/costos-fijos/${fixedCost.id}/editar`}>
             <Button variant="outline" disabled={operationLoading}>
               Editar
             </Button>
@@ -442,7 +442,7 @@ export const CostosFijosDetail = () => {
 
       {/* Botón para volver */}
       <div className="mt-6 flex justify-start">
-        <Link to="/egresos/costos-fijos">
+        <Link to="/costos/costos-fijos">
           <Button variant="outline">
             ← Volver a Costos Fijos
           </Button>

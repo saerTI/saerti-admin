@@ -54,7 +54,7 @@ const EmpleadosNuevo: React.FC = () => {
       };
       
       await empleadosService.createEmpleado(empleadoData);
-      navigate('/gastos/empleados');
+      navigate('/costos/empleados');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear el empleado');
     } finally {
@@ -71,7 +71,7 @@ const EmpleadosNuevo: React.FC = () => {
           </h1>
           <button
             type="button"
-            onClick={() => navigate('/gastos/empleados')}
+            onClick={() => navigate('/costos/empleados')}
             className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
           >
             Volver
@@ -277,7 +277,7 @@ const EmpleadosNuevo: React.FC = () => {
           <div className="mt-8 flex justify-end gap-4">
             <button
               type="button"
-              onClick={() => navigate('/gastos/empleados')}
+              onClick={() => navigate('/costos/empleados')}
               className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
             >
               Cancelar

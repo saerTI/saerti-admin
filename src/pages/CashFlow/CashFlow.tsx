@@ -175,7 +175,15 @@ const CashFlow: React.FC = () => {
           />
         );
       case 'chart':
-        return <CashFlowChart data={cashFlowData.chartData} />;
+        console.log('CashFlow - cashFlowData:', cashFlowData);
+        console.log('CashFlow - chartData:', cashFlowData?.chartData);
+
+        // Use real data from the backend
+        const dataToUse = cashFlowData?.chartData || [];
+
+        console.log('CashFlow - dataToUse:', dataToUse);
+
+        return <CashFlowChart data={dataToUse} />;
       case 'historical':
         return (
           <CashFlowFinancialTable

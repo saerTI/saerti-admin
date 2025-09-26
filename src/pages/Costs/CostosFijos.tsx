@@ -173,6 +173,9 @@ const CostosFijos = () => {
   const completedCount = stats?.completed || 0;
   const totalCount = stats?.total || fixedCosts.length;
   const remainingAmount = stats?.remainingAmount || 0;
+  
+  // ✅ NUEVO KPI: Suma total de valores de cuota
+  const totalQuotaValue = fixedCosts.reduce((sum, costo) => sum + (costo.quota_value || 0), 0);
 
   // ✅ CORREGIDO: Configuración de filtros con opciones DINÁMICAS
   const filterConfigs: FilterConfig[] = useMemo(() => [
@@ -294,7 +297,7 @@ const CostosFijos = () => {
       <PageBreadcrumb pageTitle="Costos Fijos" />
 
       {/* Cards de resumen */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-4 mb-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-5 mb-6">
         <ComponentCard title='Total Costos' titleCenter={true} centerContent={true}>
           <h3 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totalCount}</h3>
         </ComponentCard>
@@ -302,6 +305,12 @@ const CostosFijos = () => {
         <ComponentCard title='Monto Total'>
           <div className="flex flex-col items-center justify-center">
             <h3 className="mt-1 text-2xl font-bold text-brand-500">{formatCurrency(totalAmount)}</h3>
+          </div>
+        </ComponentCard>
+        
+        <ComponentCard title='Valor Cuota'>
+          <div className="flex flex-col items-center justify-center">
+            <h3 className="mt-1 text-2xl font-bold text-purple-500">{formatCurrency(totalQuotaValue)}</h3>
           </div>
         </ComponentCard>
         
@@ -428,7 +437,7 @@ const CostosFijos = () => {
                 <tr key={costo.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
                   <td className="sticky-first-column px-6 py-4 whitespace-nowrap text-sm">
                     <Link 
-                      to={`/gastos/costos-fijos/${costo.id}`}
+                      to={`/costos/costos-fijos/${costo.id}`}
                       className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                     >
                       {costo.name}
@@ -482,7 +491,7 @@ const CostosFijos = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex space-x-2">
                       <Link 
-                        to={`/gastos/costos-fijos/${costo.id}/edit`}
+                        to={`/costos/costos-fijos/${costo.id}/edit`}
                         className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                       >
                         Editar

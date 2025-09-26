@@ -4,7 +4,6 @@ export type PrevisionalStatus = 'pendiente' | 'pagado' | 'cancelado';
 export interface Previsional {
   id: number;
   employee_id: number;
-  cost_center_id: number;
   type: PrevisionalType;
   amount: number;
   date: string; // Formato YYYY-MM-DD
@@ -15,15 +14,14 @@ export interface Previsional {
   notes?: string | null;
   created_at: string;
   updated_at: string;
-  
+
   // Campos de las tablas relacionadas (unidos en la consulta)
   employee_name?: string;
   employee_rut?: string;
-  cost_center_name?: string;
 }
 
 // Tipo para crear un nuevo registro (no necesita todos los campos)
-export type NewPrevisionalData = Omit<Previsional, 'id' | 'month_period' | 'year_period' | 'created_at' | 'updated_at' | 'employee_name' | 'employee_rut' | 'cost_center_name'>;
+export type NewPrevisionalData = Omit<Previsional, 'id' | 'month_period' | 'year_period' | 'created_at' | 'updated_at' | 'employee_name' | 'employee_rut'>;
 
 // Tipo para actualizar un registro (todos los campos son opcionales)
 export type UpdatePrevisionalData = Partial<NewPrevisionalData>;
@@ -32,7 +30,6 @@ export interface PrevisionalImportItem {
   rut: string;
   nombre: string;
   tipo_previsional: 'afp' | 'isapre' | 'isapre_7' | 'fonasa' | 'seguro_cesantia' | 'mutual';
-  centro_costo: string;
   monto: number;
   mes: number;
   año: number;

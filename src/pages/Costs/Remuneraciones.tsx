@@ -254,8 +254,8 @@ const Remuneraciones: React.FC = () => {
       <PageBreadcrumb 
         pageTitle="Remuneraciones" 
         items={[
-          { label: 'Costos', path: '/costs' },
-          { label: 'Remuneraciones', path: '/costs/remuneraciones' }
+          { label: 'Costos', path: '/costos' },
+          { label: 'Remuneraciones', path: '/costos/remuneraciones' }
         ]} 
       />
 

@@ -16,6 +16,7 @@ import ComponentCard from '../../components/common/ComponentCard';
 import { useFixedCostOperations } from '../../hooks/useFixedCosts';
 import { useCostCenters } from '../../hooks/useCostCenters';
 import * as fixedCostsService from '../../services/CC/fixedCostsService';
+import { getReferenceData, AccountCategory } from '../../services/CC/ordenesCompraItemService';
 
 export const CostosFijosEdicion = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +37,7 @@ export const CostosFijosEdicion = () => {
     start_date: '',
     payment_date: '',
     cost_center_id: undefined,
+    account_category_id: undefined,
     state: 'active'
   });
 
@@ -43,6 +45,10 @@ export const CostosFijosEdicion = () => {
 
   const { updateFixedCost } = useFixedCostOperations();
   const { costCenters, loading: costCentersLoading } = useCostCenters();
+  
+  // Account categories state
+  const [accountCategories, setAccountCategories] = useState<AccountCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   // Cargar datos del costo fijo
   useEffect(() => {
@@ -68,6 +74,7 @@ export const CostosFijosEdicion = () => {
           start_date: data.start_date,
           payment_date: data.payment_date,
           cost_center_id: data.cost_center_id,
+          account_category_id: data.account_category_id,
           state: data.state
         });
         
@@ -82,6 +89,35 @@ export const CostosFijosEdicion = () => {
 
     loadFixedCost();
   }, [id]);
+
+  // Cargar categorías contables
+  useEffect(() => {
+    const loadAccountCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const data = await getReferenceData();
+        setAccountCategories(data.accountCategories);
+      } catch (err) {
+        console.error('Error loading account categories:', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    loadAccountCategories();
+  }, []);
+
+  // Debug: Verificar datos de costCenters
+  useEffect(() => {
+    if (!costCentersLoading && costCenters.length > 0) {
+      console.log('✅ Cost Centers cargados en edición:', costCenters);
+      console.log('✅ Tipos de centros disponibles:', [...new Set(costCenters.map(cc => cc.type))]);
+      const filteredCenters = costCenters.filter(cc => 
+        cc.type === 'proyecto' || cc.type === 'project' || cc.type === 'administrativo' || cc.type === 'administrative'
+      );
+      console.log('✅ Centros filtrados para el formulario:', filteredCenters);
+    }
+  }, [costCenters, costCentersLoading]);
 
   // Manejar cambios en el formulario
   const handleInputChange = (name: keyof FixedCostUpdateData, value: string | number) => {
@@ -141,7 +177,7 @@ export const CostosFijosEdicion = () => {
       const success = await updateFixedCost(formData);
       
       if (success) {
-        navigate(`/egresos/costos-fijos/${id}`);
+        navigate(`/costos/costos-fijos/${id}`);
       }
     } catch (err) {
       console.error('Error updating fixed cost:', err);
@@ -153,7 +189,7 @@ export const CostosFijosEdicion = () => {
 
   // Manejar cancelación
   const handleCancel = () => {
-    navigate(`/egresos/costos-fijos/${id}`);
+    navigate(`/costos/costos-fijos/${id}`);
   };
 
   // Opciones para selects
@@ -162,15 +198,18 @@ export const CostosFijosEdicion = () => {
     label: config.label
   }));
 
-  const costCenterOptions = [
-    { value: '', label: 'Seleccione un centro de costo' },
-    ...costCenters
-      .filter(cc => cc.type === 'project' || cc.type === 'administrative')
-      .map(cc => ({
-        value: cc.id.toString(),
-        label: `${cc.code} - ${cc.name}`
-      }))
-  ];
+  const costCenterOptions = costCenters
+    .filter(cc => cc.type === 'proyecto' || cc.type === 'project' || cc.type === 'administrativo' || cc.type === 'administrative')
+    .map(cc => ({
+      value: cc.id.toString(),
+      label: `${cc.code} - ${cc.name}`,
+      disabled: cc.status === 'inactive' // Opcional: deshabilitar centros inactivos
+    }));
+
+  const accountCategoryOptions = accountCategories.map(ac => ({
+    value: ac.id.toString(),
+    label: `${ac.code} - ${ac.name}`
+  }));
 
   if (loading) {
     return (
@@ -189,7 +228,7 @@ export const CostosFijosEdicion = () => {
           pageTitle="Error" 
           items={[
             { label: 'Egresos', path: '/egresos' },
-            { label: 'Costos Fijos', path: '/egresos/costos-fijos' },
+            { label: 'Costos Fijos', path: '/costos/costos-fijos' },
             { label: 'Error', path: '#' }
           ]}
         />
@@ -201,7 +240,7 @@ export const CostosFijosEdicion = () => {
             {error}
           </div>
           <div className="mt-4">
-            <Link to="/egresos/costos-fijos">
+            <Link to="/costos/costos-fijos">
               <Button variant="outline">Volver a Costos Fijos</Button>
             </Link>
           </div>
@@ -217,7 +256,7 @@ export const CostosFijosEdicion = () => {
           pageTitle="Costo Fijo no encontrado" 
           items={[
             { label: 'Egresos', path: '/egresos' },
-            { label: 'Costos Fijos', path: '/egresos/costos-fijos' },
+            { label: 'Costos Fijos', path: '/costos/costos-fijos' },
             { label: 'No encontrado', path: '#' }
           ]}
         />
@@ -230,7 +269,7 @@ export const CostosFijosEdicion = () => {
             El costo fijo solicitado no existe o no tienes permisos para editarlo.
           </p>
           <div className="mt-6">
-            <Link to="/egresos/costos-fijos">
+            <Link to="/costos/costos-fijos">
               <Button className="bg-brand-500 hover:bg-brand-600 text-white">
                 Volver a Costos Fijos
               </Button>
@@ -247,8 +286,8 @@ export const CostosFijosEdicion = () => {
         pageTitle={`Editar: ${fixedCost.name}`} 
         items={[
           { label: 'Egresos', path: '/egresos' },
-          { label: 'Costos Fijos', path: '/egresos/costos-fijos' },
-          { label: fixedCost.name, path: `/egresos/costos-fijos/${fixedCost.id}` },
+          { label: 'Costos Fijos', path: '/costos/costos-fijos' },
+          { label: fixedCost.name, path: `/costos/costos-fijos/${fixedCost.id}` },
           { label: 'Editar', path: '#' }
         ]}
       />
@@ -274,9 +313,10 @@ export const CostosFijosEdicion = () => {
 
       {/* Formulario */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Información básica */}
-        <ComponentCard title="Información Básica">
+        {/* Formulario unificado */}
+        <ComponentCard title="Editar Costo Fijo">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Nombre */}
             <div>
               <Label htmlFor="name">Nombre *</Label>
               <InputField
@@ -291,6 +331,7 @@ export const CostosFijosEdicion = () => {
               />
             </div>
 
+            {/* Estado */}
             <div>
               <Label htmlFor="state">Estado</Label>
               <Select
@@ -301,6 +342,7 @@ export const CostosFijosEdicion = () => {
               />
             </div>
 
+            {/* Descripción - span 2 columns */}
             <div className="md:col-span-2">
               <Label htmlFor="description">Descripción</Label>
               <TextArea
@@ -310,12 +352,8 @@ export const CostosFijosEdicion = () => {
                 rows={3}
               />
             </div>
-          </div>
-        </ComponentCard>
 
-        {/* Información financiera */}
-        <ComponentCard title="Información Financiera">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Valor por Cuota */}
             <div>
               <Label htmlFor="quota_value">Valor por Cuota *</Label>
               <InputField
@@ -332,6 +370,7 @@ export const CostosFijosEdicion = () => {
               />
             </div>
 
+            {/* Número de Cuotas */}
             <div>
               <Label htmlFor="quota_count">Número de Cuotas *</Label>
               <InputField
@@ -346,12 +385,8 @@ export const CostosFijosEdicion = () => {
                 required
               />
             </div>
-          </div>
-        </ComponentCard>
 
-        {/* Fechas */}
-        <ComponentCard title="Fechas">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Fecha de Inicio */}
             <div>
               <DatePicker
                 id="start_date"
@@ -367,6 +402,7 @@ export const CostosFijosEdicion = () => {
               )}
             </div>
 
+            {/* Día de Pago */}
             <div>
               <DatePicker
                 id="payment_date"
@@ -381,12 +417,8 @@ export const CostosFijosEdicion = () => {
                 <p className="mt-1 text-sm text-red-600">{validationErrors.payment_date}</p>
               )}
             </div>
-          </div>
-        </ComponentCard>
 
-        {/* Centro de costo */}
-        <ComponentCard title="Clasificación">
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+            {/* Centro de Costo */}
             <div>
               <Label htmlFor="cost_center">Centro de Costo</Label>
               <Select
@@ -395,6 +427,18 @@ export const CostosFijosEdicion = () => {
                 onChange={(value) => handleInputChange('cost_center_id', value ? parseInt(value) : 0)}
                 placeholder="Seleccione centro de costo"
                 disabled={costCentersLoading}
+              />
+            </div>
+
+            {/* Categoría Contable */}
+            <div>
+              <Label htmlFor="account_category">Categoría</Label>
+              <Select
+                options={accountCategoryOptions}
+                defaultValue={formData.account_category_id ? formData.account_category_id.toString() : ''}
+                onChange={(value) => handleInputChange('account_category_id', value ? parseInt(value) : 0)}
+                placeholder="Seleccione categoría contable"
+                disabled={categoriesLoading}
               />
             </div>
           </div>

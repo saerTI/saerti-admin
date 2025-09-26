@@ -231,7 +231,7 @@ const Empleados = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Empleados</h1>
         <Button 
-          onClick={() => navigate('/gastos/empleados/new')}
+          onClick={() => navigate('/costos/empleados/new')}
           className="bg-brand-500 hover:bg-brand-600 text-white"
         >
           Nuevo Empleado
@@ -305,16 +305,22 @@ const Empleados = () => {
           </div>
         </div>
       ) : (
-        /* Empleados table */
-        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <div>
+          {/* Empleados table */}
           {empleados.length === 0 ? (
-            <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              No se encontraron empleados con los filtros seleccionados.
+          <div className="text-center py-12">
+            <div className="mx-auto h-24 w-24 text-gray-400">
+              <svg fill="currentColor" viewBox="0 0 24 24">
+                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No se encontraron empleados</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">No se encontraron empleados con los filtros seleccionados.</p>
+          </div>
+        ) : (
+          <div className="w-full overflow-x-auto">
+            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       RUT
@@ -342,91 +348,102 @@ const Empleados = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {empleados.map((empleado) => {
                     const isIncomplete = hasIncompleteInfo(empleado);
                     return (
-                      <tr 
-                        key={empleado.id}
-                        className={isIncomplete ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          <div className="flex items-center gap-2">
-                            {isIncomplete && (
-                              <div className="flex-shrink-0" title="Información incompleta">
-                                <svg 
-                                  className="w-4 h-4 text-yellow-500 dark:text-yellow-400" 
-                                  fill="currentColor" 
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path 
-                                    fillRule="evenodd" 
-                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" 
-                                    clipRule="evenodd" 
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                            <button
-                              onClick={() => navigate(`/gastos/empleados/${empleado.id}`)}
-                              className="hover:text-brand-600 hover:underline"
-                            >
-                              {empleado.tax_id || '-'}
-                            </button>
-                          </div>
-                        </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        <button
-                          onClick={() => navigate(`/gastos/empleados/${empleado.id}`)}
-                          className="hover:text-brand-600 hover:underline text-left"
-                        >
-                          {empleado.full_name || `${empleado.first_name} ${empleado.last_name}`}
-                        </button>
-                      </td>
+                    <tr
+                      key={empleado.id}
+                      className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isIncomplete ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}`}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {empleado.position || '-'}
+                        <div className="flex items-center gap-2">
+                          {isIncomplete && (
+                            <div className="flex-shrink-0" title="Información incompleta">
+                              <svg
+                                className="w-4 h-4 text-yellow-500 dark:text-yellow-400"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => navigate(`/costos/empleados/${empleado.id}`)}
+                            className="hover:text-brand-600 hover:underline"
+                          >
+                            {empleado.tax_id || '-'}
+                          </button>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {empleado.department || '-'}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          <button
+                            onClick={() => navigate(`/costos/empleados/${empleado.id}`)}
+                            className="hover:text-brand-600 hover:underline text-left"
+                          >
+                            {empleado.full_name || `${empleado.first_name} ${empleado.last_name}`}
+                          </button>
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {empleado.tax_id || '-'}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {empleado.cost_center_name || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(empleado.hire_date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          empleado.active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {empleado.active ? 'Activo' : 'Inactivo'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {empleado.position || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {empleado.department || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500 truncate max-w-[150px]">
+                          {empleado.cost_center_name || '-'}
                         </span>
-                      </td>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                      {formatDate(empleado.hire_date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        empleado.active
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>
+                        {empleado.active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Button
-                          onClick={() => navigate(`/gastos/empleados/${empleado.id}`)}
-                          className="text-brand-600 hover:text-brand-900 mr-2"
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          onClick={() => handleDeleteEmpleado(empleado.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Eliminar
-                        </Button>
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => navigate(`/costos/empleados/${empleado.id}`)}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEmpleado(empleado.id)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
-                  })}
-                </tbody>
-              </table>
+                })}
+              </tbody>
+            </table>
 
-              {/* Paginación Mejorada */}
-              {pagination && (
-                <div className="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+            {/* Paginación Mejorada */}
+            {pagination && (
+              <div className="bg-white dark:bg-gray-900 px-6 py-3 border-t border-gray-200 dark:border-gray-700 mt-4">
                   <div className="flex items-center justify-between">
                     {/* Información de resultados */}
                     <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
@@ -509,10 +526,10 @@ const Empleados = () => {
                       </div>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
+        )}
         </div>
       )}
     </div>

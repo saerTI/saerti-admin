@@ -43,12 +43,27 @@ const calculatePeriodTotals = (data: FinancialCategory[], periods: FinancialPeri
 
 const calculateCategoryTotals = (data: FinancialCategory[]): Record<string, number> => {
   const totals: Record<string, number> = {};
-  
+
   data.forEach(category => {
     totals[category.category] = Object.values(category.amounts).reduce((sum, amount) => sum + amount, 0);
   });
-  
+
   return totals;
+};
+
+/**
+ * Calculate accumulated totals for each period (sum of current + all previous periods)
+ */
+const calculateAccumulatedTotals = (periodTotals: Record<string, number>, periods: FinancialPeriod[]): Record<string, number> => {
+  const accumulated: Record<string, number> = {};
+  let runningTotal = 0;
+
+  periods.forEach(period => {
+    runningTotal += (periodTotals[period.id] || 0);
+    accumulated[period.id] = runningTotal;
+  });
+
+  return accumulated;
 };
 
 /**
@@ -115,6 +130,9 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
   const periodTotals = calculatePeriodTotals(data, periods);
   const categoryTotals = calculateCategoryTotals(data);
   const grandTotal = Object.values(periodTotals).reduce((sum, amount) => sum + amount, 0);
+
+  // Calculate accumulated totals
+  const accumulatedTotals = calculateAccumulatedTotals(periodTotals, periods);
   
   // Determine color based on financial type
   const titleColor = type === 'income' ? 'text-green-600' : 'text-red-600';
@@ -267,6 +285,37 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                 {/* ✅ GRAND TOTAL - CENTRADO */}
                 <TableCell className="px-5 py-3 text-center text-sm font-bold">
                   <span className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                    {formatCurrency(grandTotal)}
+                  </span>
+                </TableCell>
+              </TableRow>
+
+              {/* ✅ ACCUMULATED TOTALS ROW */}
+              <TableRow className={`${type === 'income' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'} hover:${type === 'income' ? '!bg-green-200 dark:!bg-green-800/40' : '!bg-red-200 dark:!bg-red-800/40'} transition-colors duration-150`}>
+                {/* ✅ ACCUMULATED TOTAL LABEL */}
+                <TableCell className={`px-5 py-3 font-bold text-sm sticky left-0 ${type === 'income' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'} text-start z-40`}>
+                  TOTAL ACUMULADO
+                </TableCell>
+
+                {/* ✅ ACCUMULATED PERIOD TOTALS - CENTRADOS */}
+                {periods.map((period, index) => (
+                  <TableCell
+                    key={index}
+                    className={`px-5 py-3 text-center text-sm font-bold ${type === 'income' ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}
+                  >
+                    {accumulatedTotals[period.id] > 0 ? (
+                      <span className="text-lg font-bold">
+                        {formatCurrency(accumulatedTotals[period.id])}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 dark:text-gray-600 text-lg">-</span>
+                    )}
+                  </TableCell>
+                ))}
+
+                {/* ✅ GRAND TOTAL ACCUMULATED - CENTRADO (same as grand total since it's cumulative) */}
+                <TableCell className={`px-5 py-3 text-center text-sm font-bold ${type === 'income' ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>
+                  <span className="text-xl font-bold">
                     {formatCurrency(grandTotal)}
                   </span>
                 </TableCell>

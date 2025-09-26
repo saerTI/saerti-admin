@@ -38,7 +38,7 @@ const EmpleadosDetalle: React.FC = () => {
     try {
       setLoading(true);
       await empleadosService.deleteEmpleado(parseInt(id));
-      navigate('/gastos/empleados');
+      navigate('/costos/empleados');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar el empleado');
       setLoading(false);
@@ -100,7 +100,7 @@ const EmpleadosDetalle: React.FC = () => {
           </h1>
           <div className="space-x-2">
             <button
-              onClick={() => navigate('/gastos/empleados')}
+              onClick={() => navigate('/costos/empleados')}
               className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
             >
               Volver
@@ -369,7 +369,7 @@ const EmpleadosDetalle: React.FC = () => {
               Eliminar
             </button>
             <button
-              onClick={() => navigate(`/gastos/empleados/${id}/edit`)}
+              onClick={() => navigate(`/costos/empleados/${id}/edit`)}
               className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg"
             >
               Editar

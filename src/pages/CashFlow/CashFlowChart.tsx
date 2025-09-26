@@ -9,7 +9,7 @@ interface CashFlowChartProps {
   data: CashFlowChartData[];
 }
 
-type ChartType = 'line' | 'bar' | 'area' | 'mixed' | 'forecast' | 'pie';
+type ChartType = 'line' | 'bar' | 'area' | 'mixed' | 'forecast' | 'pie' | 'waterfall';
 
 const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
   const [chartType, setChartType] = useState<ChartType>('mixed');
@@ -191,6 +191,10 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
 
         return series;
 
+      case 'waterfall':
+        // Waterfall chart is handled by custom rendering
+        return [];
+
       default:
         return [];
     }
@@ -277,6 +281,10 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
           },
         };
 
+      case 'waterfall':
+        // Waterfall chart is handled by custom rendering
+        return options;
+
       default:
         return options;
     }
@@ -354,6 +362,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
               { key: 'line', label: 'Línea', icon: '📈' },
               { key: 'bar', label: 'Barras', icon: '📊' },
               { key: 'area', label: 'Área', icon: '🏔️' },
+              { key: 'waterfall', label: 'Cascada', icon: '🌊' },
               { key: 'forecast', label: 'Proyección', icon: '🔮' },
               { key: 'pie', label: 'Circular', icon: '🥧' }
             ].map(({ key, label, icon }) => (
@@ -501,10 +510,115 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
               </div>
             </div>
           </div>
+        ) : chartType === 'waterfall' ? (
+          // Custom waterfall chart rendering
+          <div className="w-full">
+            <div className="text-center text-lg font-semibold mb-6 text-gray-700 dark:text-gray-300">
+              Balance Acumulado - Gráfico de Cascada
+            </div>
+            {/* Debug info */}
+            <div className="text-xs text-gray-500 mb-4 text-center">
+              Flujo neto acumulado - {data.length} períodos |
+              {data.length > 0 && ` ${data[0].name}: Balance del período = ${formatCurrency(data[0].balance)}`}
+            </div>
+            <div className="relative h-80 border border-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto">
+              {/* Chart container */}
+              <div className="flex items-end justify-around h-full relative" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
+                {/* Y-axis line at 0 - positioned within the chart area */}
+                <div className="absolute left-0 w-full h-px bg-red-400 z-10" style={{ top: '50%' }}></div>
+                <div className="absolute left-2 text-xs text-gray-500 bg-white dark:bg-gray-800 px-2 rounded z-20" style={{ top: 'calc(50% - 10px)' }}>
+                  $0
+                </div>
+                {data.length === 0 ? (
+                  <div className="text-center text-gray-500 w-full">
+                    No hay datos para mostrar
+                  </div>
+                ) : (
+                  data.map((item, index) => {
+                    // Calculate accumulated balance (net flow) up to this period
+                    let accumulatedBalance = 0;
+                    for (let i = 0; i <= index; i++) {
+                      accumulatedBalance += data[i].balance;
+                    }
+                    const isPositive = accumulatedBalance >= 0;
+
+                    // Calculate max absolute value for scaling
+                    const allAccumulatedValues = data.map((_, i) => {
+                      let acc = 0;
+                      for (let j = 0; j <= i; j++) {
+                        acc += data[j].balance;
+                      }
+                      return Math.abs(acc);
+                    });
+
+                    const maxAbsValue = Math.max(...allAccumulatedValues, 100000);
+                    const heightRatio = Math.abs(accumulatedBalance) / maxAbsValue;
+                    const height = Math.max(heightRatio * 100, 8); // Min height 8px, max 100px
+
+                    console.log(`Period ${index}: ${item.name}, Period Balance: ${formatCurrency(item.balance)}, Accumulated Balance: ${formatCurrency(accumulatedBalance)}, Height: ${height}px, IsPositive: ${isPositive}`);
+
+                    // Position relative to the zero line (50% from top of chart container)
+                    const zeroLinePosition = 50; // 50% from top of chart container
+
+                    // For positive values: bar grows upward, so top position = zero line - height
+                    // For negative values: bar starts at zero line and grows downward
+                    const barTop = isPositive
+                      ? `calc(${zeroLinePosition}% - ${height}px)` // Exact positioning using calc()
+                      : `${zeroLinePosition}%`; // Start exactly at zero line
+
+                    return (
+                      <div key={index} className="relative flex flex-col items-center min-w-[80px] h-full">
+                        {/* Bar positioned relative to zero line */}
+                        <div
+                          className={`w-16 ${isPositive ? 'bg-green-500' : 'bg-red-500'} border border-gray-400 shadow-sm absolute`}
+                          style={{
+                            height: `${height}px`,
+                            top: barTop,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                          }}
+                          title={`${item.name}: ${formatCurrency(accumulatedBalance)}`}
+                        />
+
+                        {/* Value label */}
+                        <div
+                          className="text-xs text-gray-600 dark:text-gray-400 font-medium text-center absolute whitespace-nowrap"
+                          style={{
+                            top: isPositive
+                              ? `calc(${zeroLinePosition}% - ${height + 20}px)` // Above the bar for positive values
+                              : `calc(${zeroLinePosition}% + ${height + 5}px)`,  // Below the bar for negative values
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                          }}
+                        >
+                          {formatCurrency(accumulatedBalance)}
+                        </div>
+
+                        {/* Period label at bottom */}
+                        <div className="text-xs text-gray-600 dark:text-gray-400 text-center font-medium absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                          {item.name.length > 10 ? `${item.name.substring(0, 10)}...` : item.name}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-center space-x-6">
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Balance Positivo</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-red-500 rounded mr-2"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Balance Negativo</span>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="w-full overflow-x-auto">
             <div className="min-w-[600px]">
-              <Chart 
+              <Chart
                 options={getChartOptions()}
                 series={getChartSeries()}
                 type={chartType === 'mixed' || chartType === 'forecast' ? 'line' : chartType}

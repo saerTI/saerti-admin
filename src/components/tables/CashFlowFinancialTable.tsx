@@ -77,6 +77,21 @@ const calculateCategoryTotals = (data: CashFlowCategory[]) => {
 };
 
 /**
+ * Calculate accumulated totals for each period (sum of current + all previous periods)
+ */
+const calculateAccumulatedTotals = (periodTotals: Record<string, number>, periods: CashFlowPeriod[]): Record<string, number> => {
+  const accumulated: Record<string, number> = {};
+  let runningTotal = 0;
+
+  periods.forEach(period => {
+    runningTotal += (periodTotals[period.id] || 0);
+    accumulated[period.id] = runningTotal;
+  });
+
+  return accumulated;
+};
+
+/**
  * Generate week periods for a given year
  */
 export const generateWeekPeriods = (year: number): CashFlowPeriod[] => {
@@ -181,23 +196,23 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
 
   // Expense categories (from EgresosIndex)
   const expenseCategories = [
-    { title: 'Remuneraciones', categoryId: 1, path: '/gastos/remuneraciones' },
-    { title: 'Cotizaciones Previsionales', categoryId: 2, path: '/gastos/previsionales' },
-    { title: 'Alimentación y Hospedaje', categoryId: 3, path: '/gastos/servicios-alimentacion-hospedaje' },
-    { title: 'Leasing y Maquinaria', categoryId: 4, path: '/gastos/leasing-pagos-maquinaria' },
-    { title: 'Subcontratos Crédito', categoryId: 5, path: '/gastos/subcontratos-credito' },
-    { title: 'Subcontratos Contado', categoryId: 6, path: '/gastos/subcontratos-contado' },
-    { title: 'OC Crédito', categoryId: 7, path: '/gastos/ordenes-compra' },
-    { title: 'OC Contado', categoryId: 8, path: '/gastos/oc-contado' },
-    { title: 'Contratos Notariales', categoryId: 9, path: '/gastos/contratos-notariales' },
-    { title: 'Costos Fijos', categoryId: 10, path: '/gastos/costos-fijos' },
-    { title: 'Costos Variables', categoryId: 11, path: '/gastos/costos-variables' },
-    { title: 'Pago Rendiciones', categoryId: 12, path: '/gastos/pago-rendiciones' },
-    { title: 'Impuestos', categoryId: 13, path: '/gastos/impuestos' },
-    { title: 'Seguros y Pólizas', categoryId: 14, path: '/gastos/seguros-polizas' },
-    { title: 'Certificaciones', categoryId: 15, path: '/gastos/certificaciones-capacitaciones' },
-    { title: 'Estudios y Asesorías', categoryId: 16, path: '/gastos/estudios-asesorias' },
-    { title: 'Gastos Imprevistos', categoryId: 17, path: '/gastos/imprevistos' },
+    { title: 'Remuneraciones', categoryId: 1, path: '/costos/remuneraciones' },
+    { title: 'Cotizaciones Previsionales', categoryId: 2, path: '/costos/previsionales' },
+    { title: 'Alimentación y Hospedaje', categoryId: 3, path: '/costos/servicios-alimentacion-hospedaje' },
+    { title: 'Leasing y Maquinaria', categoryId: 4, path: '/costos/leasing-pagos-maquinaria' },
+    { title: 'Subcontratos Crédito', categoryId: 5, path: '/costos/subcontratos-credito' },
+    { title: 'Subcontratos Contado', categoryId: 6, path: '/costos/subcontratos-contado' },
+    { title: 'OC Crédito', categoryId: 7, path: '/costos/ordenes-compra' },
+    { title: 'OC Contado', categoryId: 8, path: '/costos/oc-contado' },
+    { title: 'Contratos Notariales', categoryId: 9, path: '/costos/contratos-notariales' },
+    { title: 'Costos Fijos', categoryId: 10, path: '/costos/costos-fijos' },
+    { title: 'Costos Variables', categoryId: 11, path: '/costos/costos-variables' },
+    { title: 'Pago Rendiciones', categoryId: 12, path: '/costos/pago-rendiciones' },
+    { title: 'Impuestos', categoryId: 13, path: '/costos/impuestos' },
+    { title: 'Seguros y Pólizas', categoryId: 14, path: '/costos/seguros-polizas' },
+    { title: 'Certificaciones', categoryId: 15, path: '/costos/certificaciones-capacitaciones' },
+    { title: 'Estudios y Asesorías', categoryId: 16, path: '/costos/estudios-asesorias' },
+    { title: 'Gastos Imprevistos', categoryId: 17, path: '/costos/imprevistos' },
   ];
 
   // Generate periods based on periodType and year
@@ -367,10 +382,15 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
   const incomeTotals = calculatePeriodTotals(data, periods, 'income');
   const expenseTotals = calculatePeriodTotals(data, periods, 'expense');
   const netTotals: Record<string, number> = {};
-  
+
   periods.forEach(period => {
     netTotals[period.id] = (incomeTotals[period.id] || 0) - (expenseTotals[period.id] || 0);
   });
+
+  // Calculate accumulated totals for income, expenses, and net flow
+  const incomeAccumulatedTotals = calculateAccumulatedTotals(incomeTotals, periods);
+  const expenseAccumulatedTotals = calculateAccumulatedTotals(expenseTotals, periods);
+  const netAccumulatedTotals = calculateAccumulatedTotals(netTotals, periods);
 
   const categoryTotals = calculateCategoryTotals(data);
   const grandTotalIncome = Object.values(incomeTotals).reduce((sum, amount) => sum + amount, 0);
@@ -548,7 +568,7 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
                 <TableCell className="px-5 py-3 text-green-800 text-sm sticky left-0 bg-green-100 dark:bg-green-900/30 dark:text-green-300">
                   TOTAL INGRESOS
                 </TableCell>
-                
+
                 {periods.map((period, index) => (
                   <TableCell
                     key={index}
@@ -557,8 +577,28 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
                     {formatCurrency(incomeTotals[period.id] || 0)}
                   </TableCell>
                 ))}
-                
+
                 <TableCell className="px-5 py-3 text-right text-sm text-green-800 dark:text-green-300">
+                  {formatCurrency(grandTotalIncome)}
+                </TableCell>
+              </TableRow>
+
+              {/* Accumulated Income Total Row */}
+              <TableRow className="bg-green-200 dark:bg-green-800/40 font-bold">
+                <TableCell className="px-5 py-3 text-green-900 text-sm sticky left-0 bg-green-200 dark:bg-green-800/40 dark:text-green-200">
+                  TOTAL ACUMULADO
+                </TableCell>
+
+                {periods.map((period, index) => (
+                  <TableCell
+                    key={index}
+                    className={`px-5 py-3 text-right text-sm text-green-900 dark:text-green-200 ${period.isDateRange ? 'align-middle' : ''}`}
+                  >
+                    {formatCurrency(incomeAccumulatedTotals[period.id] || 0)}
+                  </TableCell>
+                ))}
+
+                <TableCell className="px-5 py-3 text-right text-sm text-green-900 dark:text-green-200">
                   {formatCurrency(grandTotalIncome)}
                 </TableCell>
               </TableRow>
@@ -626,7 +666,7 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
                     <TableCell className="px-5 py-3 text-red-800 text-sm sticky left-0 bg-red-100 dark:bg-red-900/30 dark:text-red-300">
                       TOTAL EGRESOS
                     </TableCell>
-                    
+
                     {periods.map((period, index) => (
                       <TableCell
                         key={index}
@@ -635,8 +675,28 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
                         {formatCurrency(expenseTotals[period.id] || 0)}
                       </TableCell>
                     ))}
-                    
+
                     <TableCell className="px-5 py-3 text-right text-sm text-red-800 dark:text-red-300">
+                      {formatCurrency(grandTotalExpense)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Accumulated Expense Total Row */}
+                  <TableRow className="bg-red-200 dark:bg-red-800/40 font-bold">
+                    <TableCell className="px-5 py-3 text-red-900 text-sm sticky left-0 bg-red-200 dark:bg-red-800/40 dark:text-red-200">
+                      TOTAL ACUMULADO EGRESOS
+                    </TableCell>
+
+                    {periods.map((period, index) => (
+                      <TableCell
+                        key={index}
+                        className={`px-5 py-3 text-right text-sm text-red-900 dark:text-red-200 ${period.isDateRange ? 'align-middle' : ''}`}
+                      >
+                        {formatCurrency(expenseAccumulatedTotals[period.id] || 0)}
+                      </TableCell>
+                    ))}
+
+                    <TableCell className="px-5 py-3 text-right text-sm text-red-900 dark:text-red-200">
                       {formatCurrency(grandTotalExpense)}
                     </TableCell>
                   </TableRow>
@@ -646,24 +706,52 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
                     <TableCell className="px-5 py-3 text-blue-800 text-sm sticky left-0 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300">
                       FLUJO NETO
                     </TableCell>
-                    
+
                     {periods.map((period, index) => (
                       <TableCell
                         key={index}
                         className={`px-5 py-3 text-right text-sm font-bold ${
-                          netTotals[period.id] >= 0 
-                            ? 'text-green-800 dark:text-green-300' 
+                          netTotals[period.id] >= 0
+                            ? 'text-green-800 dark:text-green-300'
                             : 'text-red-800 dark:text-red-300'
                         } ${period.isDateRange ? 'align-middle' : ''}`}
                       >
                         {formatCurrency(netTotals[period.id] || 0)}
                       </TableCell>
                     ))}
-                    
+
                     <TableCell className={`px-5 py-3 text-right text-sm font-bold ${
-                      grandTotalNet >= 0 
-                        ? 'text-green-800 dark:text-green-300' 
+                      grandTotalNet >= 0
+                        ? 'text-green-800 dark:text-green-300'
                         : 'text-red-800 dark:text-red-300'
+                    }`}>
+                      {formatCurrency(grandTotalNet)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Accumulated Net Cash Flow Row */}
+                  <TableRow className="bg-blue-200 dark:bg-blue-800/40 font-bold">
+                    <TableCell className="px-5 py-3 text-blue-900 text-sm sticky left-0 bg-blue-200 dark:bg-blue-800/40 dark:text-blue-200">
+                      FLUJO NETO ACUMULADO
+                    </TableCell>
+
+                    {periods.map((period, index) => (
+                      <TableCell
+                        key={index}
+                        className={`px-5 py-3 text-right text-sm font-bold ${
+                          netAccumulatedTotals[period.id] >= 0
+                            ? 'text-green-900 dark:text-green-200'
+                            : 'text-red-900 dark:text-red-200'
+                        } ${period.isDateRange ? 'align-middle' : ''}`}
+                      >
+                        {formatCurrency(netAccumulatedTotals[period.id] || 0)}
+                      </TableCell>
+                    ))}
+
+                    <TableCell className={`px-5 py-3 text-right text-sm font-bold ${
+                      grandTotalNet >= 0
+                        ? 'text-green-900 dark:text-green-200'
+                        : 'text-red-900 dark:text-red-200'
                     }`}>
                       {formatCurrency(grandTotalNet)}
                     </TableCell>

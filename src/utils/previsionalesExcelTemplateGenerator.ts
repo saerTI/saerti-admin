@@ -90,12 +90,6 @@ export const generatePrevisionalTemplate = (): void => {
       example: 'afp'
     },
     {
-      header: 'CENTRO DE COSTO',
-      key: 'centro_costo',
-      width: 20,
-      example: 'Administración'
-    },
-    {
       header: 'MONTO',
       key: 'monto',
       width: 15,
@@ -143,17 +137,17 @@ export const generatePrevisionalTemplateWithInstructions = (): void => {
 
     // Hoja 1: Datos
     const dataHeaders = [
-      'RUT', 'NOMBRE', 'TIPO PREVISIONAL', 'CENTRO DE COSTO', 
+      'RUT', 'NOMBRE', 'TIPO PREVISIONAL',
       'MONTO', 'MES', 'AÑO', 'FECHA DE PAGO', 'NOTAS'
     ];
     const exampleData = [
-      '12345678-9', 'Juan Pérez González', 'afp', 'Administración', 
+      '12345678-9', 'Juan Pérez González', 'afp',
       150000, 12, 2024, '2024-12-30', 'Ejemplo de registro'
     ];
 
     const dataSheet = XLSX.utils.aoa_to_sheet([dataHeaders, exampleData]);
     dataSheet['!cols'] = [
-      { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 20 },
+      { wch: 15 }, { wch: 25 }, { wch: 20 },
       { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 30 }
     ];
 
@@ -165,7 +159,6 @@ export const generatePrevisionalTemplateWithInstructions = (): void => {
       ['RUT', 'Formato: 12345678-9 (con guión)'],
       ['NOMBRE', 'Nombre completo del empleado'],
       ['TIPO PREVISIONAL', 'Valores permitidos: afp, isapre, isapre_7, fonasa, seguro_cesantia, mutual'],
-      ['CENTRO DE COSTO', 'Nombre exacto del centro de costo existente'],
       ['MONTO', 'Valor numérico sin puntos ni comas (ej: 150000)'],
       ['MES', 'Número del mes (1-12)'],
       ['AÑO', 'Año en formato YYYY (ej: 2024)'],
@@ -174,7 +167,6 @@ export const generatePrevisionalTemplateWithInstructions = (): void => {
       [''],
       ['IMPORTANTE:'],
       ['• Los empleados deben existir en el sistema'],
-      ['• Los centros de costo deben existir previamente'],
       ['• El RUT debe coincidir exactamente con el registrado'],
       ['• Los tipos previsionales deben ser exactos (en minúsculas)'],
       ['• Complete todos los datos en la hoja "Datos"'],

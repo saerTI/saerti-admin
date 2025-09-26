@@ -164,7 +164,7 @@ const OrdenCompraDetail = () => {
           <p className="text-gray-700 dark:text-gray-300">{error || 'No se pudo cargar la orden de compra'}</p>
           <button
             className="mt-4 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded"
-            onClick={() => navigate('/gastos/ordenes-compra')}
+            onClick={() => navigate('/costos/ordenes-compra')}
           >
             Volver a Órdenes de Compra
           </button>
@@ -191,13 +191,13 @@ const OrdenCompraDetail = () => {
           <div className="flex space-x-3 mt-4 md:mt-0">
             <button
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
-              onClick={() => navigate('/gastos/ordenes-compra')}
+              onClick={() => navigate('/costos/ordenes-compra')}
             >
               Volver
             </button>
             <button
               className="px-4 py-2 border border-brand-500 text-brand-500 rounded hover:bg-brand-50 dark:border-brand-400 dark:text-brand-400"
-              onClick={() => navigate(`/gastos/ordenes-compra/${id}/edit`)}
+              onClick={() => navigate(`/costos/ordenes-compra/${id}/edit`)}
             >
               Editar Orden
             </button>

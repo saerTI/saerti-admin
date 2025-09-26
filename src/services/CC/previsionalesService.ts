@@ -20,7 +20,6 @@ interface PrevisionalFilters {
   limit?: number;
   status?: string;
   type?: string;
-  cost_center_id?: number;
   month_period?: number;
   year_period?: number;
   start_date?: string;

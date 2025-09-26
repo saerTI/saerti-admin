@@ -78,7 +78,7 @@ const Cotizaciones = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Cotizaciones</h1>
         <Button 
-          onClick={() => navigate('/gastos/cotizaciones/new')}
+          onClick={() => navigate('/costos/cotizaciones/new')}
           className="bg-brand-500 hover:bg-brand-600 text-white"
         >
           Nueva Cotización
@@ -184,7 +184,7 @@ const Cotizaciones = () => {
                   <tr key={cotizacion.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       <Link 
-                        to={`/gastos/cotizaciones/${cotizacion.id}`}
+                        to={`/costos/cotizaciones/${cotizacion.id}`}
                         className="text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                       >
                         {cotizacion.name}
@@ -210,7 +210,7 @@ const Cotizaciones = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <Link 
-                          to={`/gastos/cotizaciones/${cotizacion.id}/edit`}
+                          to={`/costos/cotizaciones/${cotizacion.id}/edit`}
                           className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                         >
                           Editar

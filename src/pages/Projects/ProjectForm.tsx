@@ -58,7 +58,7 @@ const ProjectForm = () => {
           clientId: projectData.client.id,
           startDate: projectData.startDate || '',
           expectedEndDate: projectData.expectedEndDate || '',
-          totalBudget: projectData.totalBudget,
+          totalBudget: projectData.totalBudget || 0,
           description: projectData.description || '',
           status: projectData.status || 'borrador'
         });
@@ -151,7 +151,8 @@ const ProjectForm = () => {
   // }, [formData.code, validateCode]);
   
   // Format a number with dot thousand separators (123456 -> 123.456)
-  const formatNumberWithDots = (number: number): string => {
+  const formatNumberWithDots = (number: number | null | undefined): string => {
+    if (number == null) return '0';
     return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
   

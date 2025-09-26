@@ -409,7 +409,7 @@ const RemuneracionesForm: React.FC = () => {
       };
 
       await remuneracionesService.updateRemuneracion(parseInt(id), updateData);
-      navigate(`/gastos/remuneraciones/${id}`);
+      navigate(`/costos/remuneraciones/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al actualizar la remuneración');
     } finally {
@@ -451,7 +451,7 @@ const RemuneracionesForm: React.FC = () => {
             Editar Remuneración
           </h1>
           <Button
-            onClick={() => navigate(`/gastos/remuneraciones/${id}`)}
+            onClick={() => navigate(`/costos/remuneraciones/${id}`)}
             variant="outline"
           >
             Volver
@@ -713,7 +713,7 @@ const RemuneracionesForm: React.FC = () => {
             <div className="flex justify-end space-x-3 mt-6">
               <Button
                 type="button"
-                onClick={() => navigate(`/gastos/remuneraciones/${id}`)}
+                onClick={() => navigate(`/costos/remuneraciones/${id}`)}
                 variant="outline"
               >
                 Cancelar

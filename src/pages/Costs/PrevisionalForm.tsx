@@ -3,7 +3,6 @@ import { Previsional, NewPrevisionalData, UpdatePrevisionalData } from '../../ty
 import { Empleado } from '../../types/CC/empleados';
 import { previsionalesService } from '../../services/CC/previsionalesService';
 import { getEmpleados } from '../../services/CC/empleadosService';
-import { getCostCenters, CostCenter } from '../../services/costCenterService';
 import Button from '../../components/ui/button/Button';
 
 interface PrevisionalFormProps {
@@ -15,7 +14,6 @@ interface PrevisionalFormProps {
 const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, onClose }) => {
   const [formData, setFormData] = useState<Partial<NewPrevisionalData | UpdatePrevisionalData>>({
     employee_id: previsional?.employee_id || 0,
-    cost_center_id: previsional?.cost_center_id || 0,
     type: previsional?.type || 'afp',
     amount: previsional?.amount || 0,
     date: previsional?.date || new Date().toISOString().split('T')[0],
@@ -30,7 +28,6 @@ const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, 
   const [empleadoEncontrado, setEmpleadoEncontrado] = useState<Empleado | null>(null);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loadingEmpleados, setLoadingEmpleados] = useState(false);
-  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -65,14 +62,10 @@ const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, 
     }
   }, [previsional]);
 
-  // Cargar centros de costo y empleados al montar el componente
+  // Cargar empleados al montar el componente
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Cargar centros de costo
-        const costCentersResponse = await getCostCenters();
-        setCostCenters(costCentersResponse);
-
         // Cargar empleados
         setLoadingEmpleados(true);
         const empleadosResponse = await getEmpleados({ per_page: 1000 }); // Cargar todos los empleados
@@ -93,11 +86,9 @@ const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, 
       const empleado = empleados.find(emp => emp.id === employeeId);
       if (empleado) {
         setEmpleadoEncontrado(empleado);
-        setFormData(prev => ({ 
-          ...prev, 
-          employee_id: employeeId,
-          // Establecer automáticamente el centro de costo por defecto si existe
-          cost_center_id: empleado.default_cost_center_id || prev.cost_center_id || 0
+        setFormData(prev => ({
+          ...prev,
+          employee_id: employeeId
         }));
         setErrors(prev => ({ ...prev, employee_id: '' }));
       }
@@ -111,7 +102,7 @@ const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, 
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'amount' || name === 'employee_id' || name === 'cost_center_id' ? Number(value) || 0 : value
+      [name]: name === 'amount' || name === 'employee_id' ? Number(value) || 0 : value
     }));
   };
 
@@ -126,19 +117,15 @@ const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, 
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.employee_id || formData.employee_id === 0) {
       newErrors.employee_id = 'Debe seleccionar un empleado.';
     }
-    
-    if (!formData.cost_center_id || formData.cost_center_id === 0) {
-      newErrors.cost_center_id = 'Debe seleccionar un centro de costo.';
-    }
-    
+
     if (!formData.amount || formData.amount <= 0) {
       newErrors.amount = 'El monto debe ser mayor a 0.';
     }
-    
+
     if (!formData.date) {
       newErrors.date = 'La fecha de pago es obligatoria.';
     }
@@ -241,38 +228,6 @@ const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, 
 
             {/* Grid de campos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Centro de Costo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Centro de Costo <span className="text-red-500">*</span>
-                  {empleadoEncontrado?.default_cost_center_id && (
-                    <span className="text-sm text-blue-600 dark:text-blue-400 font-normal">
-                      {" "}(Por defecto: {empleadoEncontrado.cost_center_name})
-                    </span>
-                  )}
-                </label>
-                <select
-                  name="cost_center_id"
-                  value={formData.cost_center_id?.toString() || ''}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
-                >
-                  <option value="">Seleccionar centro de costo</option>
-                  {costCenters.map(cc => (
-                    <option 
-                      key={cc.id} 
-                      value={cc.id}
-                      className={cc.id === empleadoEncontrado?.default_cost_center_id ? 'font-semibold' : ''}
-                    >
-                      {cc.name}
-                      {cc.id === empleadoEncontrado?.default_cost_center_id ? ' (Por defecto)' : ''}
-                    </option>
-                  ))}
-                </select>
-                {errors.cost_center_id && (
-                  <p className="text-red-500 text-sm mt-1">{errors.cost_center_id}</p>
-                )}
-              </div>
 
               {/* Tipo */}
               <div>
