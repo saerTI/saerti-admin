@@ -63,7 +63,10 @@ const transformIngresoToCashFlowItem = (ingreso: Ingreso): CashFlowItem => {
     description: description,
     category: ingreso.category_name || 'Sin categoría',
     amount: ingreso.total_amount,
-    type: 'income' as const
+    type: 'income' as const,
+    state: 'actual',
+    cost_center_name: ingreso.center_name || undefined,
+    source_type: 'ingresos'
   };
 };
 
@@ -102,12 +105,12 @@ export const fetchCashFlowData = async (dateRange: DateRange): Promise<CashFlowD
   try {
     // Fetch both cash flow data and ingresos in parallel
     const [cashFlowResult, ingresosItems] = await Promise.all([
-      cashFlowService.fetchCashFlowData(dateRange).catch(() => null), // Allow to fail
+      cashFlowService.getCashFlowData({ periodType: 'monthly', year: new Date().getFullYear().toString() }).catch(() => null), // Allow to fail
       fetchIngresosAsCashFlowItems(dateRange)
     ]);
     
     // Get expenses from existing cash flow service or use empty array
-    const existingItems = cashFlowResult?.items || [];
+    const existingItems = cashFlowResult?.recentItems || [];
     const expenseItems = existingItems.filter(item => item.type === 'expense');
     
     // Combine ingresos (income) with existing expenses
@@ -128,15 +131,26 @@ export const fetchCashFlowData = async (dateRange: DateRange): Promise<CashFlowD
     const chartData = generateChartData(allItems);
     
     return {
-      items: allItems,
+      recentItems: allItems,
       summary: {
         totalIncome,
         totalExpense,
         netCashFlow,
+        forecastIncome: 0,
+        forecastExpense: 0,
+        actualIncome: totalIncome,
+        actualExpense: totalExpense,
+        pendingItems: 0,
+        totalItems: allItems.length,
         previousPeriodChange: 0, // Could be calculated if needed
+        costsExpense: totalExpense,
+        remuneracionesExpense: 0
       },
+      byCategoryData: [],
+      emptyCategoriesData: [],
       chartData,
       // Keep original properties for backward compatibility
+      items: allItems,
       totalIncome,
       totalExpense,
       balance: netCashFlow
@@ -179,14 +193,22 @@ function generateChartData(items: CashFlowItem[]): CashFlowChartData[] {
     name,
     income: data.income,
     expense: data.expense,
-    balance: data.income - data.expense
+    balance: data.income - data.expense,
+    forecast_income: 0,
+    forecast_expense: 0,
+    actual_income: data.income,
+    actual_expense: data.expense,
+    costs_expense: data.expense,
+    remuneraciones_expense: 0
   }));
 }
 
 // Function to fetch cash flow categories
 export const fetchCashFlowCategories = async (): Promise<any[]> => {
   try {
-    return await cashFlowService.fetchCashFlowCategories();
+    // Use getFilterOptions from service
+    const options = await cashFlowService.getFilterOptions();
+    return options.categories || [];
   } catch (error) {
     console.error('Error fetching cash flow categories:', error);
     throw new Error('No se pudo cargar las categorías');
@@ -199,7 +221,16 @@ export const generateCashFlowReport = async (
   options: Record<string, any> = {}
 ): Promise<any> => {
   try {
-    return await cashFlowService.generateCashFlowReport(dateRange, options);
+    // For now, return mock report data
+    const data = await fetchCashFlowData(dateRange);
+    return {
+      summary: data.summary,
+      items: data.recentItems,
+      chartData: data.chartData,
+      dateRange,
+      generatedAt: new Date().toISOString(),
+      options
+    };
   } catch (error) {
     console.error('Error generating cash flow report:', error);
     throw new Error('No se pudo generar el reporte');
@@ -239,20 +270,31 @@ const getMockCashFlowData = (): CashFlowData => {
   const totalExpense = items.filter(i => i.type === 'expense').reduce((sum, i) => sum + i.amount, 0);
   
   return {
-    items,
+    recentItems: items,
     summary: {
       totalIncome,
       totalExpense,
       netCashFlow: totalIncome - totalExpense,
+      forecastIncome: 0,
+      forecastExpense: 0,
+      actualIncome: totalIncome,
+      actualExpense: totalExpense,
+      pendingItems: 0,
+      totalItems: items.length,
       previousPeriodChange: 15.5,
+      costsExpense: totalExpense,
+      remuneracionesExpense: 0
     },
+    byCategoryData: [],
+    emptyCategoriesData: [],
     chartData: [
-      { name: 'Semana 1', income: 25000, expense: 12000, balance: 13000 },
-      { name: 'Semana 2', income: 30000, expense: 15000, balance: 15000 },
-      { name: 'Semana 3', income: 30000, expense: 8000, balance: 22000 },
-      { name: 'Semana 4', income: 0, expense: 30000, balance: -30000 },
+      { name: 'Semana 1', income: 25000, expense: 12000, balance: 13000, forecast_income: 0, forecast_expense: 0, actual_income: 25000, actual_expense: 12000, costs_expense: 12000, remuneraciones_expense: 0 },
+      { name: 'Semana 2', income: 30000, expense: 15000, balance: 15000, forecast_income: 0, forecast_expense: 0, actual_income: 30000, actual_expense: 15000, costs_expense: 15000, remuneraciones_expense: 0 },
+      { name: 'Semana 3', income: 30000, expense: 8000, balance: 22000, forecast_income: 0, forecast_expense: 0, actual_income: 30000, actual_expense: 8000, costs_expense: 8000, remuneraciones_expense: 0 },
+      { name: 'Semana 4', income: 0, expense: 30000, balance: -30000, forecast_income: 0, forecast_expense: 0, actual_income: 0, actual_expense: 30000, costs_expense: 30000, remuneraciones_expense: 0 },
     ],
     // For backward compatibility
+    items,
     totalIncome,
     totalExpense,
     balance: totalIncome - totalExpense

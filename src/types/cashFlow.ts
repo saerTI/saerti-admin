@@ -16,20 +16,20 @@ export interface CashFlowFilters {
 
 export interface CashFlowItem {
   id: number;
-  name: string;
-  category_name: string;
-  planned_date: string;
-  actual_date?: string;
+  date: string;
+  description: string;
+  category: string;
   amount: number;
-  state: 'forecast' | 'actual' | 'budget';
   type: 'income' | 'expense';
+  state?: 'forecast' | 'actual' | 'budget';
   cost_center_name?: string;
-  cost_center_id: number;
-  category_id: number;
-  partner_id?: number;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  supplier_name?: string;
+  employee_name?: string;
+  source_type?: string;
+  employee_rut?: string;
+  employee_position?: string;
+  work_days?: number;
+  payment_method?: string;
 }
 
 export interface CashFlowSummaryData {
@@ -43,6 +43,8 @@ export interface CashFlowSummaryData {
   pendingItems: number;
   totalItems: number;
   previousPeriodChange?: number;
+  costsExpense: number;
+  remuneracionesExpense: number;
 }
 
 export interface CashFlowByCategory {
@@ -65,6 +67,8 @@ export interface CashFlowChartData {
   forecast_expense: number;
   actual_income: number;
   actual_expense: number;
+  costs_expense: number;
+  remuneraciones_expense: number;
 }
 
 export interface CashFlowData {

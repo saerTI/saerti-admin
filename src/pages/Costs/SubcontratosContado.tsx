@@ -104,8 +104,8 @@ const SubcontratosContado = () => {
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Subcontratos con Crédito</h1>
-        <Button 
-          onClick={() => navigate('/costos/subcontratos-contado/new')}
+        <Button
+          onClick={() => navigate('/costos/subcontratos-credito/new')}
           className="bg-brand-500 hover:bg-brand-600 text-white"
         >
           Nuevo Subcontrato

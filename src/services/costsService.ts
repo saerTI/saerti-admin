@@ -14,7 +14,8 @@ export interface GastoFilter {
   minAmount?: number;
   maxAmount?: number;
   state?: string;
-  
+  emergencyLevel?: 'low' | 'medium' | 'high';
+
   // New filters for orden de compra
   grupoCuenta?: string;
   paymentType?: string;
@@ -25,12 +26,48 @@ export interface GastoFilter {
   providerId?: number;
   search?: string;
   orderNumber?: string;
-  
+
   // Pagination and sorting
   page?: number;
   perPage?: number;
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
+}
+
+export interface GastoImprevisto {
+  id: number;
+  name: string;
+  categoryId: number;
+  categoryName: string;
+  authorizationId?: number;
+  authorizationName?: string;
+  emergencyLevel: 'low' | 'medium' | 'high';
+  date: string;
+  amount: number;
+  state: string;
+  projectId: number;
+  projectName: string;
+  companyId: number;
+  notes: string;
+}
+
+export interface Subcontrato {
+  id: number;
+  name: string;
+  contractor_id: number;
+  contractor_name: string;
+  contract_number: string;
+  startDate: string;
+  endDate: string;
+  paymentType: string;
+  paymentTerms: string;
+  date: string;
+  amount: number;
+  state: string;
+  projectId: number;
+  projectName: string;
+  companyId: number;
+  notes?: string;
 }
 export interface IOrdenCompraDetail {
   id: number
@@ -56,12 +93,18 @@ export interface IOrdenCompraDetail {
 // **AÑADIR TIPO COTIZACION PARA COMPATIBILIDAD**
 export interface Cotizacion {
   id: number;
+  companyId?: number;
   name: string;
   supplierName?: string;
+  providerId?: number;
   date: string;
+  valid_until?: string;
   state: string;
   projectName?: string;
+  projectId?: number;
   amount?: number;
+  is_approved?: boolean;
+  notes?: string;
   description?: string;
   created_at?: string;
   updated_at?: string;
@@ -487,6 +530,60 @@ export const costsApiService = {
     } catch (error) {
       console.error('Error fetching cotizaciones:', error);
       throw new Error('Error al cargar cotizaciones');
+    }
+  },
+
+  async getCotizacionById(id: number): Promise<Cotizacion> {
+    try {
+      const response = await api.get<{
+        success: boolean;
+        data: Cotizacion;
+      }>(`/cotizaciones/${id}`);
+
+      if (!response.success) {
+        throw new Error('Error al obtener cotización');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching cotizacion ${id}:`, error);
+      throw new Error('Error al cargar cotización');
+    }
+  },
+
+  async createCotizacion(data: Omit<Cotizacion, 'id'>): Promise<Cotizacion> {
+    try {
+      const response = await api.post<{
+        success: boolean;
+        data: Cotizacion;
+      }>('/cotizaciones', data);
+
+      if (!response.success) {
+        throw new Error('Error al crear cotización');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error creating cotizacion:', error);
+      throw new Error('Error al crear cotización');
+    }
+  },
+
+  async updateCotizacion(id: number, data: Partial<Cotizacion>): Promise<Cotizacion> {
+    try {
+      const response = await api.put<{
+        success: boolean;
+        data: Cotizacion;
+      }>(`/cotizaciones/${id}`, data);
+
+      if (!response.success) {
+        throw new Error('Error al actualizar cotización');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating cotizacion ${id}:`, error);
+      throw new Error('Error al actualizar cotización');
     }
   },
 
