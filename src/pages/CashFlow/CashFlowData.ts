@@ -1,5 +1,23 @@
+/**
+ * CashFlow Data Management
+ * 
+ * This module integrates real income data (ingresos) with cash flow visualization.
+ * The ingresos are transformed to match the CashFlowItem interface:
+ * 
+ * Mapping:
+ * - date -> date (from ingreso)
+ * - description -> ep_detail or client_name + document_number
+ * - category -> category_name
+ * - type -> "income" (always for ingresos)
+ * - amount -> total_amount
+ * 
+ * Only includes ingresos with states: 'activo', 'facturado', 'pagado'
+ * Excludes: 'borrador' and 'cancelado' for accurate cash flow representation
+ */
+
 // src/pages/CashFlow/CashFlowData.ts
 import cashFlowService from '../../services/cashFlowService';
+import ingresosApiService from '../../services/ingresosService';
 import { 
   DateRange, 
   CashFlowData, 
@@ -7,6 +25,7 @@ import {
   CashFlowSummaryData,
   CashFlowChartData
 } from '../../types/cashFlow';
+import { Ingreso, IngresoFilter } from '../../types/CC/ingreso';
 
 // Default date range - current month
 export const getDefaultDateRange = (): DateRange => {
@@ -20,32 +39,107 @@ export const getDefaultDateRange = (): DateRange => {
   };
 };
 
+// Function to convert Ingreso to CashFlowItem
+const transformIngresoToCashFlowItem = (ingreso: Ingreso): CashFlowItem => {
+  // Create a more descriptive description
+  let description = '';
+  
+  if (ingreso.ep_detail && ingreso.ep_detail.trim()) {
+    description = ingreso.ep_detail;
+  } else if (ingreso.client_name && ingreso.client_name.trim()) {
+    description = `Ingreso de ${ingreso.client_name}`;
+  } else {
+    description = `Documento ${ingreso.document_number}`;
+  }
+  
+  // Add document number if not already included
+  if (!description.includes(ingreso.document_number)) {
+    description += ` (${ingreso.document_number})`;
+  }
+
+  return {
+    id: ingreso.id,
+    date: ingreso.date,
+    description: description,
+    category: ingreso.category_name || 'Sin categoría',
+    amount: ingreso.total_amount,
+    type: 'income' as const
+  };
+};
+
+// Function to fetch ingresos and transform them
+const fetchIngresosAsCashFlowItems = async (dateRange: DateRange): Promise<CashFlowItem[]> => {
+  try {
+    const filter: IngresoFilter = {
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+      // Only include active, invoiced and paid ingresos for cash flow
+      state: undefined, // Include all states for now, can be filtered later
+      limit: 1000, // Obtener un número suficiente de registros
+      sortBy: 'date',
+      sortDirection: 'desc'
+    };
+
+    const response = await ingresosApiService.getIngresos(filter);
+    const ingresos = response.data || [];
+    
+    // Filter by relevant states for cash flow (exclude 'borrador' and 'cancelado')
+    const relevantIngresos = ingresos.filter(ingreso => 
+      ingreso.state === 'activo' || 
+      ingreso.state === 'facturado' || 
+      ingreso.state === 'pagado'
+    );
+    
+    return relevantIngresos.map(transformIngresoToCashFlowItem);
+  } catch (error) {
+    console.error('Error fetching ingresos for cash flow:', error);
+    return [];
+  }
+};
+
 // Function to fetch cash flow data
 export const fetchCashFlowData = async (dateRange: DateRange): Promise<CashFlowData> => {
   try {
-    // Get data from service
-    const data = await cashFlowService.fetchCashFlowData(dateRange);
+    // Fetch both cash flow data and ingresos in parallel
+    const [cashFlowResult, ingresosItems] = await Promise.all([
+      cashFlowService.fetchCashFlowData(dateRange).catch(() => null), // Allow to fail
+      fetchIngresosAsCashFlowItems(dateRange)
+    ]);
     
-    // If the API already returns data in the expected format
-    if (data.summary && data.chartData) {
-      return data;
-    }
+    // Get expenses from existing cash flow service or use empty array
+    const existingItems = cashFlowResult?.items || [];
+    const expenseItems = existingItems.filter(item => item.type === 'expense');
     
-    // Otherwise, transform the data to match the expected interface
-    // This handles the case where your API returns a flatter structure
+    // Combine ingresos (income) with existing expenses
+    const allItems = [...ingresosItems, ...expenseItems];
+    
+    // Calculate totals
+    const totalIncome = allItems
+      .filter(item => item.type === 'income')
+      .reduce((sum, item) => sum + item.amount, 0);
+    
+    const totalExpense = allItems
+      .filter(item => item.type === 'expense')
+      .reduce((sum, item) => sum + item.amount, 0);
+    
+    const netCashFlow = totalIncome - totalExpense;
+    
+    // Generate chart data from all items
+    const chartData = generateChartData(allItems);
+    
     return {
-      items: data.items || [],
+      items: allItems,
       summary: {
-        totalIncome: data.totalIncome || 0,
-        totalExpense: data.totalExpense || 0,
-        netCashFlow: data.balance || 0, // Assuming balance is netCashFlow
-        previousPeriodChange: 0, // Default value if not available
+        totalIncome,
+        totalExpense,
+        netCashFlow,
+        previousPeriodChange: 0, // Could be calculated if needed
       },
-      chartData: generateChartData(data.items || []),
+      chartData,
       // Keep original properties for backward compatibility
-      totalIncome: data.totalIncome,
-      totalExpense: data.totalExpense,
-      balance: data.balance
+      totalIncome,
+      totalExpense,
+      balance: netCashFlow
     };
   } catch (error) {
     console.error('Error fetching cash flow data:', error);

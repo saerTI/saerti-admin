@@ -133,7 +133,7 @@ export const RemuneracionesDetail = () => {
                             <p className="mt-1 text-lg font-semibold text-gray-800 dark:text-white">
                                 {remuneracion.projectId ? (
                                     <button 
-                                        onClick={() => navigate(`/projects/${remuneracion.projectId}`)}
+                                        onClick={() => navigate(`/cost-centers/${remuneracion.projectId}`)}
                                         className="text-brand-500 hover:text-brand-600"
                                     >
                                         {remuneracion.projectName || 'Sin proyecto'}

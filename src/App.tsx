@@ -50,7 +50,10 @@ import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
 import OrdenCompraForm from "./pages/Costs/OrdenCompraForm";
 import OrdenCompraEdicion from "./pages/Costs/OrdenCompraEdicion";
 
-
+import { IngresosForm } from "./pages/Ingresos/IngresosForm";
+import IngresosFormDetail from "./pages/Ingresos/IngresosDetail";
+import IngresosCategoryDetail from "./pages/Ingresos/IngresosCategoryDetail";
+import IngresosIndex from "./pages/Ingresos/IngresosIndex";
 // import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
 // import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";
 // import ContratosNotariales from "./pages/Gastos/ContratosNotariales";
@@ -90,243 +93,248 @@ export default function App() {
               </PrivateRoute>
             } />
 
-            {/* Rutas de Proyectos */}
-            <Route path="/projects" element={
+            {/* Rutas de Centros de Costo */}
+            <Route path="/cost-centers" element={
               <PrivateRoute>
                 <ProjectList />
               </PrivateRoute>
             } />
-            <Route path="/projects/new" element={
+            <Route path="/cost-centers/new" element={
               <PrivateRoute>
                 <ProjectForm />
               </PrivateRoute>
             } />
-            <Route path="/projects/:id" element={
+            <Route path="/cost-centers/:id" element={
               <PrivateRoute>
                 <ProjectDetails />
               </PrivateRoute>
             } />
-            <Route path="/projects/:id/edit" element={
+            <Route path="/cost-centers/:id/edit" element={
               <PrivateRoute>
                 <ProjectForm />
               </PrivateRoute>
             } />
             
             {/* Rutas de Gastos */}
-            <Route path="/gastos/index" element={
+            <Route path="/costos/index" element={
               <PrivateRoute>
                 <EgresossIndex />
               </PrivateRoute>
             } />
 
-            <Route path="/gastos/cotizaciones" element={
+            <Route path="/costos/cotizaciones" element={
               <PrivateRoute>
                 <Cotizaciones />
               </PrivateRoute>
             } />
-            <Route path="/gastos/previsionales" element={
+            <Route path="/costos/previsionales" element={
               <PrivateRoute>
                 <Previsionales />
               </PrivateRoute>
             } />
-            <Route path="/gastos/remuneraciones" element={
+            <Route path="/costos/remuneraciones" element={
               <PrivateRoute>
                 <Remuneraciones />
               </PrivateRoute>
             } />
-            <Route path="/gastos/remuneraciones/:id" element={
+            <Route path="/costos/remuneraciones/:id" element={
               <PrivateRoute>
                 <RemuneracionesDetail />
               </PrivateRoute>
             } />
-            <Route path="/gastos/remuneraciones/:id/edit" element={
+            <Route path="/costos/remuneraciones/:id/edit" element={
               <PrivateRoute>
                 <RemuneracionesForm />
               </PrivateRoute>
             } />
-            <Route path="/gastos/subcontratos-credito" element={
+            <Route path="/costos/subcontratos-credito" element={
               <PrivateRoute>
                 <SubcontratosCredito />
               </PrivateRoute>
             } />
-            <Route path="/gastos/subcontratos-contado" element={
+            <Route path="/costos/subcontratos-contado" element={
               <PrivateRoute>
                 <SubcontratosContado />
               </PrivateRoute>
             } />
-            <Route path="/gastos/imprevistos" element={
+            <Route path="/costos/imprevistos" element={
               <PrivateRoute>
                 <GastosImprevistos />
               </PrivateRoute>
             } />
-            <Route path="/gastos/ordenes-compra" element={
+            <Route path="/costos/ordenes-compra" element={
               <PrivateRoute>
                 <OrdenesCompra />
               </PrivateRoute>
             } />
-            <Route path="/gastos/ordenes-compra/:id" element={
+            <Route path="/costos/ordenes-compra/:id" element={
               <PrivateRoute>
                 <OrdenCompraDetail />
               </PrivateRoute>
             } />
-            <Route path="/gastos/ordenes-compra/:id/edit" element={
+            <Route path="/costos/ordenes-compra/:id/edit" element={
               <PrivateRoute>
                 <OrdenCompraEdicion />
               </PrivateRoute>
             } />
-            <Route path="/gastos/ordenes-compra/new" element={
+            <Route path="/costos/ordenes-compra/new" element={
               <PrivateRoute>
                 <OrdenCompraForm />
               </PrivateRoute>
             } />
-            <Route path="/gastos/factoring" element={
+            <Route path="/costos/factoring" element={
               <PrivateRoute>
                 <Factoring />
               </PrivateRoute>
             } />
             
 
-            <Route path="/gastos/costos-fijos" element={
+            <Route path="/costos/costos-fijos" element={
               <PrivateRoute>
                 <CostosFijos />
               </PrivateRoute>
             } />
-             <Route path="/gastos/costos-fijos/:id" element={
+             <Route path="/costos/costos-fijos/:id" element={
               <PrivateRoute>
                 <CostosFijosDetail />
               </PrivateRoute>
             } />
-            <Route path="/gastos/empleados" element={
+             <Route path="/costos/costos-fijos/:id/edit" element={
+              <PrivateRoute>
+                <CostosFijosEdicion />
+              </PrivateRoute>
+            } />
+            <Route path="/costos/empleados" element={
               <PrivateRoute>
                 <Empleados />
               </PrivateRoute>
             } />
-            <Route path="/gastos/empleados/new" element={
+            <Route path="/costos/empleados/new" element={
               <PrivateRoute>
                 <EmpleadosNuevo />
               </PrivateRoute>
             } />
-            <Route path="/gastos/empleados/:id" element={
+            <Route path="/costos/empleados/:id" element={
               <PrivateRoute>
                 <EmpleadosDetalle />
               </PrivateRoute>
             } />
-            <Route path="/gastos/empleados/:id/edit" element={
+            <Route path="/costos/empleados/:id/edit" element={
               <PrivateRoute>
                 <EmpleadosEdición />
               </PrivateRoute>
             } />
 
             {/* Rutas de Egresos */}
-            <Route path="/egresos/index" element={
+            <Route path="/costos/index" element={
               <PrivateRoute>
                 <EgresossIndex />
               </PrivateRoute>
             } />
 
-            <Route path="/egresos/costos-fijos" element={
+            <Route path="/costos/costos-fijos" element={
               <PrivateRoute>
                 <CostosFijos />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/costos-fijos/:id" element={
+            <Route path="/costos/costos-fijos/:id" element={
               <PrivateRoute>
                 <CostosFijosDetail />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/costos-fijos/:id/editar" element={
+            <Route path="/costos/costos-fijos/:id/editar" element={
               <PrivateRoute>
                 <CostosFijosEdicion />
               </PrivateRoute>
             } />
 
-            <Route path="/egresos/cotizaciones" element={
+            <Route path="/costos/cotizaciones" element={
               <PrivateRoute>
                 <Cotizaciones />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/previsionales" element={
+            <Route path="/costos/previsionales" element={
               <PrivateRoute>
                 <Previsionales />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/remuneraciones" element={
+            <Route path="/costos/remuneraciones" element={
               <PrivateRoute>
                 <Remuneraciones />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/remuneraciones/:id" element={
+            <Route path="/costos/remuneraciones/:id" element={
               <PrivateRoute>
                 <RemuneracionesDetail />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/remuneraciones/:id/edit" element={
+            <Route path="/costos/remuneraciones/:id/edit" element={
               <PrivateRoute>
                 <RemuneracionesForm />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/subcontratos-credito" element={
+            <Route path="/costos/subcontratos-credito" element={
               <PrivateRoute>
                 <SubcontratosCredito />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/subcontratos-contado" element={
+            <Route path="/costos/subcontratos-contado" element={
               <PrivateRoute>
                 <SubcontratosContado />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/imprevistos" element={
+            <Route path="/costos/imprevistos" element={
               <PrivateRoute>
                 <GastosImprevistos />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/ordenes-compra" element={
+            <Route path="/costos/ordenes-compra" element={
               <PrivateRoute>
                 <OrdenesCompra />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/ordenes-compra/:id" element={
+            <Route path="/costos/ordenes-compra/:id" element={
               <PrivateRoute>
                 <OrdenCompraDetail />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/factoring" element={
+            <Route path="/costos/factoring" element={
               <PrivateRoute>
                 <Factoring />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/empleados" element={
+            <Route path="/costos/empleados" element={
               <PrivateRoute>
                 <Empleados />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/empleados/new" element={
+            <Route path="/costos/empleados/new" element={
               <PrivateRoute>
                 <EmpleadosNuevo />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/empleados/:id" element={
+            <Route path="/costos/empleados/:id" element={
               <PrivateRoute>
                 <EmpleadosDetalle />
               </PrivateRoute>
             } />
             
-            <Route path="/egresos/empleados/:id/edit" element={
+            <Route path="/costos/empleados/:id/edit" element={
               <PrivateRoute>
                 <EmpleadosEdición />
               </PrivateRoute>
@@ -391,9 +399,34 @@ export default function App() {
             } /> */}
 
             {/* Rutas de Ingresos */}
+            <Route path="/ingresos" element={
+              <PrivateRoute>
+                <IngresosIndex />
+              </PrivateRoute>
+            } />
             <Route path="/ingresos/index" element={
               <PrivateRoute>
-                <IncomeIndex />
+                <IngresosIndex />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/new" element={
+              <PrivateRoute>
+                <IngresosForm />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/categoria/:category" element={
+              <PrivateRoute>
+                <IngresosCategoryDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/:id" element={
+              <PrivateRoute>
+                <IngresosFormDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/ingresos/editar/:id" element={
+              <PrivateRoute>
+                <IngresosForm />
               </PrivateRoute>
             } />
             

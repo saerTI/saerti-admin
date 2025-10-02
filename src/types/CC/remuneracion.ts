@@ -31,34 +31,53 @@ export interface Remuneracion {
   notes?: string;               // Ya era opcional - correcto
 }
 
-// ✅ También voy a agregar algunos campos opcionales que podrían ser útiles
+// ✅ ACTUALIZADO: Tipos para trabajar con la nueva estructura de payroll
 export interface RemuneracionCreateData {
-  rut: string;
-  nombre: string;
-  lastName?: string;
-  tipo: 'REMUNERACION' | 'ANTICIPO';
+  employee_id: number;
+  type: 'remuneracion' | 'anticipo' | 'REMUNERACION' | 'ANTICIPO';
+  amount: number;
+  net_salary?: number;
+  advance_payment?: number;
+  date: string;
+  month_period?: number;
+  year_period?: number;
+  work_days?: number;
+  payment_method?: 'transferencia' | 'cheque' | 'efectivo';
+  status?: 'pendiente' | 'aprobado' | 'pagado' | 'rechazado' | 'cancelado';
+  payment_date?: string;
+  notes?: string;
+  
+  // Campos legacy para compatibilidad
+  periodo?: string;
+  rut?: string;
+  nombre?: string;
+  tipo?: 'REMUNERACION' | 'ANTICIPO';
   sueldoLiquido?: number;
   anticipo?: number;
-  proyectoId: string;
-  fecha: string;
+  fecha?: string;
   estado?: string;
   cargo?: string;
   diasTrabajados?: number;
   metodoPago?: string;
-  
-  // Campos de centro de costo
-  centroCosto?: string;
-  centroCostoNombre?: string;
-  area?: string;
-  
-  // Campo para el monto total calculado
   montoTotal?: number;
-  
-  // Campo para ID de empleado si está disponible
-  employee_id?: number;
 }
 
 export interface RemuneracionUpdateData {
+  employee_id?: number;
+  type?: 'remuneracion' | 'anticipo' | 'REMUNERACION' | 'ANTICIPO';
+  amount?: number;
+  net_salary?: number;
+  advance_payment?: number;
+  date?: string;
+  month_period?: number;
+  year_period?: number;
+  work_days?: number;
+  payment_method?: 'transferencia' | 'cheque' | 'efectivo';
+  status?: 'pendiente' | 'aprobado' | 'pagado' | 'rechazado' | 'cancelado';
+  payment_date?: string;
+  notes?: string;
+  
+  // Campos legacy para compatibilidad
   rut?: string;
   nombre?: string;
   tipo?: 'REMUNERACION' | 'ANTICIPO';
@@ -72,20 +91,25 @@ export interface RemuneracionUpdateData {
   metodoPago?: string;
 }
 
-// ✅ MEJORADO: Agregar campos de filtro que faltaban
+// ✅ ACTUALIZADO: Nuevos filtros para la estructura payroll
 export interface RemuneracionFilter {
   state?: string;
+  search?: string;
+  type?: string;
+  rut?: string;
+  period?: string[]; // Legacy support
+  
+  // Nuevos filtros para la estructura payroll
+  employeeId?: number;
+  month?: number;
+  year?: number;
+  
+  // Filtros legacy que se mantienen para compatibilidad
   employeePosition?: string;
   projectId?: string;
-  period?: string[];
   date_from?: string;
   date_to?: string;
-  search?: string;
-  
-  // ✅ Nuevos filtros que tu hook usa pero no estaban tipados
-  area?: string;           // Para filtrar por área
-  type?: string;           // Para filtrar por tipo (REMUNERACION/ANTICIPO)
-  rut?: string;            // Para filtrar por RUT
+  area?: string;
 }
 
 // This is the shape of the API response for lists of remuneraciones

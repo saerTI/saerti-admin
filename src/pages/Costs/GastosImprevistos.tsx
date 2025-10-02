@@ -139,7 +139,7 @@ const GastosImprevistos = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Gastos Imprevistos</h1>
         <Button 
-          onClick={() => navigate('/gastos/imprevistos/new')}
+          onClick={() => navigate('/costos/imprevistos/new')}
           className="bg-brand-500 hover:bg-brand-600 text-white"
         >
           Nuevo Gasto Imprevisto
@@ -266,8 +266,8 @@ const GastosImprevistos = () => {
                   {gastos.map((gasto) => (
                     <tr key={gasto.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        <Link 
-                          to={`/gastos/imprevistos/${gasto.id}`}
+                        <Link
+                          to={`/costos/imprevistos/${gasto.id}`}
                           className="text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                         >
                           {gasto.name}
@@ -304,8 +304,8 @@ const GastosImprevistos = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          <Link 
-                            to={`/gastos/imprevistos/${gasto.id}/edit`}
+                          <Link
+                            to={`/costos/imprevistos/${gasto.id}/edit`}
                             className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                           >
                             Editar

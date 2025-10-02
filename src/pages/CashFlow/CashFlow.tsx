@@ -5,6 +5,7 @@ import ChartTab from '../../components/common/ChartTab';
 import CashFlowSummary from './CashFlowSummary';
 import CashFlowDetails from './CashFlowDetails';
 import CashFlowChart from './CashFlowChart';
+import CashFlowFinancialTable from '../../components/tables/CashFlowFinancialTable';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { 
@@ -24,6 +25,10 @@ const CashFlow: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [cashFlowData, setCashFlowData] = useState<CashFlowData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Financial table controls
+  const [periodType, setPeriodType] = useState<'weekly' | 'monthly' | 'quarterly' | 'annual'>('monthly');
+  const [year, setYear] = useState<number>(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState<string>('overview');
 
   // Estados de filtros (usando la misma estructura que CostsIndex)
@@ -50,6 +55,7 @@ const CashFlow: React.FC = () => {
     { id: 'overview', label: 'Vista General' },
     { id: 'details', label: 'Detalles' },
     { id: 'chart', label: 'Gráficos' },
+    { id: 'historical', label: 'Tabla Financiera' },
   ];
   
   // Cargar datos cuando cambien los filtros
@@ -95,6 +101,30 @@ const CashFlow: React.FC = () => {
         year: startYear.toString()
       }));
     }
+  };
+
+  const handlePeriodTypeChange = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'annual') => {
+    setPeriodType(newPeriodType);
+    // También actualizamos los filtros para mantener consistencia
+    setFilters(prev => ({
+      ...prev,
+      periodType: newPeriodType
+    }));
+  };
+
+  // Función adaptadora para el componente CashFlowFinancialTable que usa 'yearly' en lugar de 'annual'
+  const handlePeriodTypeChangeForTable = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
+    const mappedPeriodType = newPeriodType === 'yearly' ? 'annual' : newPeriodType;
+    handlePeriodTypeChange(mappedPeriodType);
+  };
+
+  const handleYearChange = (newYear: number) => {
+    setYear(newYear);
+    // También actualizamos los filtros para mantener consistencia
+    setFilters(prev => ({
+      ...prev,
+      year: newYear.toString()
+    }));
   };
   
   const renderTabContent = () => {
@@ -145,9 +175,25 @@ const CashFlow: React.FC = () => {
           />
         );
       case 'chart':
+        console.log('CashFlow - cashFlowData:', cashFlowData);
+        console.log('CashFlow - chartData:', cashFlowData?.chartData);
+
+        // Use real data from the backend
+        const dataToUse = cashFlowData?.chartData || [];
+
+        console.log('CashFlow - dataToUse:', dataToUse);
+
+        return <CashFlowChart data={dataToUse} />;
+      case 'historical':
         return (
-          <CashFlowChart 
-            data={cashFlowData.chartData || []} 
+          <CashFlowFinancialTable
+            title="Análisis Financiero de Flujo de Caja"
+            periodType={periodType === 'annual' ? 'yearly' : periodType}
+            year={year}
+            onPeriodTypeChange={handlePeriodTypeChangeForTable}
+            onYearChange={handleYearChange}
+            loading={false}
+            showExpenses={true}
           />
         );
       default:

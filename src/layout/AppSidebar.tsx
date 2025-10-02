@@ -42,27 +42,27 @@ const navItems: NavItem[] = [
     name: "Ingresos/Egresos",
     subItems: [
       { name: "Ingresos", path: "/ingresos/index", pro: false },
-      { name: "Egresos", path: "/gastos/index", pro: false },
+      { name: "Costos", path: "/costos/index", pro: false },
     ],
   },
   {
     icon: <UserCircleIcon />,
-    name: "Proyectos",
-    path: "/projects",
+    name: "Centros de Costo",
+    path: "/cost-centers",
   },
   {
     // New Gastos menu with all the required sub-items
     icon: <ListIcon />,
     name: "Cuentas Contables",
     subItems: [
-      { name: "Remuneraciones", path: "/gastos/remuneraciones", pro: false },
+      { name: "Remuneraciones", path: "/costos/remuneraciones", pro: false },
       { 
-        name: "Orden de Compra", path: "/gastos/ordenes-compra", pro: false,
+        name: "Orden de Compra", path: "/costos/ordenes-compra", pro: false,
       },
-      { name: "Factoring", path: "/gastos/factoring", pro: false },
-      { name: "Costos Fijos", path: "/gastos/costos-fijos", pro: false },
-      { name: "Previsionales", path: "/gastos/previsionales", pro: false },
-      { name: "Empleados", path: "/gastos/empleados", pro: false },
+      { name: "Factoring", path: "/costos/factoring", pro: false },
+      { name: "Costos Fijos", path: "/costos/costos-fijos", pro: false },
+      { name: "Previsionales", path: "/costos/previsionales", pro: false },
+      { name: "Empleados", path: "/costos/empleados", pro: false },
     ],
   },
   {

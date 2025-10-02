@@ -135,7 +135,7 @@ const CotizacionForm = () => {
       }
       
       // Redirect back to list on success
-      navigate('/gastos/cotizaciones');
+      navigate('/costos/cotizaciones');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar la cotización');
       console.error('Error saving cotizacion:', err);
@@ -310,7 +310,7 @@ const CotizacionForm = () => {
           <div className="flex justify-end space-x-3 pt-4">
             <Button
               type="button"
-              onClick={() => navigate('/gastos/cotizaciones')}
+              onClick={() => navigate('/costos/cotizaciones')}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800"
             >
               Cancelar

@@ -241,7 +241,7 @@ const OrdenCompraForm = () => {
       }
       
       // Navigate to the created order
-      navigate(`/egresos/ordenes-compra/${purchaseOrderId}`);
+      navigate(`/costos/ordenes-compra/${purchaseOrderId}`);
       
     } catch (err) {
       console.error('Error creating order:', err);
@@ -269,7 +269,7 @@ const OrdenCompraForm = () => {
               <button
                 type="button"
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
-                onClick={() => navigate('/egresos/ordenes-compra')}
+                onClick={() => navigate('/costos/ordenes-compra')}
               >
                 Cancelar
               </button>

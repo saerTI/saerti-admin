@@ -26,6 +26,8 @@ import multidimensionalCostsService, {
   PaginatedCostsResponse
 } from './multidimensionalCostsService';
 
+import { factoringService } from './factoringService';
+
 // ==========================================
 // FUNCIONES EXISTENTES (mantener igual)
 // ==========================================
@@ -70,6 +72,14 @@ export const createProject = async (data: ProjectCreateData): Promise<number> =>
       budget: data.budget || data.totalBudget,
     };
 
+    // Format dates to YYYY-MM-DD format
+    if (backendData.startDate) {
+      backendData.startDate = new Date(backendData.startDate).toISOString().split('T')[0];
+    }
+    if (backendData.expectedEndDate) {
+      backendData.expectedEndDate = new Date(backendData.expectedEndDate).toISOString().split('T')[0];
+    }
+
     console.log('📤 Creating project with status:', data.status);
     console.log('📤 Full data being sent:', JSON.stringify(backendData, null, 2));
 
@@ -89,8 +99,17 @@ export const createProject = async (data: ProjectCreateData): Promise<number> =>
 export const updateProject = async (id: number, data: Partial<ProjectCreateData>): Promise<boolean> => {
   try {
     const backendData: any = { ...data };
-    if (data.totalBudget !== undefined && !data.budget) {
+    if (data.totalBudget !== undefined) {
       backendData.budget = data.totalBudget;
+      delete backendData.totalBudget;  // Remove duplicate field
+    }
+
+    // Format dates to YYYY-MM-DD format
+    if (backendData.startDate) {
+      backendData.startDate = new Date(backendData.startDate).toISOString().split('T')[0];
+    }
+    if (backendData.expectedEndDate) {
+      backendData.expectedEndDate = new Date(backendData.expectedEndDate).toISOString().split('T')[0];
     }
 
     await api.put(`/api/projects/${id}`, backendData);
@@ -396,7 +415,7 @@ export const getProjectCostsForUI = async (projectId: number, filters: CostFilte
 export const getProjectFiltersData = async (projectId: number) => {
   try {
     const dimensions = await getProjectCostsDimensionsSpecific(projectId);
-    
+
     // Transformar dimensiones a formato para filtros UI
     return {
       categories: dimensions.categories.map(cat => ({
@@ -431,6 +450,57 @@ export const getProjectFiltersData = async (projectId: number) => {
   } catch (error) {
     console.error(`Error obteniendo datos de filtros del proyecto ${projectId}:`, error);
     throw new Error('Error al obtener datos de filtros');
+  }
+};
+
+/**
+ * Calcula el progreso de un proyecto basado en Factoring / Presupuesto
+ */
+export const calculateProjectProgress = async (projectId: number, budget: number): Promise<number> => {
+  try {
+    // Obtener el total de factoring para este centro de costo
+    const factoringTotal = await factoringService.getFactoringTotalAmounts({
+      cost_center_id: projectId
+    });
+
+    // Si no hay presupuesto, retorna 0
+    if (!budget || budget <= 0) {
+      return 0;
+    }
+
+    // Calcular progreso como (Total Factoring / Presupuesto) * 100
+    const progress = (factoringTotal.total_amount / budget) * 100;
+
+    // Limitar entre 0 y 100
+    return Math.min(Math.max(progress, 0), 100);
+  } catch (error) {
+    console.error(`Error calculando progreso del proyecto ${projectId}:`, error);
+    return 0; // En caso de error, retorna 0
+  }
+};
+
+/**
+ * Obtiene proyectos con progreso calculado basado en Factoring
+ */
+export const getProjectsWithProgress = async (filters: ProjectFilter = {}): Promise<Project[]> => {
+  try {
+    const projects = await getProjects(filters);
+
+    // Calcular progreso para cada proyecto
+    const projectsWithProgress = await Promise.all(
+      projects.map(async (project) => {
+        const progress = await calculateProjectProgress(project.id, project.budget || project.totalBudget);
+        return {
+          ...project,
+          progress
+        };
+      })
+    );
+
+    return projectsWithProgress;
+  } catch (error) {
+    console.error('Error obteniendo proyectos con progreso:', error);
+    throw new Error('Failed to fetch projects with progress');
   }
 };
 
@@ -474,7 +544,7 @@ export default {
   createCashFlowLine,
   updateCashFlowLine,
   deleteCashFlowLine,
-  
+
   // New multidimensional costs functions
   getProjectCosts,
   getProjectCostsSummary,
@@ -483,5 +553,9 @@ export default {
 
   // Funciones auxiliares para UI
   getProjectCostsForUI,
-  getProjectFiltersData
+  getProjectFiltersData,
+
+  // Progress calculation functions
+  calculateProjectProgress,
+  getProjectsWithProgress
 };

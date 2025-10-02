@@ -105,7 +105,7 @@ const SubcontratosContado = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Subcontratos con Crédito</h1>
         <Button 
-          onClick={() => navigate('/gastos/subcontratos-contado/new')}
+          onClick={() => navigate('/costos/subcontratos-contado/new')}
           className="bg-brand-500 hover:bg-brand-600 text-white"
         >
           Nuevo Subcontrato
@@ -215,8 +215,8 @@ const SubcontratosContado = () => {
                   {subcontratos.map((subcontrato) => (
                     <tr key={subcontrato.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        <Link 
-                          to={`/gastos/subcontratos-credito/${subcontrato.id}`}
+                        <Link
+                          to={`/costos/subcontratos-credito/${subcontrato.id}`}
                           className="text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                         >
                           {subcontrato.name}
@@ -247,8 +247,8 @@ const SubcontratosContado = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          <Link 
-                            to={`/gastos/subcontratos-credito/${subcontrato.id}/edit`}
+                          <Link
+                            to={`/costos/subcontratos-credito/${subcontrato.id}/edit`}
                             className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                           >
                             Editar

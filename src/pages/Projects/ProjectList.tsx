@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import projectApiService, { getProjects } from '../../services/projectService';
+import projectApiService, { getProjectsWithProgress } from '../../services/projectService';
 import { Project, ProjectFilter } from '../../types/project';
 import Button from '../../components/ui/button/Button';
 import Label from '../../components/form/Label';
@@ -8,13 +8,14 @@ import Select from '../../components/form/Select';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 
-// Status translation and styling
+// Status translation and styling - Actualizado para coincidir con las opciones del filtro
 const PROJECT_STATUS_MAP: Record<string, { label: string, color: string }> = {
-  'draft': { label: 'Borrador', color: 'bg-gray-200 text-gray-800' },
-  'in_progress': { label: 'En Progreso', color: 'bg-blue-200 text-blue-800' },
-  'on_hold': { label: 'En Pausa', color: 'bg-yellow-200 text-yellow-800' },
-  'completed': { label: 'Completado', color: 'bg-green-200 text-green-800' },
-  'cancelled': { label: 'Cancelado', color: 'bg-red-200 text-red-800' }
+  'borrador': { label: 'Borrador', color: 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100' },
+  'en_progreso': { label: 'En Progreso', color: 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-blue-100' },
+  'suspendido': { label: 'En Pausa', color: 'bg-yellow-200 text-yellow-800 dark:bg-yellow-600 dark:text-yellow-100' },
+  'completado': { label: 'Completado', color: 'bg-green-200 text-green-800 dark:bg-green-600 dark:text-green-100' },
+  'cancelado': { label: 'Cancelado', color: 'bg-red-200 text-red-800 dark:bg-red-600 dark:text-red-100' },
+  'activo': { label: 'Activo', color: 'bg-emerald-200 text-emerald-800 dark:bg-emerald-600 dark:text-emerald-100' }
 };
 
 const ProjectList = () => {
@@ -42,7 +43,7 @@ const ProjectList = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const data = await getProjects();
+        const data = await getProjectsWithProgress();
         setProjects(data);
       } catch (err) {
         setError('Error loading projects');
@@ -94,12 +95,12 @@ const ProjectList = () => {
   return (
     <div className="container px-4 py-6 mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Proyectos</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Centro de Costos</h1>
         <Button 
-          onClick={() => navigate('/projects/new')}
+          onClick={() => navigate('/cost-centers/new')}
           className="bg-brand-500 hover:bg-brand-600 text-white"
         >
-          Nuevo Proyecto
+          Nuevo Centro de Costo
         </Button>
       </div>
 
@@ -149,7 +150,7 @@ const ProjectList = () => {
         <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
           {projects.length === 0 ? (
             <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              No se encontraron proyectos con los filtros seleccionados.
+              No se encontraron centros de costos con los filtros seleccionados.
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -160,9 +161,6 @@ const ProjectList = () => {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Nombre
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Cliente
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Estado
@@ -185,15 +183,12 @@ const ProjectList = () => {
                       {project.code}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      <Link 
-                        to={`/projects/${project.id}`}
+                      <Link
+                        to={`/cost-centers/${project.id}`}
                         className="text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                       >
                         {project.name}
                       </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {project.client?.name || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${PROJECT_STATUS_MAP[project.status]?.color || 'bg-gray-100 text-gray-800'}`}>
@@ -207,15 +202,15 @@ const ProjectList = () => {
                           style={{ width: `${project.progress || 0}%` }}
                         ></div>
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{project.progress || 0}%</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{((project.progress || 0)).toFixed(3)}%</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {formatCurrency(project.budget || 0)}
+                      {formatCurrency(project.budget || project.totalBudget || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <Link 
-                          to={`/projects/${project.id}/edit`}
+                          to={`/cost-centers/${project.id}/edit`}
                           className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                         >
                           Editar

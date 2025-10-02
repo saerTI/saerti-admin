@@ -280,7 +280,7 @@ const OrdenesCompra = () => {
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
-                    navigate('/gastos/ordenes-compra/new');
+                    navigate('/costos/ordenes-compra/new');
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                 >
@@ -506,8 +506,8 @@ const OrdenesCompra = () => {
               {ordenes.map((oc) => (
                 <tr key={oc.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
                   <td className="sticky-first-column px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-gray-100">
-                    <Link 
-                      to={`/gastos/ordenes-compra/${oc.id}`}
+                    <Link
+                      to={`/costos/ordenes-compra/${oc.id}`}
                       className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                     >
                       {oc.orderNumber}
@@ -545,8 +545,8 @@ const OrdenesCompra = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex space-x-2">
-                      <Link 
-                        to={`/gastos/ordenes-compra/${oc.id}/edit`}
+                      <Link
+                        to={`/costos/ordenes-compra/${oc.id}/edit`}
                         className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                       >
                         Editar
@@ -649,7 +649,7 @@ const OrdenesCompra = () => {
           </p>
           <div className="mt-6">
             <Button 
-              onClick={() => navigate('/gastos/ordenes-compra/new')}
+              onClick={() => navigate('/costos/ordenes-compra/new')}
               className="bg-brand-500 hover:bg-brand-600 text-white"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

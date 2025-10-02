@@ -1,5 +1,6 @@
-// src/pages/CashFlow/CashFlowSummary.tsx - Versión corregida sin conflictos de tipos
-import React from 'react';
+// src/pages/CashFlow/CashFlowSummary.tsx
+import React, { useState, useEffect } from 'react';
+import ingresosApiService from '../../services/ingresosService';
 import { formatCurrency } from '../../utils/formatters';
 import { CashFlowItem, CashFlowSummary as CashFlowSummaryData } from '../../services/cashFlowService';
 
@@ -13,23 +14,23 @@ interface SummaryCardProps {
   value: string;
   icon: React.ReactNode;
   textColor?: string;
-  change?: number;
-  subtitle?: string;
+  isLoading?: boolean;
   trend?: 'up' | 'down' | 'stable';
+  change?: number;
 }
 
 const SummaryCard: React.FC<SummaryCardProps> = ({ 
   title, 
   value, 
-  icon, 
   textColor = "text-gray-800 dark:text-white/90",
-  change,
-  subtitle,
-  trend
+  icon,
+  isLoading = false,
+  trend,
+  change
 }) => {
   const getTrendIcon = () => {
     if (!trend) return null;
-    
+
     switch (trend) {
       case 'up':
         return (
@@ -54,6 +55,37 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
     }
   };
 
+  const getChangeIcon = () => {
+    if (change === undefined) return null;
+    
+    if (change > 0) {
+      return (
+        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l10-10M7 7h10v10" />
+        </svg>
+      );
+    } else if (change < 0) {
+      return (
+        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 7l-10 10M7 17h10V7" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+        </svg>
+      );
+    }
+  };
+
+  const getChangeColor = () => {
+    if (change === undefined) return 'text-gray-500';
+    if (change > 0) return 'text-green-500';
+    if (change < 0) return 'text-red-500';
+    return 'text-gray-500';
+  };
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="flex items-start justify-between">
@@ -68,26 +100,17 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
       </div>
       
       <div className="mt-4">
-        <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">
-          {title}
-        </h4>
-        <h3 className={`mt-1 text-2xl font-bold ${textColor}`}>
-          {value}
-        </h3>
-        
-        {subtitle && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {subtitle}
-          </p>
+        {isLoading ? (
+          <div className="h-8 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+        ) : (
+          <h3 className={`text-2xl font-bold ${textColor}`}>{value}</h3>
         )}
         
-        {change !== undefined && (
-          <div className="mt-2 flex items-center gap-1">
-            <span className={`text-xs font-medium ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-            </span>
-            <span className="text-xs text-gray-500">
-              vs período anterior
+        {!isLoading && change !== undefined && (
+          <div className={`mt-1 flex items-center gap-1 ${getChangeColor()}`}>
+            {getChangeIcon()}
+            <span className="text-sm font-medium">
+              {Math.abs(change).toFixed(1)}% vs. período anterior
             </span>
           </div>
         )}
@@ -292,239 +315,227 @@ const DataTypeAnalysisCard: React.FC<{ items: CashFlowItem[], summary: CashFlowS
 };
 
 const CashFlowSummary: React.FC<CashFlowSummaryProps> = ({ summary, items }) => {
+  const [totalIncome, setTotalIncome] = useState<number>(0);
+  const [isLoadingIncome, setIsLoadingIncome] = useState<boolean>(true);
+  const [recentIngresos, setRecentIngresos] = useState<any[]>([]);
+  const [isLoadingIngresos, setIsLoadingIngresos] = useState<boolean>(true);
 
-  // Get recent transactions (reducido para vista general)
-  const recentTransactions = [...items]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 6); // ← Reducido para vista general
-
-  // Calcular tendencias (por ahora solo para gastos)
-  const calculateTrend = (current: number, previous?: number): 'up' | 'down' | 'stable' => {
-    if (!previous) return 'stable';
-    if (current > previous) return 'up';
-    if (current < previous) return 'down';
-    return 'stable';
+  // Función para obtener el total de ingresos del servicio
+  const fetchTotalIncome = async () => {
+    try {
+      setIsLoadingIncome(true);
+      console.log('🔍 CashFlowSummary - Fetching income stats...');
+      
+      const response = await ingresosApiService.getIngresoStats();
+      
+      console.log('📊 CashFlowSummary - Response received:', response);
+      console.log('📊 CashFlowSummary - Response.data:', response.data);
+      console.log('📊 CashFlowSummary - Response.data.montoTotal:', response.data?.montoTotal);
+      
+      const totalValue = response.data?.montoTotal || 0;
+      console.log('📊 CashFlowSummary - Final total value:', totalValue);
+      
+      setTotalIncome(totalValue);
+    } catch (error) {
+      console.error('❌ Error fetching total income:', error);
+      setTotalIncome(0);
+    } finally {
+      setIsLoadingIncome(false);
+    }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Summary Cards con Ingresos incluidos */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <SummaryCard
-          title="Ingresos Totales"
-          value={formatCurrency(summary.totalIncome)} // Por ahora será $0
-          subtitle={summary.forecastIncome && summary.forecastIncome > 0 ? `Proyectado: ${formatCurrency(summary.forecastIncome)}` : "Próximamente disponible"}
-          trend={summary.totalIncome > 0 ? 'up' : 'stable'}
-          textColor="text-green-500"
-          icon={
-            <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          }
-        />
-        
-        <SummaryCard
-          title="Gastos Totales"
-          value={formatCurrency(summary.totalExpense)}
-          subtitle={summary.forecastExpense ? `Proyectado: ${formatCurrency(summary.forecastExpense)}` : undefined}
-          trend={calculateTrend(summary.totalExpense, summary.forecastExpense)}
-          textColor="text-red-500"
-          icon={
-            <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-            </svg>
-          }
-        />
-        
-        <SummaryCard
-          title="Flujo Neto"
-          value={formatCurrency(summary.netCashFlow)}
-          change={summary.previousPeriodChange}
-          textColor={summary.netCashFlow >= 0 ? "text-green-500" : "text-red-500"}
-          trend={summary.netCashFlow >= 0 ? 'up' : 'down'}
-          subtitle={summary.totalIncome === 0 ? "Solo gastos por ahora" : "Balance del período"}
-          icon={
-            <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-          }
-        />
-        
-        <SummaryCard
-          title="Gastos Pendientes"
-          value={summary.pendingItems.toString()}
-          subtitle="Items por procesar"
-          icon={
-            <svg className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
-        
-        <SummaryCard
-          title="Total Transacciones"
-          value={summary.totalItems.toString()}
-          subtitle="Registros en el período"
-          icon={
-            <svg className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          }
-        />
-      </div>
+  // Función para obtener los últimos 5 ingresos
+  const fetchRecentIngresos = async () => {
+    try {
+      setIsLoadingIngresos(true);
+      console.log('🔍 CashFlowSummary - Fetching recent ingresos...');
+      
+      const response = await ingresosApiService.getIngresos({
+        limit: 5,
+        sortBy: 'date',
+        sortDirection: 'desc'
+      });
+      
+      console.log('📊 CashFlowSummary - Recent ingresos response:', response);
+      console.log('📊 CashFlowSummary - Response.data structure:', response.data);
+      console.log('📊 CashFlowSummary - First item structure:', response.data?.[0]);
+      
+      // Log all fields of the first item to see the exact structure
+      if (response.data && response.data.length > 0) {
+        const firstItem = response.data[0];
+        console.log('📊 Fields in first item:', Object.keys(firstItem));
+        console.log('📊 First item full object:', firstItem);
+      }
+      
+      setRecentIngresos(response.data || []);
+    } catch (error) {
+      console.error('❌ Error fetching recent ingresos:', error);
+      setRecentIngresos([]);
+    } finally {
+      setIsLoadingIngresos(false);
+    }
+  };
 
-      {/* Segunda fila de información detallada */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Top Categorías */}
-        <TopCategoriesCard items={items} />
-        
-        {/* Análisis Real vs Proyectado */}
-        <DataTypeAnalysisCard items={items} summary={summary} />
-        
-        {/* Quick Stats adaptado para solo gastos */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
-            Estadísticas Rápidas
-          </h4>
+  useEffect(() => {
+    fetchTotalIncome();
+    fetchRecentIngresos();
+  }, []);
+
+  // Calcular flujo neto y rentabilidad con el nuevo total de ingresos
+  const netCashFlow = totalIncome - summary.totalExpense;
+  const profitability = totalIncome > 0 ? Math.round((netCashFlow / totalIncome) * 100) : 0;
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* Summary Cards */}
+      <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SummaryCard
+            title="Ingresos Totales"
+            value={formatCurrency(totalIncome)}
+            isLoading={isLoadingIncome}
+            icon={
+              <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            }
+          />
           
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Total de Transacciones</span>
-              <span className="font-semibold text-gray-800 dark:text-white/90">
-                {items.length}
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Promedio de Gastos</span>
-              <span className="font-semibold text-red-600">
-                {formatCurrency(
-                  items.length > 0
-                    ? items.reduce((sum, i) => sum + i.amount, 0) / items.length
-                    : 0
-                )}
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Gasto Máximo</span>
-              <span className="font-semibold text-red-600">
-                {formatCurrency(
-                  items.length > 0
-                    ? Math.max(...items.map(i => i.amount))
-                    : 0
-                )}
-              </span>
-            </div>
-            
-            <div className="pt-2 border-t border-gray-200">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Categorías Únicas</span>
-                <span className="font-semibold text-blue-600">
-                  {new Set(items.map(i => i.category)).size}
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Fuentes de Datos</span>
-              <span className="font-semibold text-purple-600">
-                {new Set(items.map(i => i.source_type)).size}
-              </span>
-            </div>
-          </div>
+          <SummaryCard
+            title="Gastos Totales"
+            value={formatCurrency(summary.totalExpense)}
+            icon={
+              <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            }
+          />
+          
+          <SummaryCard
+            title="Flujo Neto"
+            value={formatCurrency(netCashFlow)}
+            change={summary.previousPeriodChange}
+            textColor={netCashFlow >= 0 ? "text-green-500" : "text-red-500"}
+            icon={
+              <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            }
+          />
+          
+          <SummaryCard
+            title="Rentabilidad"
+            value={`${profitability}%`}
+            icon={
+              <svg className="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+              </svg>
+            }
+          />
         </div>
       </div>
       
-      {/* Transacciones Recientes - Diseño más limpio */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between">
+      {/* Recent Ingresos */}
+      <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+        <div className="rounded-xl border border-gray-200 bg-white px-5 pb-5 pt-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex items-center justify-between mb-6">
             <h4 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-              Transacciones Recientes
+              Últimos Ingresos
             </h4>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500">
-                Últimas {recentTransactions.length} de {items.length}
-              </span>
-              <a 
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Aquí podrías hacer scroll a la tab de detalles o cambiar la tab activa
-                }}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Ver todas →
-              </a>
-            </div>
+            {isLoadingIngresos && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+            )}
           </div>
-        </div>
-        
-        <div className="divide-y divide-gray-100 dark:divide-gray-700">
-          {recentTransactions.map((transaction) => (
-            <div 
-              key={transaction.id}
-              className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {transaction.description}
+          
+          <div className="flex flex-col">
+            <div className="grid grid-cols-3 rounded-sm bg-gray-100 dark:bg-gray-800 sm:grid-cols-5">
+              <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
+                Fecha
+              </div>
+              <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
+                Descripción
+              </div>
+              <div className="hidden p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 sm:block xl:p-5">
+                Categoría
+              </div>
+              <div className="hidden p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 sm:block xl:p-5">
+                Estado
+              </div>
+              <div className="p-2.5 text-sm font-medium text-gray-800 dark:text-white/90 xl:p-5">
+                Monto
+              </div>
+            </div>
+            
+            {isLoadingIngresos ? (
+              // Loading skeleton
+              Array.from({ length: 5 }).map((_, index) => (
+                <div 
+                  key={index}
+                  className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-700 sm:grid-cols-5"
+                >
+                  <div className="flex items-center p-2.5 xl:p-5">
+                    <div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                  <div className="flex items-center p-2.5 xl:p-5">
+                    <div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                  <div className="hidden items-center p-2.5 sm:flex xl:p-5">
+                    <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                  <div className="hidden items-center p-2.5 sm:flex xl:p-5">
+                    <div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                  <div className="flex items-center p-2.5 xl:p-5">
+                    <div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+                  </div>
+                </div>
+              ))
+            ) : recentIngresos.length > 0 ? (
+              recentIngresos.map((ingreso) => (
+                <div 
+                  key={ingreso.id}
+                  className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-700 sm:grid-cols-5"
+                >
+                  <div className="flex items-center p-2.5 xl:p-5">
+                    <p className="text-gray-800 dark:text-white/90">
+                      {new Date(ingreso.date).toLocaleDateString()}
                     </p>
-                    {transaction.state && (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        transaction.state === 'actual'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : transaction.state === 'forecast'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                      }`}>
-                        {transaction.state === 'actual' ? 'Real' : 
-                         transaction.state === 'forecast' ? 'Proyectado' : 'Presupuesto'}
-                      </span>
-                    )}
                   </div>
                   
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>{new Date(transaction.date).toLocaleDateString()}</span>
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">
-                      {transaction.category}
+                  <div className="flex items-center p-2.5 xl:p-5">
+                    <p className="text-gray-800 dark:text-white/90">{ingreso.ep_detail}</p>
+                  </div>
+                  
+                  <div className="hidden items-center p-2.5 sm:flex xl:p-5">
+                    <p className="text-gray-800 dark:text-white/90">{ingreso.category_name || 'Sin categoría'}</p>
+                  </div>
+                  
+                  <div className="hidden items-center p-2.5 sm:flex xl:p-5">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${
+                      ingreso.payment_status === 'pagado' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                        : ingreso.payment_status === 'pendiente'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
+                        : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                    }`}>
+                      {ingreso.payment_status}
                     </span>
-                    {transaction.cost_center_name && (
-                      <span className="truncate">{transaction.cost_center_name}</span>
-                    )}
-                    {transaction.source_type && (
-                      <span className="text-xs opacity-75">• {transaction.source_type}</span>
-                    )}
+                  </div>
+                  
+                  <div className="flex items-center p-2.5 xl:p-5">
+                    <p className="text-green-500 font-medium">
+                      + {formatCurrency(ingreso.total_amount)}
+                    </p>
                   </div>
                 </div>
-                
-                <div className="ml-4 flex-shrink-0 text-right">
-                  <p className="text-sm font-semibold text-red-600">
-                    -{formatCurrency(transaction.amount)}
-                  </p>
-                </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-gray-500 dark:text-gray-400">No hay ingresos recientes</p>
               </div>
-            </div>
-          ))}
-          
-          {recentTransactions.length === 0 && (
-            <div className="px-6 py-8 text-center">
-              <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                No hay transacciones
-              </h3>
-              <p className="text-sm text-gray-500">
-                No se encontraron movimientos para el período seleccionado.
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

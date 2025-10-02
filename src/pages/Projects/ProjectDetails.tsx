@@ -1,14 +1,15 @@
 // src/pages/Projects/ProjectDetails.tsx - Actualizado con costos multidimensionales
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import projectApiService, { 
-  ProjectDetail, 
-  Milestone, 
+import projectApiService, {
+  ProjectDetail,
+  Milestone,
   CashFlowLine,
   MultidimensionalCost,
   CostFilter,
   CostsSummary,
-  CostsDimensions 
+  CostsDimensions,
+  calculateProjectProgress
 } from '../../services/projectService';
 import Button from '../../components/ui/button/Button';
 import CostsRealSection from '../../components/costs/CostsRealSection';
@@ -32,6 +33,7 @@ const ProjectDetailView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'milestones' | 'cashflow'>('info');
+  const [projectProgress, setProjectProgress] = useState<number>(0);
   
   // Estados para costos multidimensionales
   const [costs, setCosts] = useState<MultidimensionalCost[]>([]);
@@ -81,6 +83,25 @@ const ProjectDetailView = () => {
     
     fetchProjectData();
   }, [id]);
+
+  // Calculate project progress based on Factoring/Budget
+  useEffect(() => {
+    const calculateProgress = async () => {
+      if (!project || !id) return;
+
+      try {
+        const projectId = parseInt(id);
+        const budget = project.budget || project.totalBudget || 0;
+        const progress = await calculateProjectProgress(projectId, budget);
+        setProjectProgress(Math.round(progress));
+      } catch (error) {
+        console.error('Error calculating project progress:', error);
+        setProjectProgress(0);
+      }
+    };
+
+    calculateProgress();
+  }, [project, id]);
 
   // Load costs data when cashflow tab is active and real costs sub-tab is selected
   useEffect(() => {
@@ -243,9 +264,9 @@ const ProjectDetailView = () => {
           <p className="text-gray-700 dark:text-gray-300">{error || 'No se pudo cargar el proyecto'}</p>
           <Button
             className="mt-4 bg-brand-500 hover:bg-brand-600 text-white"
-            onClick={() => navigate('/projects')}
+            onClick={() => navigate('/cost-centers')}
           >
-            Volver a Proyectos
+            Volver a Centro de Costos
           </Button>
         </div>
       </div>
@@ -260,7 +281,7 @@ const ProjectDetailView = () => {
       income: project.cashFlow?.income || [],
       expense: project.cashFlow?.expense || []
     },
-    progress: project.progress || 0,
+    progress: projectProgress || 0,
     status: project.status || 'borrador',
     balance: project.balance || 0,
     totalBudget: project.totalBudget || 0,
@@ -283,16 +304,16 @@ const ProjectDetailView = () => {
             <Button
               variant="outline"
               className="border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300"
-              onClick={() => navigate('/projects')}
+              onClick={() => navigate('/cost-centers')}
             >
               Volver
             </Button>
             <Button
               variant="outline"
               className="border-brand-500 text-brand-500 dark:border-brand-400 dark:text-brand-400"
-              onClick={() => navigate(`/projects/${id}/edit`)}
+              onClick={() => navigate(`/cost-centers/${id}/edit`)}
             >
-              Editar Proyecto
+              Editar Centro de Costo
             </Button>
           </div>
         </div>
@@ -381,7 +402,7 @@ const ProjectDetailView = () => {
             {activeTab === 'info' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Detalles del Proyecto</h3>
+                  <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Detalles del Centro de Costo</h3>
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Cliente</p>
@@ -451,7 +472,7 @@ const ProjectDetailView = () => {
             {activeTab === 'milestones' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-800 dark:text-white">Hitos del Proyecto</h3>
+                  <h3 className="text-lg font-medium text-gray-800 dark:text-white">Hitos del Centro de Costo</h3>
                   <Button
                     size="sm"
                     className="bg-brand-500 hover:bg-brand-600 text-white"
@@ -463,7 +484,7 @@ const ProjectDetailView = () => {
                 
                 {safeProject.milestones.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500 dark:text-gray-400">No hay hitos definidos para este proyecto.</p>
+                    <p className="text-gray-500 dark:text-gray-400">No hay hitos definidos para este Centro de Costo.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">

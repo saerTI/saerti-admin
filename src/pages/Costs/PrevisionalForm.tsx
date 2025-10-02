@@ -1,374 +1,376 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import gastosApiService, { Previsional } from '../../services/costsService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Previsional, NewPrevisionalData, UpdatePrevisionalData } from '../../types/CC/previsional';
+import { Empleado } from '../../types/CC/empleados';
+import { previsionalesService } from '../../services/CC/previsionalesService';
+import { getEmpleados } from '../../services/CC/empleadosService';
 import Button from '../../components/ui/button/Button';
-import PageBreadcrumb from '../../components/common/PageBreadCrumb';
-import InputField from '../../components/form/input/InputField';
-import Label from '../../components/form/Label';
-import TextArea from '../../components/form/input/TextArea';
-import Select from '../../components/form/Select';
 
-// Default empty previsional
-const emptyPrevisional: Omit<Previsional, 'id' | 'companyId'> = {
-  name: '',
-  date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
-  amount: 0,
-  state: 'draft',
-  employee_id: 0,
-  employeeName: '',
-  period: new Date().getMonth() + 1 + '/' + new Date().getFullYear(),
-  type: '',
-  notes: ''
-};
+interface PrevisionalFormProps {
+  previsional?: Previsional | null;
+  onSave: () => void;
+  onClose: () => void;
+}
 
-const PrevisionalForm = () => {
-  const { id } = useParams<{ id: string }>();
-  const isEditing = !!id;
-  const navigate = useNavigate();
+const PrevisionalForm: React.FC<PrevisionalFormProps> = ({ previsional, onSave, onClose }) => {
+  const [formData, setFormData] = useState<Partial<NewPrevisionalData | UpdatePrevisionalData>>({
+    employee_id: previsional?.employee_id || 0,
+    type: previsional?.type || 'afp',
+    amount: previsional?.amount || 0,
+    date: previsional?.date || new Date().toISOString().split('T')[0],
+    status: previsional?.status || 'pendiente',
+    notes: previsional?.notes || ''
+  });
   
-  const [previsional, setPrevisional] = useState<any>(emptyPrevisional);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
-  const [employees, setEmployees] = useState<{ id: number; name: string }[]>([]);
+  // Estados para el periodo
+  const [periodoMes, setPeriodoMes] = useState(new Date().getMonth() + 1);
+  const [periodoAno, setPeriodoAno] = useState(new Date().getFullYear());
+  
+  const [empleadoEncontrado, setEmpleadoEncontrado] = useState<Empleado | null>(null);
+  const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [loadingEmpleados, setLoadingEmpleados] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Load previsional data if editing
+  // Hook para cerrar modal con tecla Escape
+  const handleEscKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      onClose();
+    }
+  }, [onClose]);
+  
+  // Añadir/remover event listener para la tecla Escape
   useEffect(() => {
-    const fetchPrevisional = async () => {
-      if (!isEditing) return;
-      
+    document.addEventListener('keydown', handleEscKey);
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+      document.body.style.overflow = '';
+    };
+  }, [handleEscKey]);
+
+  // Inicializar valores del período si estamos editando
+  useEffect(() => {
+    if (previsional) {
+      // Si tenemos month_period y year_period del registro, usarlos
+      if (previsional.month_period) {
+        setPeriodoMes(previsional.month_period);
+      }
+      if (previsional.year_period) {
+        setPeriodoAno(previsional.year_period);
+      }
+    }
+  }, [previsional]);
+
+  // Cargar empleados al montar el componente
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        setLoading(true);
-        // In a real app, this would fetch from API
-        // const data = await gastosApiService.getPrevisionalById(parseInt(id));
-        // For now, we'll use mock data
-        const data = getMockPrevisional(parseInt(id));
-        setPrevisional(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al cargar el registro previsional');
-        console.error('Error fetching previsional:', err);
+        // Cargar empleados
+        setLoadingEmpleados(true);
+        const empleadosResponse = await getEmpleados({ per_page: 1000 }); // Cargar todos los empleados
+        setEmpleados(empleadosResponse.items || []);
+      } catch (error) {
+        console.error("Error al cargar datos", error);
       } finally {
-        setLoading(false);
+        setLoadingEmpleados(false);
       }
     };
-
-    fetchPrevisional();
-  }, [id, isEditing]);
-
-  // Mock data function
-  const getMockPrevisional = (id: number): Previsional => {
-    return {
-      id,
-      name: `Previsional ${id}`,
-      employee_id: 100 + id,
-      employeeName: `Empleado ${100 + id}`,
-      period: `${Math.floor(Math.random() * 12) + 1}/2023`,
-      type: ['AFP', 'Isapre', 'Seguro Cesantía', 'Mutual'][Math.floor(Math.random() * 4)],
-      date: new Date(2023, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
-      amount: Math.floor(Math.random() * 500000) + 100000,
-      state: ['draft', 'pending', 'approved', 'paid', 'rejected'][Math.floor(Math.random() * 5)],
-      projectId: Math.random() > 0.3 ? Math.floor(Math.random() * 5) + 1 : undefined,
-      projectName: Math.random() > 0.3 ? `Proyecto ${Math.floor(Math.random() * 5) + 1}` : undefined,
-      companyId: 1,
-      notes: Math.random() > 0.7 ? `Notas para previsional ${id}` : ''
-    };
-  };
-
-  // Load projects and employees for dropdowns
-  useEffect(() => {
-    const fetchDropdownData = async () => {
-      try {
-        // In a real app, these would be API calls
-        // const projectsData = await projectApiService.getProjects();
-        // setProjects(projectsData.map(p => ({ id: p.id, name: p.name })));
-        
-        // Mock data for demonstration
-        setProjects([
-          { id: 1, name: 'Proyecto A' },
-          { id: 2, name: 'Proyecto B' },
-          { id: 3, name: 'Proyecto C' },
-          { id: 4, name: 'Proyecto D' },
-          { id: 5, name: 'Proyecto E' },
-        ]);
-        
-        setEmployees([
-          { id: 101, name: 'Empleado 101' },
-          { id: 102, name: 'Empleado 102' },
-          { id: 103, name: 'Empleado 103' },
-          { id: 104, name: 'Empleado 104' },
-          { id: 105, name: 'Empleado 105' },
-        ]);
-      } catch (err) {
-        console.error('Error fetching dropdown data:', err);
-      }
-    };
-
-    fetchDropdownData();
+    fetchData();
   }, []);
 
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    
-    // Handle different input types
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setPrevisional({ ...previsional, [name]: checked });
-    } else if (type === 'number') {
-      setPrevisional({ ...previsional, [name]: parseFloat(value) || 0 });
+  // Función para manejar la selección de empleado
+  const handleEmpleadoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const employeeId = Number(e.target.value);
+    if (employeeId) {
+      const empleado = empleados.find(emp => emp.id === employeeId);
+      if (empleado) {
+        setEmpleadoEncontrado(empleado);
+        setFormData(prev => ({
+          ...prev,
+          employee_id: employeeId
+        }));
+        setErrors(prev => ({ ...prev, employee_id: '' }));
+      }
     } else {
-      setPrevisional({ ...previsional, [name]: value });
+      setEmpleadoEncontrado(null);
+      setFormData(prev => ({ ...prev, employee_id: 0 }));
     }
   };
 
-  // Adapter for TextArea onChange (expects string, not event)
-  const handleTextAreaChange = (name: string) => (value: string) => {
-    setPrevisional({ ...previsional, [name]: value });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'amount' || name === 'employee_id' ? Number(value) || 0 : value
+    }));
   };
 
-  // Adapter for Select onChange (expects string, not event)
-  const handleSelectChange = (name: string) => (value: string) => {
-    if (name === 'projectId' && value) {
-      // For projectId, convert to number if not empty
-      setPrevisional({ ...previsional, [name]: parseInt(value) });
+  // Función para manejar cambios en el periodo
+  const handlePeriodoChange = (tipo: 'mes' | 'ano', value: number) => {
+    if (tipo === 'mes') {
+      setPeriodoMes(value);
     } else {
-      setPrevisional({ ...previsional, [name]: value });
+      setPeriodoAno(value);
     }
   };
 
-  // Handle employee selection with adapted onChange
-  const handleEmployeeChange = (value: string) => {
-    const employeeId = parseInt(value);
-    const selectedEmployee = employees.find(e => e.id === employeeId);
-    
-    setPrevisional({
-      ...previsional,
-      employee_id: employeeId,
-      employeeName: selectedEmployee?.name || ''
-    });
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.employee_id || formData.employee_id === 0) {
+      newErrors.employee_id = 'Debe seleccionar un empleado.';
+    }
+
+    if (!formData.amount || formData.amount <= 0) {
+      newErrors.amount = 'El monto debe ser mayor a 0.';
+    }
+
+    if (!formData.date) {
+      newErrors.date = 'La fecha de pago es obligatoria.';
+    }
+
+    if (!periodoMes || periodoMes < 1 || periodoMes > 12) {
+      newErrors.periodo = 'Debe seleccionar un mes válido.';
+    }
+
+    if (!periodoAno || periodoAno < 2020) {
+      newErrors.periodo = 'Debe ingresar un año válido.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      setSaving(true);
+      // Extraer mes y año del periodo seleccionado
+      const month_period = periodoMes;
+      const year_period = periodoAno;
       
-      // In a real app, these would be API calls
-      if (isEditing) {
-        // await gastosApiService.updatePrevisional(parseInt(id), previsional);
-        console.log('Updating previsional:', previsional);
+      // Agregar estos campos al objeto de datos
+      const completeData = {
+        ...formData,
+        month_period,
+        year_period
+      };
+
+      if (previsional && previsional.id) {
+        await previsionalesService.updatePrevisional(previsional.id, completeData as UpdatePrevisionalData);
       } else {
-        // await gastosApiService.createPrevisional(previsional);
-        console.log('Creating previsional:', previsional);
+        await previsionalesService.createPrevisional(completeData as NewPrevisionalData);
       }
-      
-      // For demo purposes, just wait a bit
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redirect back to list on success
-      navigate('/gastos/previsionales');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar el registro');
-      console.error('Error saving previsional:', err);
-      setSaving(false);
+      onSave();
+      onClose();
+    } catch (error) {
+      console.error("Error al guardar el registro previsional", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Convert projects array to options format required by Select
-  const projectOptions = [
-    { value: '', label: 'Sin proyecto' },
-    ...projects.map(project => ({ 
-      value: String(project.id), 
-      label: project.name 
-    }))
-  ];
-
-  // Convert employees array to options format required by Select
-  const employeeOptions = [
-    { value: '', label: 'Seleccione un empleado' },
-    ...employees.map(employee => ({ 
-      value: String(employee.id), 
-      label: employee.name 
-    }))
-  ];
-
-  // Status options for dropdown
-  const statusOptions = [
-    { value: 'draft', label: 'Borrador' },
-    { value: 'pending', label: 'Pendiente' },
-    { value: 'approved', label: 'Aprobado' },
-    { value: 'rejected', label: 'Rechazado' },
-    { value: 'paid', label: 'Pagado' },
-    { value: 'cancelled', label: 'Cancelado' }
-  ];
-
-  // Previsional type options
-  const typeOptions = [
-    { value: '', label: 'Seleccione un tipo' },
-    { value: 'AFP', label: 'AFP' },
-    { value: 'Isapre', label: 'Isapre' },
-    { value: 'Seguro Cesantía', label: 'Seguro Cesantía' },
-    { value: 'Mutual', label: 'Mutual' }
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container px-4 py-6 mx-auto">
-      <PageBreadcrumb pageTitle={isEditing ? 'Editar Previsional' : 'Nuevo Previsional'} />
-
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          {isEditing ? 'Editar Previsional' : 'Nuevo Previsional'}
-        </h1>
-      </div>
-
-      {/* Error message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="name">Descripción</Label>
-              <InputField
-                id="name"
-                name="name"
-                type="text"
-                value={previsional.name}
-                onChange={handleChange}
-                required
-                placeholder="Descripción del pago previsional"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="employee_id">Empleado</Label>
-              <Select
-                options={employeeOptions}
-                defaultValue={String(previsional.employee_id) || ''}
-                onChange={handleEmployeeChange}
-                placeholder="Seleccione un empleado"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="type">Tipo de Previsional</Label>
-              <Select
-                options={typeOptions}
-                defaultValue={previsional.type}
-                onChange={handleSelectChange('type')}
-                placeholder="Seleccione un tipo"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="period">Periodo</Label>
-              <InputField
-                id="period"
-                name="period"
-                type="text"
-                value={previsional.period}
-                onChange={handleChange}
-                required
-                placeholder="MM/YYYY"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="date">Fecha de Pago</Label>
-              <InputField
-                id="date"
-                name="date"
-                type="date"
-                value={previsional.date}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="amount">Monto</Label>
-              <InputField
-                id="amount"
-                name="amount"
-                type="number"
-                step={0.01}
-                value={previsional.amount}
-                onChange={handleChange}
-                required
-                min="0"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="projectId">Proyecto (Opcional)</Label>
-              <Select
-                options={projectOptions}
-                defaultValue={previsional.projectId ? String(previsional.projectId) : ''}
-                onChange={handleSelectChange('projectId')}
-                placeholder="Sin proyecto"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="state">Estado</Label>
-              <Select
-                options={statusOptions}
-                defaultValue={previsional.state}
-                onChange={handleSelectChange('state')}
-                placeholder="Seleccione un estado"
-              />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <Label htmlFor="notes">Notas / Observaciones</Label>
-            <TextArea
-              value={previsional.notes || ''}
-              onChange={handleTextAreaChange('notes')}
-              rows={4}
-              placeholder="Añada notas o información adicional sobre este pago previsional"
-            />
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-2xl">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {previsional ? 'Editar' : 'Nuevo'} Registro Previsional
+            </h2>
+            <button
               type="button"
-              onClick={() => navigate('/gastos/previsionales')}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800"
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={onSubmit} className="p-6">
+          <div className="space-y-6">
+            {/* Seleccionar empleado */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Seleccionar Empleado <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.employee_id || ''}
+                onChange={handleEmpleadoChange}
+                disabled={loadingEmpleados}
+                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {loadingEmpleados ? 'Cargando empleados...' : 'Seleccionar empleado'}
+                </option>
+                {empleados.map(empleado => (
+                  <option key={empleado.id} value={empleado.id}>
+                    {empleado.full_name} - {empleado.tax_id}
+                  </option>
+                ))}
+              </select>
+              {errors.employee_id && (
+                <p className="text-red-500 text-sm mt-1">{errors.employee_id}</p>
+              )}
+              
+            </div>
+
+            {/* Grid de campos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* Tipo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tipo de Previsional <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="type"
+                  value={formData.type || 'afp'}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                >
+                  <option value="afp">AFP</option>
+                  <option value="isapre">Isapre</option>
+                  <option value="isapre_7">Isapre 7%</option>
+                  <option value="seguro_cesantia">Seguro Cesantía</option>
+                  <option value="mutual">Mutual</option>
+                </select>
+                {errors.type && (
+                  <p className="text-red-500 text-sm mt-1">{errors.type}</p>
+                )}
+              </div>
+
+              {/* Monto */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Monto <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="amount"
+                  value={formData.amount || ''}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                  className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                />
+                {errors.amount && (
+                  <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
+                )}
+              </div>
+
+              {/* Fecha de Pago */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Fecha de Pago <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date || ''}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                />
+                {errors.date && (
+                  <p className="text-red-500 text-sm mt-1">{errors.date}</p>
+                )}
+              </div>
+
+              {/* Período */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Período <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Mes */}
+                  <select
+                    value={periodoMes}
+                    onChange={(e) => handlePeriodoChange('mes', Number(e.target.value))}
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                  >
+                    <option value={1}>Enero</option>
+                    <option value={2}>Febrero</option>
+                    <option value={3}>Marzo</option>
+                    <option value={4}>Abril</option>
+                    <option value={5}>Mayo</option>
+                    <option value={6}>Junio</option>
+                    <option value={7}>Julio</option>
+                    <option value={8}>Agosto</option>
+                    <option value={9}>Septiembre</option>
+                    <option value={10}>Octubre</option>
+                    <option value={11}>Noviembre</option>
+                    <option value={12}>Diciembre</option>
+                  </select>
+                  {/* Año */}
+                  <input
+                    type="number"
+                    min="2020"
+                    max="2030"
+                    value={periodoAno}
+                    onChange={(e) => handlePeriodoChange('ano', Number(e.target.value))}
+                    placeholder="Año"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                  />
+                </div>
+                {errors.periodo && (
+                  <p className="text-red-500 text-sm mt-1">{errors.periodo}</p>
+                )}
+              </div>
+
+              {/* Estado */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Estado <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="status"
+                  value={formData.status || 'pendiente'}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                >
+                  <option value="pendiente">Pendiente</option>
+                  <option value="pagado">Pagado</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+                {errors.status && (
+                  <p className="text-red-500 text-sm mt-1">{errors.status}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Notas
+              </label>
+              <textarea
+                name="notes"
+                value={formData.notes || ''}
+                onChange={handleInputChange}
+                rows={3}
+                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                placeholder="Notas adicionales..."
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <Button type="button" onClick={onClose} variant="outline">
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              className="bg-brand-500 hover:bg-brand-600 text-white"
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <span className="animate-spin inline-block h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span>
-                  {isEditing ? 'Guardando...' : 'Creando...'}
-                </>
-              ) : (
-                isEditing ? 'Guardar Cambios' : 'Crear Previsional'
-              )}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
         </form>
