@@ -2,18 +2,28 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { costsApiService, CostsFilters, CostsData, CostItem, CostsByCategory } from '../../services/costsService';
+import { getCostCenters, CostCenter } from '../../services/costCenterService';
 import { FinancialRecordItem } from '../../components/tables/RecentFinantialTable';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
 import FilterPanel, { FilterConfig, FilterOption } from '../../components/common/FilterPanel';
+import ChartTab from '../../components/common/ChartTab';
+import Label from '../../components/form/Label';
+import Select from '../../components/form/Select';
+import Button from '../../components/ui/button/Button';
 import { formatCurrency } from '../../utils/formatters';
-import FinancialTable, { 
-  FinancialCategory, 
-  FinancialPeriod, 
+import FinancialTable, {
+  FinancialPeriod,
   generateWeekPeriods,
   generateMonthPeriods,
   generateQuarterPeriods
 } from '../../components/tables/FinancialTable';
+import { FinancialAggregationService } from '../../services/financialAggregationService';
+import { getRemuneracionesByPeriod } from '../../services/CC/remuneracionesService';
+import { factoringService } from '../../services/factoringService';
+import { previsionalesService } from '../../services/CC/previsionalesService';
+import { getFixedCosts } from '../../services/CC/fixedCostsService';
+import { listItems } from '../../services/CC/ordenesCompraItemService';
 import FileInput from '../../components/form/input/FileInput';
 import RecentFinancialTable from '../../components/tables/RecentFinantialTable';
 import { useAuth } from '../../context/AuthContext';
@@ -27,54 +37,45 @@ const CostsIndex = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [costsData, setCostsData] = useState<CostsData | null>(null);
-  const [expensesByDate, setExpensesByDate] = useState<FinancialCategory[]>([]);
   const [periods, setPeriods] = useState<FinancialPeriod[]>([]);
+  const [aggregatedFinancialData, setAggregatedFinancialData] = useState<{
+    remuneraciones: number;
+    factoring: number;
+    previsionales: number;
+    costosFijos: number;
+  } | null>(null);
+  const [detailedFinancialRecords, setDetailedFinancialRecords] = useState<FinancialRecordItem[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [debugData, setDebugData] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [showEmptyCategories, setShowEmptyCategories] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
-  // Estados de filtros
+  // Estados de filtros - simplificados a solo año y centro de costo
   const [filters, setFilters] = useState<CostsFilters>({
     periodType: 'monthly',
     year: new Date().getFullYear().toString(),
-    projectId: 'all',
-    costCenterId: 'all',
-    categoryId: 'all',
-    status: 'all'
+    costCenterId: 'all'
   });
 
-  // Estados para opciones dinámicas de filtros
-  const [filterOptions, setFilterOptions] = useState<{
-    projects: FilterOption[];
-    costCenters: FilterOption[];
-    categories: FilterOption[];
-    statuses: FilterOption[];
-  }>({
-    projects: [],
-    costCenters: [],
-    categories: [],
-    statuses: []
-  });
+  // Estados para opciones dinámicas de filtros - solo centros de costo
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [loadingCostCenters, setLoadingCostCenters] = useState(false);
 
   const { user, isAuthenticated } = useAuth();
   const { currentTenant } = useTenant();
 
-  // **CONFIGURACIÓN DE FILTROS USANDO FilterPanel**
+  // Tabs para la vista de egresos
+  const tabs = [
+    { id: 'overview', label: 'Vista General' },
+    { id: 'financial', label: 'Tabla Financiera' },
+    { id: 'details', label: 'Detalle' }
+  ];
+
+  // **CONFIGURACIÓN DE FILTROS - AÑO, PERIODO Y CENTRO DE COSTO**
   const filterConfigs: FilterConfig[] = [
-    // {
-    //   key: 'periodType',
-    //   label: 'Tipo de Período',
-    //   type: 'select',
-    //   options: [
-    //     { value: 'weekly', label: 'Semanal' },
-    //     { value: 'monthly', label: 'Mensual' },
-    //     { value: 'quarterly', label: 'Trimestral' },
-    //     { value: 'annual', label: 'Anual' }
-    //   ],
-    //   width: 'sm'
-    // },
     {
       key: 'year',
       label: 'Año',
@@ -89,73 +90,52 @@ const CostsIndex = () => {
       width: 'sm'
     },
     {
-      key: 'projectId',
-      label: 'Proyecto',
+      key: 'periodType',
+      label: 'Periodo',
       type: 'select',
-      options: [{ value: 'all', label: 'Todos los Centros de Costos' }, ...filterOptions.projects],
-      loading: filterOptions.projects.length === 0,
-      width: 'md'
+      options: [
+        { value: 'weekly', label: 'Semanal' },
+        { value: 'monthly', label: 'Mensual' },
+        { value: 'quarterly', label: 'Trimestral' },
+        { value: 'annual', label: 'Anual' }
+      ],
+      width: 'sm'
     },
     {
       key: 'costCenterId',
       label: 'Centro de Costo',
       type: 'select',
-      options: [{ value: 'all', label: 'Todos los Centros' }, ...filterOptions.costCenters],
-      loading: filterOptions.costCenters.length === 0,
+      options: [
+        { value: 'all', label: 'Todos los Centros de Costo' },
+        ...costCenters.map(cc => ({
+          value: cc.id.toString(),
+          label: cc.name
+        }))
+      ],
+      loading: loadingCostCenters,
       width: 'md'
-    },
-    {
-      key: 'categoryId',
-      label: 'Categoría',
-      type: 'select',
-      options: [{ value: 'all', label: 'Todas las Categorías' }, ...filterOptions.categories],
-      loading: filterOptions.categories.length === 0,
-      width: 'md'
-    },
-    {
-      key: 'status',
-      label: 'Estado',
-      type: 'select',
-      options: [{ value: 'all', label: 'Todos los Estados' }, ...filterOptions.statuses],
-      loading: filterOptions.statuses.length === 0,
-      width: 'sm'
     }
   ];
 
-  // **CARGAR OPCIONES DE FILTROS AL INICIALIZAR**
+  // **CARGAR CENTROS DE COSTO AL INICIALIZAR**
   useEffect(() => {
-    const loadFilterOptions = async () => {
+    const loadCostCenters = async () => {
       try {
-        console.log('🔄 Loading filter options...');
-        const options = await costsApiService.getFilterOptions();
-        setFilterOptions(options);
-        console.log('✅ Filter options loaded:', options);
+        setLoadingCostCenters(true);
+        console.log('🔄 Loading cost centers...');
+        const costCentersData = await getCostCenters();
+        setCostCenters(costCentersData);
+        console.log('✅ Cost centers loaded:', costCentersData);
       } catch (error) {
-        console.error('❌ Error loading filter options:', error);
-        // Usar opciones por defecto si falla
-        setFilterOptions({
-          projects: [
-            { value: 'proyecto-a', label: 'Proyecto A' },
-            { value: 'proyecto-b', label: 'Proyecto B' }
-          ],
-          costCenters: [
-            { value: 'cc-1', label: 'Centro 1' },
-            { value: 'cc-2', label: 'Centro 2' }
-          ],
-          categories: [
-            { value: 'cat-1', label: 'Remuneraciones' },
-            { value: 'cat-2', label: 'Materiales' }
-          ],
-          statuses: [
-            { value: 'pendiente', label: 'Pendiente' },
-            { value: 'aprobado', label: 'Aprobado' }
-          ]
-        });
+        console.error('❌ Error loading cost centers:', error);
+        setCostCenters([]); // Set empty array on error
+      } finally {
+        setLoadingCostCenters(false);
       }
     };
-    
+
     if (isAuthenticated && user) {
-      loadFilterOptions();
+      loadCostCenters();
     }
   }, [isAuthenticated, user]);
 
@@ -199,18 +179,28 @@ const CostsIndex = () => {
         setPeriods(periodData);
         console.log('✅ Periods generated:', periodData);
 
-        // **3. OBTENER DATOS POR PERÍODO**
-        console.log('🔄 Calling getCostsByPeriod with filters:', filters);
-        const periodDataFromAPI = await costsApiService.getCostsByPeriod(filters);
-        console.log('📊 Period data received:', periodDataFromAPI);
-        console.log('📊 Period data length:', periodDataFromAPI.length);
-        
-        if (periodDataFromAPI.length > 0) {
-          console.log('📊 Sample period data:', periodDataFromAPI.slice(0, 2));
+        // **3. CARGAR DATOS FINANCIEROS AGREGADOS PARA TARJETAS**
+        try {
+          const financialData = await FinancialAggregationService.getAllFinancialData({
+            periods: periodData,
+            year: selectedYear,
+            costCenterId: filters.costCenterId !== 'all' && filters.costCenterId ? parseInt(filters.costCenterId) : undefined
+          });
+
+          // Calcular totales anuales
+          const totals = {
+            remuneraciones: FinancialAggregationService.getTotalForCategory(financialData.remuneraciones),
+            factoring: FinancialAggregationService.getTotalForCategory(financialData.factoring),
+            previsionales: FinancialAggregationService.getTotalForCategory(financialData.previsionales),
+            costosFijos: FinancialAggregationService.getTotalForCategory(financialData.costosFijos)
+          };
+
+          setAggregatedFinancialData(totals);
+          console.log('✅ Aggregated financial data loaded:', totals);
+        } catch (error) {
+          console.error('❌ Error loading aggregated financial data:', error);
+          setAggregatedFinancialData({ remuneraciones: 0, factoring: 0, previsionales: 0, costosFijos: 0 });
         }
-        
-        setExpensesByDate(periodDataFromAPI);
-        console.log('✅ Period data loaded:', periodDataFromAPI);
 
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Error al cargar datos de costos';
@@ -223,6 +213,173 @@ const CostsIndex = () => {
 
     fetchCostsData();
   }, [filters, isAuthenticated, user, currentTenant]);
+
+  // **CARGAR DETALLES FINANCIEROS**
+  useEffect(() => {
+    const loadDetailedFinancialRecords = async () => {
+      if (!isAuthenticated || !user || activeTab !== 'details') {
+        return; // Solo cargar cuando estemos en el tab de detalles
+      }
+
+      try {
+        setLoadingDetails(true);
+        const selectedYear = parseInt(filters.year);
+        const costCenterFilter = filters.costCenterId !== 'all' && filters.costCenterId ? parseInt(filters.costCenterId) : undefined;
+
+        const allRecords: FinancialRecordItem[] = [];
+
+        // 1. CARGAR REMUNERACIONES
+        try {
+          for (let month = 1; month <= 12; month++) {
+            const remuneraciones = await getRemuneracionesByPeriod(month, selectedYear);
+            remuneraciones
+              .filter(rem => !costCenterFilter || rem.projectId === costCenterFilter)
+              .forEach(rem => {
+                const employeeName = rem.employeeName || 'Sin nombre';
+                allRecords.push({
+                  id: `rem-${rem.id}`,
+                  name: employeeName.charAt(0).toUpperCase() + employeeName.slice(1),
+                  category: 'Remuneraciones',
+                  date: rem.date || `${selectedYear}-${month.toString().padStart(2, '0')}-01`,
+                  amount: rem.sueldoLiquido || rem.amount || 0
+                });
+              });
+          }
+        } catch (error) {
+          console.error('Error loading remuneraciones:', error);
+        }
+
+        // 2. CARGAR FACTORING
+        try {
+          const factorings = await factoringService.getFactorings();
+          factorings
+            .filter(f => {
+              const factoringYear = new Date(f.date_factoring).getFullYear();
+              return factoringYear === selectedYear && (!costCenterFilter || f.cost_center_id === costCenterFilter);
+            })
+            .forEach(f => {
+              const mount = typeof f.mount === 'string' ? parseFloat(f.mount) : Number(f.mount);
+              const interestRate = typeof f.interest_rate === 'string' ? parseFloat(f.interest_rate) : Number(f.interest_rate);
+              const factoringCost = mount * (interestRate / 100);
+
+              allRecords.push({
+                id: `fact-${f.id}`,
+                name: `Estado de pago: ${f.payment_status || 'Sin estado'}`,
+                category: 'Factoring',
+                date: f.date_factoring,
+                amount: factoringCost
+              });
+            });
+        } catch (error) {
+          console.error('Error loading factoring:', error);
+        }
+
+        // 3. CARGAR PREVISIONALES
+        try {
+          const response = await previsionalesService.getPrevisionales({ limit: 10000 });
+          response.data
+            .filter(p => {
+              const previsionalYear = new Date(p.date).getFullYear();
+              return previsionalYear === selectedYear;
+            })
+            .forEach(p => {
+              const typeName = p.type.toUpperCase().replace('_', ' ');
+              const employeeName = p.employee_name || 'Sin nombre';
+              const capitalizedEmployeeName = employeeName.charAt(0).toUpperCase() + employeeName.slice(1);
+              allRecords.push({
+                id: `prev-${p.id}`,
+                name: `${typeName} - ${capitalizedEmployeeName}`,
+                category: 'Previsionales',
+                date: p.date,
+                amount: typeof p.amount === 'string' ? parseFloat(p.amount) : Number(p.amount)
+              });
+            });
+        } catch (error) {
+          console.error('Error loading previsionales:', error);
+        }
+
+        // 4. CARGAR COSTOS FIJOS
+        try {
+          const response = await getFixedCosts({}, 1, 10000);
+          response.data
+            .filter(cf => !costCenterFilter || cf.cost_center_id === costCenterFilter)
+            .forEach(cf => {
+              const startDate = new Date(cf.start_date);
+              const quotaCount = Number(cf.quota_count);
+              const quotaValue = typeof cf.quota_value === 'string' ? parseFloat(cf.quota_value) : Number(cf.quota_value);
+
+              // Generar un registro por cada cuota
+              for (let i = 0; i < quotaCount; i++) {
+                const paymentDate = new Date(startDate);
+                paymentDate.setMonth(startDate.getMonth() + i);
+
+                if (paymentDate.getFullYear() === selectedYear) {
+                  const costName = cf.name || 'Sin nombre';
+                  allRecords.push({
+                    id: `cf-${cf.id}-${i}`,
+                    name: costName.charAt(0).toUpperCase() + costName.slice(1),
+                    category: 'Costos Fijos',
+                    date: paymentDate.toISOString().split('T')[0],
+                    amount: quotaValue
+                  });
+                }
+              }
+            });
+        } catch (error) {
+          console.error('Error loading costos fijos:', error);
+        }
+
+        // 5. CARGAR ITEMS DE ÓRDENES DE COMPRA
+        try {
+          // Necesitamos cargar todas las órdenes de compra del año filtrado
+          // Como no tenemos un método directo para obtener todos los items por año,
+          // usaremos el servicio de categorías de cuenta para obtener los items
+          const categories = await import('../../services/accountCategoriesService').then(m => m.accountCategoriesService.getActiveCategories());
+
+          for (const category of categories) {
+            try {
+              const items = await import('../../services/CC/ordenesCompraItemService').then(m =>
+                m.getItemsByAccountCategory(category.id, {
+                  date_from: `${selectedYear}-01-01`,
+                  date_to: `${selectedYear}-12-31`
+                })
+              );
+
+              items
+                .filter(item => !costCenterFilter || item.cost_center_id === costCenterFilter)
+                .forEach(item => {
+                  const description = item.description || item.glosa || 'Sin descripción';
+                  allRecords.push({
+                    id: `oci-${item.id}`,
+                    name: description.charAt(0).toUpperCase() + description.slice(1),
+                    category: 'Orden de Compra',
+                    date: item.date,
+                    amount: typeof item.total === 'string' ? parseFloat(item.total) : Number(item.total)
+                  });
+                });
+            } catch (error) {
+              console.error(`Error loading items for category ${category.name}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading purchase order items:', error);
+        }
+
+        // Ordenar por fecha descendente
+        allRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        setDetailedFinancialRecords(allRecords);
+        console.log(`✅ Loaded ${allRecords.length} detailed financial records`);
+      } catch (error) {
+        console.error('❌ Error loading detailed financial records:', error);
+        setDetailedFinancialRecords([]);
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+
+    loadDetailedFinancialRecords();
+  }, [filters, isAuthenticated, user, activeTab]);
 
   // **FUNCIÓN PARA TRANSFORMAR DATOS**
   const transformCostItemsToFinancialRecords = (costItems: CostItem[]): FinancialRecordItem[] => {
@@ -266,15 +423,17 @@ const CostsIndex = () => {
     }));
   };
 
+  const handleSearch = () => {
+    console.log('🔍 Search button clicked - filters will be applied automatically');
+    // The useEffect will automatically trigger when filters change
+  };
+
   const handleClearFilters = () => {
     console.log('🔄 Clearing filters');
     setFilters({
       periodType: 'monthly',
       year: new Date().getFullYear().toString(),
-      projectId: 'all',
-      costCenterId: 'all',
-      categoryId: 'all',
-      status: 'all'
+      costCenterId: 'all'
     });
   };
 
@@ -333,13 +492,47 @@ const CostsIndex = () => {
     return 'Gestión de Costos';
   };
 
-  return (
-          <div className="w-full px-4 py-6">
-      <PageBreadcrumb pageTitle={getTitle()} titleSize="2xl" />
+  // **RENDERIZAR CONTENIDO DEL TAB ACTIVO**
+  const renderTabContent = () => {
+    if (loading) {
+      return (
+        <div className="flex h-60 items-center justify-center">
+          <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-brand-500 border-t-transparent"></div>
+        </div>
+      );
+    }
 
+    if (error) {
+      return (
+        <div className="rounded-sm border border-red-200 bg-red-50 p-4 text-center text-red-500 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-400">
+          <p>{error}</p>
+          <button
+            className="mt-4 rounded-md bg-brand-500 px-4 py-2 text-white"
+            onClick={() => window.location.reload()}
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
 
+    switch (activeTab) {
+      case 'overview':
+        return renderOverviewTab();
+      case 'financial':
+        return renderFinancialTab();
+      case 'details':
+        return renderDetailsTab();
+      default:
+        return renderOverviewTab();
+    }
+  };
+
+  // **TAB: VISTA GENERAL - Cards y categorías**
+  const renderOverviewTab = () => (
+    <>
       {/* **SUMMARY OVERVIEW** */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 mb-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mb-6">
         <ComponentCard title="Total de Gastos" className="bg-white dark:bg-gray-800 h-48">
           <div className="flex flex-col items-center justify-center h-full">
             <p className="text-3xl font-bold text-brand-500">
@@ -357,43 +550,91 @@ const CostsIndex = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400">Registros por procesar</p>
           </div>
         </ComponentCard>
-
-        <ComponentCard title="Importar Costos" className="bg-white dark:bg-gray-800 h-48">
-          <FileInput 
-            onChange={(event) => {
-              if (event.target.files && event.target.files[0]) {
-                handleFileUpload(event.target.files[0]);
-              }
-            }} 
-          />
-        </ComponentCard>
       </div>
 
-      {/* **FILTROS USANDO FilterPanel** */}
-      <FilterPanel
-        title="Filtros de Costos"
-        filters={filters}
-        filterConfigs={filterConfigs}
-        onFilterChange={handleFilterChange}
-        onClearFilters={handleClearFilters}
-        showClearButton={true}
-        loading={loading}
-        className="mb-6"
-      />
+      {/* **CATEGORÍAS PREDEFINIDAS (Remuneraciones, Factoring, Previsionales, Costos Fijos)** */}
+      {aggregatedFinancialData && (
+        <>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Categorías Principales</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+            {/* Remuneraciones */}
+            {aggregatedFinancialData.remuneraciones > 0 && (
+              <Link to="/costos/remuneraciones">
+                <div className="bg-white p-5 rounded-lg shadow hover:shadow-md transition-all dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-medium text-gray-800 dark:text-white text-sm">Remuneraciones</h3>
+                    <div className="flex items-center ml-2">
+                      <svg className="w-4 h-4 text-gray-400 hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-500 mb-1">{formatCurrency(aggregatedFinancialData.remuneraciones)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total anual</p>
+                </div>
+              </Link>
+            )}
 
-      {/* **TABLA FINANCIERA POR PERÍODOS** */}
-      <FinancialTable 
-        title={`Costos por mes`}
-        type="expense"
-        periods={periods}
-        data={expensesByDate}
-        loading={loading}
-        className="mb-6"
-      />
+            {/* Factoring */}
+            {aggregatedFinancialData.factoring > 0 && (
+              <Link to="/costos/factoring">
+                <div className="bg-white p-5 rounded-lg shadow hover:shadow-md transition-all dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-medium text-gray-800 dark:text-white text-sm">Factoring</h3>
+                    <div className="flex items-center ml-2">
+                      <svg className="w-4 h-4 text-gray-400 hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-500 mb-1">{formatCurrency(aggregatedFinancialData.factoring)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total anual</p>
+                </div>
+              </Link>
+            )}
 
-      {/* **CATEGORÍAS DE COSTOS** */}
-      <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Categorías de Costos</h2>
-      
+            {/* Previsionales */}
+            {aggregatedFinancialData.previsionales > 0 && (
+              <Link to="/costos/previsionales">
+                <div className="bg-white p-5 rounded-lg shadow hover:shadow-md transition-all dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-medium text-gray-800 dark:text-white text-sm">Previsionales</h3>
+                    <div className="flex items-center ml-2">
+                      <svg className="w-4 h-4 text-gray-400 hover:text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-green-500 mb-1">{formatCurrency(aggregatedFinancialData.previsionales)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total anual</p>
+                </div>
+              </Link>
+            )}
+
+            {/* Costos Fijos */}
+            {aggregatedFinancialData.costosFijos > 0 && (
+              <Link to="/costos/costos-fijos">
+                <div className="bg-white p-5 rounded-lg shadow hover:shadow-md transition-all dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-medium text-gray-800 dark:text-white text-sm">Costos Fijos</h3>
+                    <div className="flex items-center ml-2">
+                      <svg className="w-4 h-4 text-gray-400 hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-500 mb-1">{formatCurrency(aggregatedFinancialData.costosFijos)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total anual</p>
+                </div>
+              </Link>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* **CATEGORÍAS DE ÓRDENES DE COMPRA** */}
+      <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Categorías de Órdenes de Compra</h2>
+
       {/* Categorías con datos */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
         {costsData?.byCategoryData.map((category, index) => (
@@ -407,11 +648,11 @@ const CostsIndex = () => {
                   </svg>
                 </div>
               </div>
-              
+
               {category.category_group && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{category.category_group}</p>
               )}
-              
+
               <p className="text-2xl font-bold text-brand-500 mb-1">{formatCurrency(category.amount)}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">{category.count} registros</p>
             </div>
@@ -431,17 +672,17 @@ const CostsIndex = () => {
               className="text-sm text-brand-500 hover:text-brand-600 flex items-center gap-1"
             >
               {showEmptyCategories ? 'Ocultar' : 'Ver todas'}
-              <svg 
-                className={`w-4 h-4 transition-transform ${showEmptyCategories ? 'rotate-180' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className={`w-4 h-4 transition-transform ${showEmptyCategories ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
           </div>
-          
+
           {/* Mostrar siempre las primeras 3, luego el resto si showEmptyCategories */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {costsData.emptyCategoriesData
@@ -457,18 +698,18 @@ const CostsIndex = () => {
                         </svg>
                       </div>
                     </div>
-                    
+
                     {category.category_group && (
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{category.category_group}</p>
                     )}
-                    
+
                     <p className="text-lg font-bold text-gray-400 dark:text-gray-500">{formatCurrency(0)}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">Sin registros</p>
                   </div>
                 </Link>
               ))}
           </div>
-          
+
           {!showEmptyCategories && costsData.emptyCategoriesData.length > 3 && (
             <div className="mt-3 text-center">
               <button
@@ -481,14 +722,134 @@ const CostsIndex = () => {
           )}
         </div>
       )}
-      
-      {/* **TABLA DE COSTOS RECIENTES** */}
-      <h2 className="text-xl font-bold text-gray-800 dark:text-white my-6">Costos Recientes</h2>
-      <RecentFinancialTable 
-        data={costsData ? transformCostItemsToFinancialRecords(costsData.recentExpenses) : []}
-        loading={loading}
+    </>
+  );
+
+  // **TAB: TABLA FINANCIERA**
+  // Para expenses, data debe estar vacío ya que las filas vienen dinámicamente de:
+  // 1. Remuneraciones, Factoring, Previsionales, Costos Fijos (predefinidas)
+  // 2. Categorías de cuenta desde órdenes de compra (dinámicas)
+  const renderFinancialTab = () => {
+    // Título dinámico según el tipo de periodo
+    const getPeriodTitle = () => {
+      switch (filters.periodType) {
+        case 'weekly':
+          return 'Costos por semana';
+        case 'monthly':
+          return 'Costos por mes';
+        case 'quarterly':
+          return 'Costos por trimestre';
+        case 'annual':
+          return 'Costos anuales';
+        default:
+          return 'Costos por mes';
+      }
+    };
+
+    return (
+      <FinancialTable
+        title={getPeriodTitle()}
         type="expense"
+        periods={periods}
+        data={[]} // Vacío para expenses - las filas se generan dinámicamente
+        loading={loading}
+        className="mb-6"
+        year={parseInt(filters.year)}
+        costCenterId={filters.costCenterId !== 'all' ? parseInt(filters.costCenterId || '') : undefined}
+        periodType={filters.periodType}
       />
+    );
+  };
+
+  // **TAB: DETALLE - Tabla con costos recientes**
+  const renderDetailsTab = () => (
+    <div>
+      <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Detalle de Costos</h2>
+      <RecentFinancialTable
+        data={detailedFinancialRecords}
+        loading={loadingDetails}
+        type="expense"
+        showState={false}
+      />
+    </div>
+  );
+
+  return (
+    <div className="w-full px-4 py-6">
+      <PageBreadcrumb pageTitle={getTitle()} titleSize="2xl" />
+
+      {/* **FILTROS USANDO FilterPanel CON BOTÓN DE BÚSQUEDA** */}
+      <ComponentCard title="Filtros de Costos" className="mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          {filterConfigs.map(config => {
+            const currentValue = filters[config.key as keyof CostsFilters] || '';
+            const isDisabled = config.disabled || loading || loadingCostCenters;
+
+            if (config.type === 'select') {
+              let options: FilterOption[] = [];
+              if (typeof config.options === 'function') {
+                options = config.options();
+              } else if (config.options) {
+                options = config.options;
+              }
+
+              return (
+                <div key={config.key} className="md:col-span-1">
+                  <Label htmlFor={config.key}>
+                    {config.label}
+                    {config.loading && (
+                      <span className="ml-2 inline-flex items-center">
+                        <svg className="animate-spin h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </span>
+                    )}
+                  </Label>
+                  <Select
+                    options={options}
+                    defaultValue={currentValue}
+                    onChange={(value) => handleFilterChange(config.key, value)}
+                    placeholder={config.placeholder || `Seleccione ${config.label.toLowerCase()}`}
+                    disabled={isDisabled}
+                  />
+                </div>
+              );
+            }
+            return null;
+          })}
+
+          {/* Botón de limpiar filtros en la misma fila */}
+          <div className="md:col-span-2 flex gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearFilters}
+              disabled={loading}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Limpiar filtros
+            </Button>
+
+            {(filters.year !== new Date().getFullYear().toString() || filters.costCenterId !== 'all') && (
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 ml-2">
+                Filtros aplicados
+              </div>
+            )}
+          </div>
+        </div>
+      </ComponentCard>
+
+      {/* **TABS NAVIGATION** */}
+      <ChartTab tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* **TAB CONTENT** */}
+      <div className="mt-4">
+        {renderTabContent()}
+      </div>
     </div>
   );
 };

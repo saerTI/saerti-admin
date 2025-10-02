@@ -13,6 +13,14 @@ import projectApiService, {
 } from '../../services/projectService';
 import Button from '../../components/ui/button/Button';
 import CostsRealSection from '../../components/costs/CostsRealSection';
+import CashFlowFinancialTable from '../../components/tables/CashFlowFinancialTable';
+import RecentFinancialTable, { FinancialRecordItem } from '../../components/tables/RecentFinantialTable';
+import { getRemuneracionesByPeriod } from '../../services/CC/remuneracionesService';
+import { factoringService } from '../../services/factoringService';
+import { previsionalesService } from '../../services/CC/previsionalesService';
+import { getFixedCosts } from '../../services/CC/fixedCostsService';
+import { accountCategoriesService } from '../../services/accountCategoriesService';
+import { getItemsByAccountCategory } from '../../services/CC/ordenesCompraItemService';
 import Buttons from '../UiElements/Buttons';
 
 // Status translation and styling
@@ -44,6 +52,14 @@ const ProjectDetailView = () => {
   
   // Sub-pestaña para el flujo de caja
   const [cashFlowSubTab, setCashFlowSubTab] = useState<'planned' | 'real'>('planned');
+
+  // Estados para la tabla de flujo de caja
+  const [cashFlowPeriodType, setCashFlowPeriodType] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [cashFlowYear, setCashFlowYear] = useState<number>(new Date().getFullYear());
+
+  // Estados para la tabla de detalles de egresos
+  const [detailedFinancialRecords, setDetailedFinancialRecords] = useState<FinancialRecordItem[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   
   // Load project data
   useEffect(() => {
@@ -133,6 +149,166 @@ const ProjectDetailView = () => {
 
     fetchProjectCosts();
   }, [id, activeTab, cashFlowSubTab, costsFilters]);
+
+  // Load detailed financial records for costs real tab
+  useEffect(() => {
+    const loadDetailedFinancialRecords = async () => {
+      if (!id || activeTab !== 'cashflow' || cashFlowSubTab !== 'real') {
+        return;
+      }
+
+      try {
+        setLoadingDetails(true);
+        const projectId = parseInt(id);
+        const selectedYear = cashFlowYear;
+        const allRecords: FinancialRecordItem[] = [];
+
+        // 1. CARGAR REMUNERACIONES
+        try {
+          for (let month = 1; month <= 12; month++) {
+            const remuneraciones = await getRemuneracionesByPeriod(month, selectedYear);
+            remuneraciones
+              .filter(rem => rem.projectId === projectId)
+              .forEach(rem => {
+                const employeeName = rem.employeeName || 'Sin nombre';
+                allRecords.push({
+                  id: `rem-${rem.id}`,
+                  name: employeeName.charAt(0).toUpperCase() + employeeName.slice(1),
+                  category: 'Remuneraciones',
+                  date: rem.date || `${selectedYear}-${month.toString().padStart(2, '0')}-01`,
+                  amount: rem.sueldoLiquido || rem.amount || 0
+                });
+              });
+          }
+        } catch (error) {
+          console.error('Error loading remuneraciones:', error);
+        }
+
+        // 2. CARGAR FACTORING
+        try {
+          const factorings = await factoringService.getFactorings();
+          factorings
+            .filter(f => {
+              const factoringYear = new Date(f.date_factoring).getFullYear();
+              return factoringYear === selectedYear && f.cost_center_id === projectId;
+            })
+            .forEach(f => {
+              const mount = typeof f.mount === 'string' ? parseFloat(f.mount) : Number(f.mount);
+              const interestRate = typeof f.interest_rate === 'string' ? parseFloat(f.interest_rate) : Number(f.interest_rate);
+              const factoringCost = mount * (interestRate / 100);
+
+              allRecords.push({
+                id: `fact-${f.id}`,
+                name: `Estado de pago: ${f.payment_status || 'Sin estado'}`,
+                category: 'Factoring',
+                date: f.date_factoring,
+                amount: factoringCost
+              });
+            });
+        } catch (error) {
+          console.error('Error loading factoring:', error);
+        }
+
+        // 3. CARGAR PREVISIONALES
+        try {
+          const response = await previsionalesService.getPrevisionales({ limit: 10000 });
+          response.data
+            .filter(p => {
+              const previsionalYear = new Date(p.date).getFullYear();
+              return previsionalYear === selectedYear;
+            })
+            .forEach(p => {
+              const typeName = p.type.toUpperCase().replace('_', ' ');
+              const employeeName = p.employee_name || 'Sin nombre';
+              const capitalizedEmployeeName = employeeName.charAt(0).toUpperCase() + employeeName.slice(1);
+              allRecords.push({
+                id: `prev-${p.id}`,
+                name: `${typeName} - ${capitalizedEmployeeName}`,
+                category: 'Previsionales',
+                date: p.date,
+                amount: typeof p.amount === 'string' ? parseFloat(p.amount) : Number(p.amount)
+              });
+            });
+        } catch (error) {
+          console.error('Error loading previsionales:', error);
+        }
+
+        // 4. CARGAR COSTOS FIJOS
+        try {
+          const response = await getFixedCosts({}, 1, 10000);
+          response.data
+            .filter(cf => cf.cost_center_id === projectId)
+            .forEach(cf => {
+              const startDate = new Date(cf.start_date);
+              const quotaCount = Number(cf.quota_count);
+              const quotaValue = typeof cf.quota_value === 'string' ? parseFloat(cf.quota_value) : Number(cf.quota_value);
+
+              for (let i = 0; i < quotaCount; i++) {
+                const paymentDate = new Date(startDate);
+                paymentDate.setMonth(startDate.getMonth() + i);
+
+                if (paymentDate.getFullYear() === selectedYear) {
+                  const costName = cf.name || 'Sin nombre';
+                  allRecords.push({
+                    id: `cf-${cf.id}-${i}`,
+                    name: costName.charAt(0).toUpperCase() + costName.slice(1),
+                    category: 'Costos Fijos',
+                    date: paymentDate.toISOString().split('T')[0],
+                    amount: quotaValue
+                  });
+                }
+              }
+            });
+        } catch (error) {
+          console.error('Error loading costos fijos:', error);
+        }
+
+        // 5. CARGAR ITEMS DE ÓRDENES DE COMPRA
+        try {
+          const categories = await accountCategoriesService.getActiveCategories();
+
+          for (const category of categories) {
+            try {
+              const items = await getItemsByAccountCategory(category.id, {
+                date_from: `${selectedYear}-01-01`,
+                date_to: `${selectedYear}-12-31`
+              });
+
+              items
+                .filter(item => item.cost_center_id === projectId)
+                .forEach(item => {
+                  const description = item.description || item.glosa || 'Sin descripción';
+                  allRecords.push({
+                    id: `oci-${item.id}`,
+                    name: description.charAt(0).toUpperCase() + description.slice(1),
+                    category: 'Orden de Compra',
+                    date: item.date,
+                    amount: typeof item.total === 'string' ? parseFloat(item.total) : Number(item.total)
+                  });
+                });
+            } catch (error) {
+              console.error(`Error loading items for category ${category.name}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading purchase order items:', error);
+        }
+
+        // Ordenar por fecha descendente
+        allRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        setDetailedFinancialRecords(allRecords);
+        console.log(`✅ Loaded ${allRecords.length} detailed financial records for project ${projectId}`);
+      } catch (error) {
+        console.error('❌ Error loading detailed financial records:', error);
+        setDetailedFinancialRecords([]);
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+
+    loadDetailedFinancialRecords();
+  }, [id, activeTab, cashFlowSubTab, cashFlowYear]);
 
   // Function to refresh costs data
   const refreshCosts = async () => {
@@ -573,31 +749,9 @@ const ProjectDetailView = () => {
               </div>
             )}
             
-            {/* Cash Flow tab - AQUÍ ESTÁ LA NOVEDAD */}
+            {/* Cash Flow tab */}
             {activeTab === 'cashflow' && (
               <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-800 dark:text-white">Flujo de Caja</h3>
-                  <div className="space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-green-500 text-green-600 hover:bg-green-50 dark:text-green-400 dark:border-green-400"
-                      onClick={() => alert('Agregar ingreso - Implementar')}
-                    >
-                      + Ingreso
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-red-500 text-red-600 hover:bg-red-50 dark:text-red-400 dark:border-red-400"
-                      onClick={() => alert('Agregar gasto - Implementar')}
-                    >
-                      + Gasto
-                    </Button>
-                  </div>
-                </div>
-
                 {/* Sub-tabs para Cash Flow */}
                 <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                   <nav className="flex -mb-px">
@@ -626,221 +780,29 @@ const ProjectDetailView = () => {
                 
                 {/* Contenido según sub-tab */}
                 {cashFlowSubTab === 'planned' && (
-                  <>
-                    {/* Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
-                        <p className="text-sm text-green-600 dark:text-green-400">Ingresos Totales</p>
-                        <p className="text-xl font-bold text-green-700 dark:text-green-300">
-                          {formatCurrency(safeProject.totalIncome)}
-                        </p>
-                      </div>
-                      <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg">
-                        <p className="text-sm text-red-600 dark:text-red-400">Gastos Totales</p>
-                        <p className="text-xl font-bold text-red-700 dark:text-red-300">
-                          {formatCurrency(safeProject.totalExpense)}
-                        </p>
-                      </div>
-                      <div className={`p-4 rounded-lg ${safeProject.balance >= 0 ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-orange-50 dark:bg-orange-900/30'}`}>
-                        <p className={`text-sm ${safeProject.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>Balance</p>
-                        <p className={`text-xl font-bold ${safeProject.balance >= 0 ? 'text-blue-700 dark:text-blue-300' : 'text-orange-700 dark:text-orange-300'}`}>
-                          {formatCurrency(safeProject.balance)}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Income */}
-                    <div className="mb-8">
-                      <h4 className="text-md font-medium text-green-700 dark:text-green-400 mb-3">Ingresos</h4>
-                      {safeProject.cashFlow.income.length === 0 ? (
-                        <div className="text-center py-4 bg-gray-50 dark:bg-gray-700 rounded">
-                          <p className="text-gray-500 dark:text-gray-400">No hay ingresos registrados.</p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Cuenta Contable
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Categoría
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Fecha Planeada
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Fecha Real
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Monto
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Estado
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Acciones
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                              {safeProject.cashFlow.income.map((income) => (
-                                <tr key={income.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                  <td className="px-6 py-4">
-                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{income.name}</div>
-                                    {income.notes && (
-                                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{income.notes}</div>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                    {income.category?.name || 'No categorizado'}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                    {formatDate(income.plannedDate)}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                    {formatDate(income.actualDate)}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 dark:text-green-400">
-                                    {formatCurrency(income.amount)}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                      income.state === 'realized' 
-                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                    }`}>
-                                      {income.state === 'realized' ? 'Realizado' : 'Previsión'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end space-x-2">
-                                      <button
-                                        onClick={() => alert('Editar ingreso - Implementar')}
-                                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                      >
-                                        Editar
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteCashFlowLine(income.id, 'income')}
-                                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                      >
-                                        Eliminar
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Expenses */}
-                    <div>
-                      <h4 className="text-md font-medium text-red-700 dark:text-red-400 mb-3">Gastos</h4>
-                      {safeProject.cashFlow.expense.length === 0 ? (
-                        <div className="text-center py-4 bg-gray-50 dark:bg-gray-700 rounded">
-                          <p className="text-gray-500 dark:text-gray-400">No hay gastos registrados.</p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Cuenta Contable
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Categoría
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Fecha Planeada
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Fecha Real
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Monto
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Estado
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                  Acciones
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                              {safeProject.cashFlow.expense.map((expense) => (
-                                <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                  <td className="px-6 py-4">
-                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{expense.name}</div>
-                                    {expense.notes && (
-                                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{expense.notes}</div>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                    {expense.category?.name || 'No categorizado'}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                    {formatDate(expense.plannedDate)}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                    {formatDate(expense.actualDate)}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400">
-                                    {formatCurrency(expense.amount)}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                      expense.state === 'realized' 
-                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                    }`}>
-                                      {expense.state === 'realized' ? 'Realizado' : 'Previsión'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end space-x-2">
-                                      <Button
-                                        onClick={() => alert('Editar gasto - Implementar')}
-                                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                      >
-                                        Editar
-                                      </Button>
-                                      <button
-                                        onClick={() => handleDeleteCashFlowLine(expense.id, 'expense')}
-                                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                      >
-                                        Eliminar
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  </>
+                  <CashFlowFinancialTable
+                    title="Flujo de Caja - Ingresos y Egresos"
+                    periodType={cashFlowPeriodType}
+                    year={cashFlowYear}
+                    onPeriodTypeChange={setCashFlowPeriodType}
+                    onYearChange={setCashFlowYear}
+                    showExpenses={true}
+                    costCenterId={safeProject.id}
+                    className="mb-6"
+                  />
                 )}
 
-                {/* Costos Reales Tab - NUEVA FUNCIONALIDAD */}
+                {/* Costos Reales Tab */}
                 {cashFlowSubTab === 'real' && (
-                  <CostsRealSection
-                    projectId={safeProject.id}
-                    costs={costs}
-                    summary={costsSummary}
-                    dimensions={costsDimensions}
-                    filters={costsFilters}
-                    loading={costsLoading}
-                    onFiltersChange={setCostsFilters}
-                    onRefresh={refreshCosts}
-                  />
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Detalle de Costos Reales</h2>
+                    <RecentFinancialTable
+                      data={detailedFinancialRecords}
+                      loading={loadingDetails}
+                      type="expense"
+                      showState={false}
+                    />
+                  </div>
                 )}
               </div>
             )}
