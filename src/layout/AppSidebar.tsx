@@ -4,12 +4,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 // Icons
 import {
   BoxCubeIcon,
-  CalenderIcon,
   ChevronDownIcon,
   GridIcon,
-  HorizontaLDots,
   ListIcon,
-  PageIcon,
   PieChartIcon,
   PlugInIcon,
   TableIcon,
@@ -42,7 +39,7 @@ const navItems: NavItem[] = [
     name: "Ingresos/Egresos",
     subItems: [
       { name: "Ingresos", path: "/ingresos/index", pro: false },
-      { name: "Costos", path: "/costos/index", pro: false },
+      { name: "Egresos", path: "/costos/index", pro: false },
     ],
   },
   {
@@ -65,21 +62,21 @@ const navItems: NavItem[] = [
       { name: "Empleados", path: "/costos/empleados", pro: false },
     ],
   },
-  {
-    icon: <Calculator />,
-    name: 'Análisis IA',
-    path: '/budget-analysis', // Cambiar href por path
-  },
-  {
-    name: "Forms",
-    icon: <ListIcon />,
-    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
-  },
-  {
-    name: "Tables",
-    icon: <TableIcon />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  },
+  // {
+  //   icon: <Calculator />,
+  //   name: 'Análisis IA',
+  //   path: '/budget-analysis', // Cambiar href por path
+  // },
+  // {
+  //   name: "Forms",
+  //   icon: <ListIcon />,
+  //   subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
+  // },
+  // {
+  //   name: "Tables",
+  //   icon: <TableIcon />,
+  //   subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+  // },
 ];
 
 const othersItems: NavItem[] = [

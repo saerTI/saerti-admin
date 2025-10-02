@@ -552,7 +552,7 @@ const FactoringPage = () => {
                     {formatPercent(factoring.interest_rate / 100)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white">
-                    {formatCurrency(factoring.mount * (100 - factoring.interest_rate) / 100)}
+                    {formatCurrency(factoring.mount * (factoring.interest_rate) / 100)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {factoring.costCenter.name || 'Sin centro de costo'}

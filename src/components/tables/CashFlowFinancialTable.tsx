@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../utils/formatters';
 import ingresosApiService from '../../services/ingresosService';
+import { FinancialAggregationService } from '../../services/financialAggregationService';
+import { accountCategoriesService } from '../../services/accountCategoriesService';
 import {
   Table,
   TableBody,
@@ -36,6 +38,7 @@ export interface CashFlowFinancialTableProps {
   className?: string;
   showBadges?: boolean;
   showExpenses?: boolean; // Para futuro uso con gastos
+  costCenterId?: number; // Optional cost center filter
 }
 
 /**
@@ -175,7 +178,8 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
   loading = false,
   className = '',
   showBadges = false,
-  showExpenses = false
+  showExpenses = false,
+  costCenterId
 }) => {
   const [data, setData] = useState<CashFlowCategory[]>([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -194,25 +198,12 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
     { title: 'Otros Ingresos', categoryId: 8, path: '/ingresos/categoria/otros' },
   ];
 
-  // Expense categories (from EgresosIndex)
-  const expenseCategories = [
-    { title: 'Remuneraciones', categoryId: 1, path: '/costos/remuneraciones' },
-    { title: 'Cotizaciones Previsionales', categoryId: 2, path: '/costos/previsionales' },
-    { title: 'Alimentación y Hospedaje', categoryId: 3, path: '/costos/servicios-alimentacion-hospedaje' },
-    { title: 'Leasing y Maquinaria', categoryId: 4, path: '/costos/leasing-pagos-maquinaria' },
-    { title: 'Subcontratos Crédito', categoryId: 5, path: '/costos/subcontratos-credito' },
-    { title: 'Subcontratos Contado', categoryId: 6, path: '/costos/subcontratos-contado' },
-    { title: 'OC Crédito', categoryId: 7, path: '/costos/ordenes-compra' },
-    { title: 'OC Contado', categoryId: 8, path: '/costos/oc-contado' },
-    { title: 'Contratos Notariales', categoryId: 9, path: '/costos/contratos-notariales' },
-    { title: 'Costos Fijos', categoryId: 10, path: '/costos/costos-fijos' },
-    { title: 'Costos Variables', categoryId: 11, path: '/costos/costos-variables' },
-    { title: 'Pago Rendiciones', categoryId: 12, path: '/costos/pago-rendiciones' },
-    { title: 'Impuestos', categoryId: 13, path: '/costos/impuestos' },
-    { title: 'Seguros y Pólizas', categoryId: 14, path: '/costos/seguros-polizas' },
-    { title: 'Certificaciones', categoryId: 15, path: '/costos/certificaciones-capacitaciones' },
-    { title: 'Estudios y Asesorías', categoryId: 16, path: '/costos/estudios-asesorias' },
-    { title: 'Gastos Imprevistos', categoryId: 17, path: '/costos/imprevistos' },
+  // Predefined expense categories
+  const predefinedExpenseCategories = [
+    { title: 'Remuneraciones', key: 'remuneraciones', path: '/costos/remuneraciones' },
+    { title: 'Factoring', key: 'factoring', path: '/costos/factoring' },
+    { title: 'Previsionales', key: 'previsionales', path: '/costos/previsionales' },
+    { title: 'Costos Fijos', key: 'costosFijos', path: '/costos/costos-fijos' },
   ];
 
   // Generate periods based on periodType and year
@@ -238,29 +229,6 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
     
     setPeriods(newPeriods);
   }, [periodType, year]);
-
-  // Helper function to generate mock expense data (similar to EgresosIndex)
-  const generateMockExpenseData = async (category: any, periods: CashFlowPeriod[]): Promise<CashFlowCategory> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    const periodAmounts: Record<string, number> = {};
-    
-    // Generate random amounts for each period (similar to EgresosIndex logic)
-    periods.forEach(period => {
-      // Generate a random amount or 0 (some cells might be empty)
-      periodAmounts[period.id] = Math.random() > 0.2 
-        ? Math.floor(Math.random() * 50000000) + 100000 
-        : 0;
-    });
-
-    return {
-      category: category.title,
-      path: category.path,
-      type: 'expense' as const,
-      amounts: periodAmounts
-    };
-  };
 
   // Load cash flow data
   useEffect(() => {
@@ -310,16 +278,76 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
 
         const incomeData = await Promise.all(incomeDataPromises);
 
-        // Generate expense data when showExpenses is true
+        // Load real expense data when showExpenses is true
         let allData: CashFlowCategory[] = [...incomeData];
-        
+
         if (showExpenses) {
-          console.log('🔄 Loading expense data...');
-          const expenseDataPromises = expenseCategories.map(category => 
-            generateMockExpenseData(category, periods)
-          );
-          const expenseData = await Promise.all(expenseDataPromises);
-          allData = [...incomeData, ...expenseData];
+          console.log('🔄 Loading expense data from FinancialAggregationService...');
+
+          try {
+            // Convert periods to the format expected by FinancialAggregationService
+            const financialPeriods = periods.map(p => ({
+              id: p.id,
+              label: p.label,
+              isDateRange: p.isDateRange
+            }));
+
+            // Load financial data using the aggregation service
+            const financialData = await FinancialAggregationService.getAllFinancialData({
+              periods: financialPeriods,
+              year: year,
+              costCenterId: costCenterId // Apply cost center filter if provided
+            });
+
+            console.log('📊 Financial data loaded:', financialData);
+
+            // Convert predefined categories to CashFlowCategory format
+            const expenseData: CashFlowCategory[] = [];
+
+            // Add predefined expense categories
+            for (const category of predefinedExpenseCategories) {
+              const amounts = financialData[category.key] || {};
+              const hasData = Object.values(amounts).some(amt => amt > 0);
+
+              if (hasData) {
+                expenseData.push({
+                  category: category.title,
+                  path: category.path,
+                  type: 'expense',
+                  amounts: amounts
+                });
+              }
+            }
+
+            // Load and add account categories (from purchase orders)
+            try {
+              const accountCategories = await accountCategoriesService.getActiveCategories();
+              console.log('📋 Account categories loaded:', accountCategories.length);
+
+              for (const accCategory of accountCategories) {
+                const categoryKey = FinancialAggregationService.generateCategoryKey(accCategory);
+                const amounts = financialData[categoryKey];
+
+                if (amounts && Object.values(amounts).some(amt => amt > 0)) {
+                  expenseData.push({
+                    category: accCategory.name,
+                    path: `/costos/categoria/${accCategory.id}`,
+                    type: 'expense',
+                    amounts: amounts
+                  });
+                }
+              }
+            } catch (error) {
+              console.warn('⚠️ Error loading account categories:', error);
+            }
+
+            console.log(`✅ Loaded ${expenseData.length} expense categories with data`);
+            allData = [...incomeData, ...expenseData];
+          } catch (error) {
+            console.error('❌ Error loading expense data:', error);
+            // Keep only income data on error
+            allData = [...incomeData];
+          }
         }
 
         setData(allData);
@@ -334,7 +362,7 @@ const CashFlowFinancialTable: React.FC<CashFlowFinancialTableProps> = ({
     };
 
     fetchCashFlowData();
-  }, [periods, periodType, year, showExpenses]);
+  }, [periods, periodType, year, showExpenses, costCenterId]);
 
   // Helper function to get date range for a specific period
   const getPeriodDateRange = (period: CashFlowPeriod, periodType: string, year: number): { startDate: string; endDate: string } | null => {

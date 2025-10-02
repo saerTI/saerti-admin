@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { Table, TableHeader, TableBody, TableRow, TableCell } from '../ui/table';
 import { formatCurrency } from '../../utils/formatters';
 import Badge from '../ui/badge/Badge';
+import { FinancialAggregationService, FinancialDataByPeriod } from '../../services/financialAggregationService';
+import { useEffect, useState } from 'react';
 
 // Existing interfaces...
 export interface FinancialPeriod {
@@ -26,9 +28,16 @@ interface FinancialTableProps {
   loading?: boolean;
   className?: string;
   showBadges?: boolean;
+  year?: number; // Add year prop to help with data fetching
+  costCenterId?: number; // Add cost center filter
+  periodType?: 'weekly' | 'monthly' | 'quarterly' | 'annual'; // Add period type
 }
 
 // Utility functions
+const capitalizeText = (text: string): string => {
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+};
+
 const calculatePeriodTotals = (data: FinancialCategory[], periods: FinancialPeriod[]): Record<string, number> => {
   const totals: Record<string, number> = {};
   
@@ -124,11 +133,93 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
   data,
   loading = false,
   className = '',
-  showBadges = false
+  showBadges = false,
+  year = new Date().getFullYear(),
+  costCenterId
 }) => {
+  const [financialData, setFinancialData] = useState<FinancialDataByPeriod>({
+    remuneraciones: {},
+    factoring: {},
+    previsionales: {},
+    costosFijos: {}
+  });
+  const [loadingFinancialData, setLoadingFinancialData] = useState(false);
+  const [dynamicCategories, setDynamicCategories] = useState<FinancialCategory[]>([]);
+
+  // Load all expense data when component mounts or periods change
+  useEffect(() => {
+    if (type === 'expense' && periods.length > 0) {
+      loadAllFinancialData();
+    }
+  }, [type, periods, year, costCenterId]);
+
+  const loadAllFinancialData = async () => {
+    setLoadingFinancialData(true);
+    try {
+      const data = await FinancialAggregationService.getAllFinancialData({
+        periods,
+        year,
+        costCenterId
+      });
+      setFinancialData(data);
+
+      // Extract dynamic categories from account categories data
+      const dynamicCategoriesData = await FinancialAggregationService.convertToFinancialCategories(data);
+      setDynamicCategories(dynamicCategoriesData);
+
+      console.log('Financial data loaded:', data);
+      console.log('Dynamic categories loaded:', dynamicCategoriesData);
+    } catch (error) {
+      console.error('Error loading financial data:', error);
+      setDynamicCategories([]);
+    } finally {
+      setLoadingFinancialData(false);
+    }
+  };
+
+  // Add predefined rows for expenses at the beginning
+  const predefinedExpenseRows: FinancialCategory[] = type === 'expense' ? [
+    {
+      category: 'Remuneraciones',
+      amounts: financialData.remuneraciones,
+      path: '/costos/remuneraciones'
+    },
+    {
+      category: 'Factoring',
+      amounts: financialData.factoring,
+      path: '/costos/factoring'
+    },
+    {
+      category: 'Previsionales',
+      amounts: financialData.previsionales,
+      path: '/costos/previsionales'
+    },
+    {
+      category: 'Costos Fijos',
+      amounts: financialData.costosFijos,
+      path: '/costos/costos-fijos'
+    }
+  ] : [];
+
+  // Combine predefined rows with dynamic categories (data prop should be empty for expenses)
+  const allData = type === 'expense'
+    ? [
+        ...predefinedExpenseRows,
+        ...dynamicCategories
+      ]
+    : data; // For income, use the data prop as-is
+
+  // Filter to show only rows with data (at least one non-zero amount)
+  const combinedData = allData.filter(item => {
+    const hasData = Object.values(item.amounts).some(amount => amount > 0);
+    return hasData;
+  });
+
+
+
   // Calculate totals
-  const periodTotals = calculatePeriodTotals(data, periods);
-  const categoryTotals = calculateCategoryTotals(data);
+  const periodTotals = calculatePeriodTotals(combinedData, periods);
+  const categoryTotals = calculateCategoryTotals(combinedData);
   const grandTotal = Object.values(periodTotals).reduce((sum, amount) => sum + amount, 0);
 
   // Calculate accumulated totals
@@ -156,7 +247,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
         </div>
       )}
       
-      {loading ? (
+      {(loading || loadingFinancialData) ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
         </div>
@@ -205,7 +296,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
             {/* ✅ BODY CON CORRECCIONES DE HOVER */}
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] bg-white dark:bg-gray-800">
               {/* ✅ DATA ROWS - HOVER CORREGIDO */}
-              {data.map((item, index) => (
+              {combinedData.map((item, index) => (
                 <TableRow 
                   key={index} 
                   className="group hover:!bg-gray-50 dark:hover:!bg-white/[0.02] transition-colors duration-150"
@@ -216,7 +307,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                       to={item.path}
                       className="text-brand-500 hover:text-brand-600 dark:text-brand-400 hover:underline"
                     >
-                      {item.category}
+                      {capitalizeText(item.category)}
                     </Link>
                   </TableCell>
                   
@@ -226,7 +317,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                       key={pIndex}
                       className={`px-5 py-3 text-right text-sm text-gray-500 dark:text-gray-300 ${period.isDateRange ? 'align-middle' : ''}`}
                     >
-                      {item.amounts[period.id] > 0 ? (
+                      {(item.amounts[period.id] !== undefined && item.amounts[period.id] !== null && item.amounts[period.id] > 0) ? (
                         showBadges ? (
                           <Badge
                             variant="light"
