@@ -22,7 +22,7 @@ export interface CategoryFinancialData {
 }
 
 export interface ExpandedFinancialDataByPeriod extends FinancialDataByPeriod {
-  accountCategories: CategoryFinancialData;
+  // Removed 'accountCategories' to avoid type conflict with index signature
 }
 
 export interface FinancialAggregationOptions {

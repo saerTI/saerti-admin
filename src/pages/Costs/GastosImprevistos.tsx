@@ -173,8 +173,8 @@ const GastosImprevistos = () => {
             </label>
             <select
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring focus:ring-brand-500 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={filters.category || ''}
-              onChange={(e) => handleFilterChange('category', e.target.value)}
+              value={filters.emergencyLevel || ''}
+              onChange={(e) => handleFilterChange('emergencyLevel', e.target.value)}
             >
               <option value="">Todos</option>
               <option value="low">Baja</option>

@@ -1,5 +1,6 @@
 // src/services/cashFlowService.ts - Integrado con Remuneraciones
 import api from './apiService';
+import ingresosApiService from './ingresosService';
 
 // ==========================================
 // TYPES & INTERFACES
@@ -860,37 +861,96 @@ class CashFlowApiService {
     return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
   }
 
+  /**
+   * Crear un nuevo item de flujo de caja
+   */
+  async createCashFlowItem(data: { date: string; description: string; categoryId: number; amount: number; type: 'income' | 'expense' }): Promise<any> {
+    try {
+      if (data.type === 'income') {
+        // Crear ingreso
+        const ingresoData = {
+          document_number: `CF-${Date.now()}`, // Generar número de documento único
+          ep_detail: data.description,
+          client_name: 'Flujo de Caja Manual', // Cliente por defecto
+          client_tax_id: '99999999-9', // RUT por defecto
+          ep_total: data.amount,
+          total_amount: data.amount,
+          date: data.date,
+          category_id: data.categoryId,
+          state: 'activo' as const,
+          payment_status: 'pagado' as const
+        };
+
+        const result = await ingresosApiService.createIngreso(ingresoData);
+        return result.data;
+      } else {
+        // Para gastos, por ahora no implementado
+        throw new Error('La creación de gastos desde flujo de caja no está implementada aún. Use el módulo de costos.');
+      }
+    } catch (error) {
+      console.error('Error creating cash flow item:', error);
+      throw new Error(error instanceof Error ? error.message : 'Error al crear item de flujo de caja');
+    }
+  }
+
+  /**
+   * Actualizar un item existente de flujo de caja
+   */
+  async updateCashFlowItem(id: number, data: { date: string; description: string; categoryId: number; amount: number; type: 'income' | 'expense' }): Promise<any> {
+    try {
+      if (data.type === 'income') {
+        // Actualizar ingreso
+        const ingresoData = {
+          ep_detail: data.description,
+          ep_total: data.amount,
+          total_amount: data.amount,
+          date: data.date,
+          category_id: data.categoryId
+        };
+
+        const result = await ingresosApiService.updateIngreso(id, ingresoData);
+        return result.data;
+      } else {
+        // Para gastos, por ahora no implementado
+        throw new Error('La actualización de gastos desde flujo de caja no está implementada aún. Use el módulo de costos.');
+      }
+    } catch (error) {
+      console.error('Error updating cash flow item:', error);
+      throw new Error(error instanceof Error ? error.message : 'Error al actualizar item de flujo de caja');
+    }
+  }
+
   private generatePeriodsForYear(year: string, periodType: string): string[] {
     const periods: string[] = [];
     const yearNum = parseInt(year);
-    
+
     switch (periodType) {
       case 'monthly':
         for (let month = 1; month <= 12; month++) {
           periods.push(`${year}-${month.toString().padStart(2, '0')}`);
         }
         break;
-        
+
       case 'weekly':
         for (let week = 1; week <= 52; week++) {
           periods.push(`${year}-W${week.toString().padStart(2, '0')}`);
         }
         break;
-        
+
       case 'quarterly':
         for (let quarter = 1; quarter <= 4; quarter++) {
           periods.push(`${year}-Q${quarter}`);
         }
         break;
-        
+
       case 'annual':
         periods.push(year);
         break;
-        
+
       default:
         periods.push(year);
     }
-    
+
     return periods;
   }
 }

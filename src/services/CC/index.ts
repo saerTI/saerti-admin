@@ -1,22 +1,52 @@
 // src/services/CC/index.ts
-import remuneracionesService, { 
-  Remuneracion, 
-  RemuneracionFilter, 
-  RemuneracionCreateData, 
-  RemuneracionUpdateData 
-} from './remuneracionesService';
+import remuneracionesService from './remuneracionesService';
+import { Remuneracion, RemuneracionFilter, RemuneracionCreateData, RemuneracionUpdateData } from '../../types/CC/remuneracion';
 
-import previsionalesService, { 
-  Previsional, 
-  PrevisionalFilter, 
-  PrevisionalCreateData, 
-  PrevisionalUpdateData 
-} from './previsionalesService';
+import { previsionalesService } from './previsionalesService';
+import { Previsional, PrevisionalImportItem, NewPrevisionalData, UpdatePrevisionalData } from '../../types/CC/previsional';
+
+import empleadosService from './empleadosService';
+
+import {
+  getFixedCosts,
+  getFixedCostById,
+  createFixedCost,
+  updateFixedCost,
+  deleteFixedCost,
+  updatePaidQuotas,
+  getFixedCostsStats
+} from './fixedCostsService';
+
+import ordenesCompraItemService, { purchaseOrderItemsService } from './ordenesCompraItemService';
+
+import ordenesCompraService, { createOrdenesCompraBatch } from './ordenesCompraService';
+
+import {
+  parseFechaChilena,
+  parseMontoChileno,
+  extraerItemsDesdeCSV,
+  OrdenCompraItemCreateWithOrderNumber
+} from './parseItemsFromCsv';
 
 // Exportar servicios
 export {
   remuneracionesService,
-  previsionalesService
+  previsionalesService,
+  empleadosService,
+  getFixedCosts,
+  getFixedCostById,
+  createFixedCost,
+  updateFixedCost,
+  deleteFixedCost,
+  updatePaidQuotas,
+  getFixedCostsStats,
+  ordenesCompraItemService,
+  purchaseOrderItemsService,
+  ordenesCompraService,
+  createOrdenesCompraBatch,
+  parseFechaChilena,
+  parseMontoChileno,
+  extraerItemsDesdeCSV
 };
 
 // Exportar tipos
@@ -26,13 +56,32 @@ export type {
   RemuneracionCreateData,
   RemuneracionUpdateData,
   Previsional,
-  PrevisionalFilter,
-  PrevisionalCreateData,
-  PrevisionalUpdateData
+  NewPrevisionalData,
+  UpdatePrevisionalData,
+  OrdenCompraItemCreateWithOrderNumber
 };
 
 // Exportación por defecto para uso con import * as CCServices from './CC'
 export default {
   remuneracionesService,
-  previsionalesService
+  previsionalesService,
+  empleadosService,
+  fixedCostsService: {
+    getFixedCosts,
+    getFixedCostById,
+    createFixedCost,
+    updateFixedCost,
+    deleteFixedCost,
+    updatePaidQuotas,
+    getFixedCostsStats
+  },
+  ordenesCompraItemService,
+  purchaseOrderItemsService,
+  ordenesCompraService,
+  createOrdenesCompraBatch,
+  parseItemsFromCsv: {
+    parseFechaChilena,
+    parseMontoChileno,
+    extraerItemsDesdeCSV
+  }
 };
