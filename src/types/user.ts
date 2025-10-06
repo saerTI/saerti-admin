@@ -1,4 +1,4 @@
-// src/types/user.ts - Versión extendida
+// src/types/user.ts - Versión extendida con compatibilidad Clerk
 
 export type UserRole = 'admin' | 'manager' | 'user';
 
@@ -10,15 +10,24 @@ export interface User {
   active: boolean;
   created_at: string;
   updated_at: string;
-  // Nuevos campos para MetaCard
+  
+  // Campos de perfil (ya existentes)
   avatar?: string;
   position?: string;
   location?: string;
-  // Nuevos campos para AddressCard
+  
+  // Campos de dirección (ya existentes)
   country?: string;
   city?: string;
   postal_code?: string;
   address?: string;
+  
+  // ✅ NUEVOS: Campos adicionales para compatibilidad con Clerk
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  phone?: string;
+  company?: string;
 }
 
 export interface CreateUserData {
@@ -32,6 +41,11 @@ export interface CreateUserData {
   city?: string;
   postal_code?: string;
   address?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  phone?: string;
+  company?: string;
 }
 
 export interface UpdateUserData {
@@ -46,6 +60,11 @@ export interface UpdateUserData {
   city?: string;
   postal_code?: string;
   address?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  phone?: string;
+  company?: string;
 }
 
 export interface UpdateProfileData {
@@ -53,13 +72,18 @@ export interface UpdateProfileData {
   email?: string;
   currentPassword?: string;
   newPassword?: string;
-  // Nuevos campos para perfil
   position?: string;
   location?: string;
   country?: string;
   city?: string;
   postal_code?: string;
   address?: string;
+  // ✅ NUEVOS: Campos para actualizar perfil con Clerk
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  phone?: string;
+  company?: string;
 }
 
 // Nuevas interfaces para actualizar información específica
@@ -68,10 +92,18 @@ export interface UpdateMetaData {
   position?: string;
   location?: string;
   avatar?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  phone?: string;
+  company?: string;
 }
 
 export interface UpdateAddressData {
   address?: string;
+  country?: string;
+  city?: string;
+  postal_code?: string;
 }
 
 export interface LoginCredentials {
@@ -84,6 +116,10 @@ export interface RegisterData {
   email: string;
   password: string;
   role?: UserRole;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  phone?: string;
 }
 
 export interface AuthResponse {
@@ -180,4 +216,31 @@ export const getRoleDisplayName = (role: UserRole): string => {
 export const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
+};
+
+// ✅ NUEVO: Helper para mapear usuario de Clerk a User local
+export const mapClerkUserToLocal = (clerkUser: any): User => {
+  return {
+    id: parseInt(clerkUser.id) || 0,
+    email: clerkUser.primaryEmailAddress?.emailAddress || '',
+    name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 
+          clerkUser.username || 
+          'Usuario',
+    firstName: clerkUser.firstName || '',
+    lastName: clerkUser.lastName || '',
+    username: clerkUser.username || clerkUser.primaryEmailAddress?.emailAddress?.split('@')[0] || '',
+    avatar: clerkUser.imageUrl || '',
+    phone: clerkUser.primaryPhoneNumber?.phoneNumber || '',
+    role: (clerkUser.publicMetadata?.role as UserRole) || 'user',
+    company: clerkUser.publicMetadata?.company as string || '',
+    position: clerkUser.publicMetadata?.position as string || '',
+    location: clerkUser.publicMetadata?.location as string || '',
+    country: clerkUser.publicMetadata?.country as string || '',
+    city: clerkUser.publicMetadata?.city as string || '',
+    postal_code: clerkUser.publicMetadata?.postal_code as string || '',
+    address: clerkUser.publicMetadata?.address as string || '',
+    active: true,
+    created_at: clerkUser.createdAt || new Date().toISOString(),
+    updated_at: clerkUser.updatedAt || new Date().toISOString(),
+  };
 };

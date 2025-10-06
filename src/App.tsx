@@ -1,7 +1,6 @@
-// src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import PrivateRoute from "./components/auth/PrivateRoute";
+import ClerkProtectedRoute from "./components/auth/ClerkProtectedRoute";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
@@ -23,8 +22,6 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import CashFlow from "./pages/CashFlow/CashFlow";
 import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
-
-// Import placeholder components for Gastos pages
 
 import Cotizaciones from "./pages/Costs/Cotizaciones";
 import Previsionales from "./pages/Costs/Previsionales";
@@ -54,19 +51,6 @@ import { IngresosForm } from "./pages/Ingresos/IngresosForm";
 import IngresosFormDetail from "./pages/Ingresos/IngresosDetail";
 import IngresosCategoryDetail from "./pages/Ingresos/IngresosCategoryDetail";
 import IngresosIndex from "./pages/Ingresos/IngresosIndex";
-// import ServiciosAlimentacionHospedaje from "./pages/Gastos/ServiciosAlimentacionHospedaje";
-// import LeasingPagosMaquinaria from "./pages/Gastos/LeasingPagosMaquinaria";
-// import ContratosNotariales from "./pages/Gastos/ContratosNotariales";
-// import CostosFijos from "./pages/Gastos/CostosFijos";
-// import CostosVariables from "./pages/Gastos/CostosVariables";
-// import PagoRendiciones from "./pages/Gastos/PagoRendiciones";
-// import Impuestos from "./pages/Gastos/Impuestos";
-// import SegurosPolizas from "./pages/Gastos/SegurosPolizas";
-// import CertificacionesCapacitaciones from "./pages/Gastos/CertificacionesCapacitaciones";
-// import EstudiosAsesorias from "./pages/Gastos/EstudiosAsesorias";
-// import OCContado from "./pages/Gastos/OCContado";
-
-
 
 export default function App() {
   return (
@@ -74,441 +58,293 @@ export default function App() {
       <AuthProvider>
         <ScrollToTop />
         <Routes>
-          {/* Auth Routes */}
-          <Route path="/auth/signin" element={<SignIn />} />
-          <Route path="/auth/signup" element={<SignUp />} />
+          {/* Auth Routes - Redirigir al landing si alguien intenta acceder */}
+          <Route 
+            path="/auth/signin" 
+            element={<Navigate to="http://localhost:3000/sign-in" replace />} 
+          />
+          <Route 
+            path="/auth/signup" 
+            element={<Navigate to="http://localhost:3000/sign-up" replace />} 
+          />
           
           {/* Protected Dashboard Layout */}
           <Route element={<AppLayout />}>
+            {/* Dashboard */}
             <Route path="/" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Home />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             
-            {/* Cash Flow - protected route */}
+            {/* Cash Flow */}
             <Route path="/cash-flow" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <CashFlow />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
 
-            {/* Rutas de Centros de Costo */}
+            {/* Centros de Costo */}
             <Route path="/cost-centers" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <ProjectList />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/cost-centers/new" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <ProjectForm />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/cost-centers/:id" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <ProjectDetails />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/cost-centers/:id/edit" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <ProjectForm />
-              </PrivateRoute>
-            } />
-            
-            {/* Rutas de Gastos */}
-            <Route path="/costos/index" element={
-              <PrivateRoute>
-                <EgresossIndex />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
 
+            {/* Budget Analyzer */}
+            <Route path="/budget-analysis" element={
+              <ClerkProtectedRoute>
+                <BudgetAnalyzer />
+              </ClerkProtectedRoute>
+            } />
+
+            {/* Costos - Index */}
+            <Route path="/costos" element={
+              <ClerkProtectedRoute>
+                <EgresossIndex />
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/costos/index" element={
+              <ClerkProtectedRoute>
+                <EgresossIndex />
+              </ClerkProtectedRoute>
+            } />
+
+            {/* Costos Fijos */}
+            <Route path="/costos/costos-fijos" element={
+              <ClerkProtectedRoute>
+                <CostosFijos />
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/costos/costos-fijos/:id" element={
+              <ClerkProtectedRoute>
+                <CostosFijosDetail />
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/costos/costos-fijos/:id/edit" element={
+              <ClerkProtectedRoute>
+                <CostosFijosEdicion />
+              </ClerkProtectedRoute>
+            } />
+
+            {/* Empleados */}
+            <Route path="/costos/empleados" element={
+              <ClerkProtectedRoute>
+                <Empleados />
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/costos/empleados/new" element={
+              <ClerkProtectedRoute>
+                <EmpleadosNuevo />
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/costos/empleados/:id" element={
+              <ClerkProtectedRoute>
+                <EmpleadosDetalle />
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/costos/empleados/:id/edit" element={
+              <ClerkProtectedRoute>
+                <EmpleadosEdición />
+              </ClerkProtectedRoute>
+            } />
+
+            {/* Otros Costos */}
             <Route path="/costos/cotizaciones" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Cotizaciones />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/previsionales" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Previsionales />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/remuneraciones" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Remuneraciones />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/remuneraciones/:id" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <RemuneracionesDetail />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/remuneraciones/:id/edit" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <RemuneracionesForm />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/subcontratos-credito" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <SubcontratosCredito />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/subcontratos-contado" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <SubcontratosContado />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/imprevistos" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <GastosImprevistos />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
+            
+            {/* Órdenes de Compra */}
             <Route path="/costos/ordenes-compra" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <OrdenesCompra />
-              </PrivateRoute>
-            } />
-            <Route path="/costos/ordenes-compra/:id" element={
-              <PrivateRoute>
-                <OrdenCompraDetail />
-              </PrivateRoute>
-            } />
-            <Route path="/costos/ordenes-compra/:id/edit" element={
-              <PrivateRoute>
-                <OrdenCompraEdicion />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/costos/ordenes-compra/new" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <OrdenCompraForm />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
-            <Route path="/costos/factoring" element={
-              <PrivateRoute>
-                <Factoring />
-              </PrivateRoute>
-            } />
-            
-
-            <Route path="/costos/costos-fijos" element={
-              <PrivateRoute>
-                <CostosFijos />
-              </PrivateRoute>
-            } />
-             <Route path="/costos/costos-fijos/:id" element={
-              <PrivateRoute>
-                <CostosFijosDetail />
-              </PrivateRoute>
-            } />
-             <Route path="/costos/costos-fijos/:id/edit" element={
-              <PrivateRoute>
-                <CostosFijosEdicion />
-              </PrivateRoute>
-            } />
-            <Route path="/costos/empleados" element={
-              <PrivateRoute>
-                <Empleados />
-              </PrivateRoute>
-            } />
-            <Route path="/costos/empleados/new" element={
-              <PrivateRoute>
-                <EmpleadosNuevo />
-              </PrivateRoute>
-            } />
-            <Route path="/costos/empleados/:id" element={
-              <PrivateRoute>
-                <EmpleadosDetalle />
-              </PrivateRoute>
-            } />
-            <Route path="/costos/empleados/:id/edit" element={
-              <PrivateRoute>
-                <EmpleadosEdición />
-              </PrivateRoute>
-            } />
-
-            {/* Rutas de Egresos */}
-            <Route path="/costos/index" element={
-              <PrivateRoute>
-                <EgresossIndex />
-              </PrivateRoute>
-            } />
-
-            <Route path="/costos/costos-fijos" element={
-              <PrivateRoute>
-                <CostosFijos />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/costos-fijos/:id" element={
-              <PrivateRoute>
-                <CostosFijosDetail />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/costos-fijos/:id/editar" element={
-              <PrivateRoute>
-                <CostosFijosEdicion />
-              </PrivateRoute>
-            } />
-
-            <Route path="/costos/cotizaciones" element={
-              <PrivateRoute>
-                <Cotizaciones />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/previsionales" element={
-              <PrivateRoute>
-                <Previsionales />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/remuneraciones" element={
-              <PrivateRoute>
-                <Remuneraciones />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/remuneraciones/:id" element={
-              <PrivateRoute>
-                <RemuneracionesDetail />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/remuneraciones/:id/edit" element={
-              <PrivateRoute>
-                <RemuneracionesForm />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/subcontratos-credito" element={
-              <PrivateRoute>
-                <SubcontratosCredito />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/subcontratos-contado" element={
-              <PrivateRoute>
-                <SubcontratosContado />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/imprevistos" element={
-              <PrivateRoute>
-                <GastosImprevistos />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/ordenes-compra" element={
-              <PrivateRoute>
-                <OrdenesCompra />
-              </PrivateRoute>
-            } />
-            
             <Route path="/costos/ordenes-compra/:id" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <OrdenCompraDetail />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/costos/ordenes-compra/:id/edit" element={
+              <ClerkProtectedRoute>
+                <OrdenCompraEdicion />
+              </ClerkProtectedRoute>
             } />
             
             <Route path="/costos/factoring" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Factoring />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/empleados" element={
-              <PrivateRoute>
-                <Empleados />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/empleados/new" element={
-              <PrivateRoute>
-                <EmpleadosNuevo />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/empleados/:id" element={
-              <PrivateRoute>
-                <EmpleadosDetalle />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/costos/empleados/:id/edit" element={
-              <PrivateRoute>
-                <EmpleadosEdición />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
 
-            <Route path="/budget-analysis" element={
-              <PrivateRoute>
-                <BudgetAnalyzer />
-              </PrivateRoute>
-            } />
-
-            {/* <Route path="/gastos/oc-contado" element={
-              <PrivateRoute>
-                <OCContado />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/servicios-alimentacion-hospedaje" element={
-              <PrivateRoute>
-                <ServiciosAlimentacionHospedaje />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/leasing-pagos-maquinaria" element={
-              <PrivateRoute>
-                <LeasingPagosMaquinaria />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/contratos-notariales" element={
-              <PrivateRoute>
-                <ContratosNotariales />
-              </PrivateRoute>
-            } />
-            
-            <Route path="/gastos/costos-variables" element={
-              <PrivateRoute>
-                <CostosVariables />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/pago-rendiciones" element={
-              <PrivateRoute>
-                <PagoRendiciones />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/impuestos" element={
-              <PrivateRoute>
-                <Impuestos />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/seguros-polizas" element={
-              <PrivateRoute>
-                <SegurosPolizas />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/certificaciones-capacitaciones" element={
-              <PrivateRoute>
-                <CertificacionesCapacitaciones />
-              </PrivateRoute>
-            } />
-            <Route path="/gastos/estudios-asesorias" element={
-              <PrivateRoute>
-                <EstudiosAsesorias />
-              </PrivateRoute>
-            } /> */}
-
-            {/* Rutas de Ingresos */}
+            {/* Ingresos */}
             <Route path="/ingresos" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <IngresosIndex />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/ingresos/index" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <IngresosIndex />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/ingresos/new" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <IngresosForm />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/ingresos/categoria/:category" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <IngresosCategoryDetail />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/ingresos/:id" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <IngresosFormDetail />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/ingresos/editar/:id" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <IngresosForm />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
-            
-            {/* Other protected routes */}
+
+            {/* Profile & Other Pages */}
             <Route path="/profile" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <UserProfiles />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/calendar" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Calendar />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/blank" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Blank />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             
             {/* Forms */}
             <Route path="/form-elements" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <FormElements />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             
             {/* Tables */}
             <Route path="/basic-tables" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <BasicTables />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             
-            {/* Ui Elements */}
+            {/* UI Elements */}
             <Route path="/alerts" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Alerts />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/avatars" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Avatars />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/badge" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Badges />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/buttons" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Buttons />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/images" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Images />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/videos" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <Videos />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             
             {/* Charts */}
             <Route path="/line-chart" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <LineChart />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/bar-chart" element={
-              <PrivateRoute>
+              <ClerkProtectedRoute>
                 <BarChart />
-              </PrivateRoute>
+              </ClerkProtectedRoute>
             } />
           </Route>
           
-          {/* Redirect /signin to /auth/signin for compatibility */}
-          <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
-          <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
+          {/* Redirect legacy auth routes */}
+          <Route path="/signin" element={<Navigate to="http://localhost:3000/sign-in" replace />} />
+          <Route path="/signup" element={<Navigate to="http://localhost:3000/sign-up" replace />} />
           
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

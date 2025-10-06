@@ -1,10 +1,7 @@
-// src/services/apiService.ts
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import config from '../utils/config';
+import axios, { AxiosError } from 'axios';
 
-// Usar la configuración del archivo config.ts
-const API_BASE_URL = config.apiUrl;
-const API_TIMEOUT = config.apiTimeout;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
 // Create axios instance
 const apiClient = axios.create({
@@ -13,65 +10,64 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
-// Interceptor for auth token
+// Request interceptor - añadir token de Clerk
 apiClient.interceptors.request.use(
   async (config) => {
-    // Get token from localStorage
-    const token = localStorage.getItem('auth_token');
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;      
-    }
-
-    // Ensure path starts with /api, but doesn't duplicate it
-    if (config.url && !config.url.startsWith('/api') && !config.url.startsWith('http')) {
-      config.url = `/api${config.url}`;
+    try {
+      // Obtener instancia de Clerk desde window
+      const clerk = (window as any).Clerk;
+      
+      if (clerk?.session) {
+        // Obtener JWT token de Clerk
+        const token = await clerk.session.getToken();
+        
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting Clerk token:', error);
     }
     
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor for handling token expiration
+// Response interceptor
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as typeof error.config & { _retry?: boolean };
     
-    // Handle 401 Unauthorized errors (token expired)
+    // Handle 401 Unauthorized errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
       try {
-        // Try to refresh token
-        const refreshToken = localStorage.getItem('refresh_token');
+        // Intentar obtener un token fresco de Clerk
+        const clerk = (window as any).Clerk;
         
-        if (refreshToken) {
-          // Ensure proper path for refresh token endpoint
-          const refreshUrl = `/api/auth/refresh`;
-          const response = await axios.post(`${API_BASE_URL}${refreshUrl}`, {
-            refreshToken
-          });
+        if (clerk?.session) {
+          const token = await clerk.session.getToken({ skipCache: true });
           
-          const { token } = response.data;
-          localStorage.setItem('auth_token', token);
-          
-          // Retry the original request with new token
-          if (originalRequest.headers) {
+          if (token && originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${token}`;
+            return axios(originalRequest);
           }
-          
-          return axios(originalRequest);
         }
       } catch (refreshError) {
-        // If refresh fails, redirect to login
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/auth/signin';
+        console.error('Error refreshing Clerk token:', refreshError);
       }
+      
+      // Si no se pudo refrescar el token, redirigir al landing
+      window.location.href = 'http://localhost:3000/sign-in?redirect_url=' + 
+        encodeURIComponent('http://localhost:5173' + window.location.pathname);
     }
     
     return Promise.reject(error);
@@ -90,7 +86,6 @@ export const api = {
     return response.data;
   },
   
-  // ✅ NUEVO: Método específico para FormData
   postFormData: async <T>(url: string, formData: FormData, config: any = {}) => {
     const response = await apiClient.post<T>(url, formData, {
       ...config,
@@ -117,7 +112,7 @@ export const api = {
     return response.data;
   },
   
-  // To allow more control when needed
+  // Direct access to axios instance if needed
   request: apiClient
 };
 

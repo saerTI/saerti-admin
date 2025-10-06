@@ -1,16 +1,22 @@
-// src/context/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService } from '../services/authService';
-import { User, LoginCredentials, RegisterData, UpdateProfileData, UpdateMetaData, UpdateAddressData } from '../types/user';
+import { createContext, useContext, ReactNode, useState } from 'react';
+import { useUser, useClerk } from '@clerk/clerk-react';
+import { 
+  User, 
+  LoginCredentials, 
+  RegisterData, 
+  UpdateProfileData,
+  UpdateMetaData,
+  UpdateAddressData,
+  mapClerkUserToLocal // ✅ Importar el helper
+} from '../types/user';
 
-// Define the Auth context type
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
   
-  // Authentication methods
+  // Authentication methods (deprecados pero mantenidos para compatibilidad)
   login: (email: string, password: string) => Promise<boolean>;
   loginWithCredentials: (credentials: LoginCredentials) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
@@ -27,214 +33,177 @@ interface AuthContextType {
   clearError: () => void;
 }
 
-// Create the context with a default value
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
-  login: async () => false,
-  loginWithCredentials: async () => {},
-  register: async () => {},
-  logout: async () => {},
-  updateProfile: async () => {},
-  updateMeta: async () => {},
-  updateAddress: async () => {},
-  uploadAvatar: async () => {},
-  refreshUser: async () => {},
-  clearError: () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Custom hook to use the auth context
-export const useAuth = () => useContext(AuthContext);
-
-// Provider component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
+  const { signOut, openSignIn } = useClerk();
   const [error, setError] = useState<string | null>(null);
 
-  // Check authentication on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  // Check if user is already logged in
-  const checkAuth = async () => {
-    try {
-      if (authService.isAuthenticated()) {
-        const userData = await authService.validateToken();
-        setUser(userData);
-      }
-    } catch (err) {
-      console.error('Error checking authentication:', err);
-      // Clear invalid token
-      authService.clearAuth();
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // ✅ Usar el helper para mapear el usuario
+  const user: User | null = clerkUser ? mapClerkUserToLocal(clerkUser) : null;
 
   // Clear error
   const clearError = () => {
     setError(null);
   };
 
-  // Login function (mantener tu interfaz original)
+  // Login - redirige a Clerk SignIn
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await authService.login({ email, password });
-      const userData = response.data.user;
-      setUser(userData);
-      setIsLoading(false);
-      return true;
-    } catch (err: any) {
-      console.error('Login error:', err);
-      let errorMessage = 'Error al iniciar sesión';
-      
-      // Extract error message from response
-      if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (typeof err === 'string') {
-        errorMessage = err;
-      }
-      
-      setError(errorMessage);
-      setIsLoading(false);
-      return false;
-    }
+    console.warn('login() está deprecado con Clerk. Usa el flujo de Clerk.');
+    openSignIn({ redirectUrl: 'http://localhost:5173' });
+    return false;
   };
 
-  // Login with credentials object (para compatibilidad con nuevos componentes)
+  // Login with credentials - redirige a Clerk SignIn
   const loginWithCredentials = async (credentials: LoginCredentials): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await authService.login(credentials);
-      const userData = response.data.user;
-      setUser(userData);
-    } catch (err: any) {
-      console.error('Login error:', err);
-      const errorMessage = err?.response?.data?.message || 'Error al iniciar sesión';
-      setError(errorMessage);
-      throw err; // Re-throw para que el componente que llama pueda manejarlo
-    } finally {
-      setIsLoading(false);
-    }
+    console.warn('loginWithCredentials() está deprecado con Clerk. Usa el flujo de Clerk.');
+    openSignIn({ redirectUrl: 'http://localhost:5173' });
   };
 
-  // Register function
+  // Register - redirige a Clerk SignUp
   const register = async (userData: RegisterData): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await authService.register(userData);
-      const newUser = response.data.user;
-      setUser(newUser);
-    } catch (err: any) {
-      console.error('Registration error:', err);
-      const errorMessage = err?.response?.data?.message || 'Error al registrar usuario';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
+    console.warn('register() está deprecado con Clerk. Usa el flujo de Clerk.');
+    window.location.href = 'http://localhost:3000/sign-up';
   };
 
-  // Logout function
+  // Logout
   const logout = async (): Promise<void> => {
     try {
-      await authService.logout();
+      await signOut();
+      window.location.href = 'http://localhost:3000';
     } catch (err) {
       console.error('Logout error:', err);
-    } finally {
-      setUser(null);
-      setError(null);
+      setError('Error al cerrar sesión');
     }
   };
 
-  // Update profile function
+  // Profile management - usar metadata de Clerk
   const updateProfile = async (data: UpdateProfileData): Promise<void> => {
     setError(null);
     try {
-      const updatedUser = await authService.updateProfile(data);
-      setUser(updatedUser);
+      if (!clerkUser) {
+        throw new Error('No user logged in');
+      }
+
+      // Actualizar usando la API de Clerk
+      await clerkUser.update({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        username: data.username,
+      });
+
+      // Actualizar metadata pública si hay campos adicionales
+      if (data.position || data.location || data.company || data.phone) {
+        await clerkUser.update({
+          unsafeMetadata: {
+            ...clerkUser.unsafeMetadata,
+            position: data.position,
+            location: data.location,
+            company: data.company,
+            phone: data.phone,
+          }
+        });
+      }
     } catch (err: any) {
       console.error('Update profile error:', err);
-      const errorMessage = err?.response?.data?.message || 'Error al actualizar perfil';
+      const errorMessage = 'Error al actualizar perfil';
       setError(errorMessage);
       throw err;
     }
   };
 
-  // Update user meta information
   const updateMeta = async (data: UpdateMetaData): Promise<void> => {
     setError(null);
     try {
-      const updatedUser = await authService.updateMeta(data);
-      setUser(updatedUser);
+      if (!clerkUser) {
+        throw new Error('No user logged in');
+      }
+
+      // Actualizar campos básicos de Clerk
+      if (data.firstName || data.lastName || data.username) {
+        await clerkUser.update({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          username: data.username,
+        });
+      }
+
+      // Actualizar metadata pública
+      await clerkUser.update({
+        unsafeMetadata: {
+          ...clerkUser.unsafeMetadata,
+          position: data.position,
+          location: data.location,
+          company: data.company,
+          phone: data.phone,
+        }
+      });
     } catch (err: any) {
       console.error('Update meta error:', err);
-      const errorMessage = err?.response?.data?.message || 'Error al actualizar información del perfil';
+      const errorMessage = 'Error al actualizar información del perfil';
       setError(errorMessage);
       throw err;
     }
   };
 
-  // Update user address information
   const updateAddress = async (data: UpdateAddressData): Promise<void> => {
     setError(null);
     try {
-      const updatedUser = await authService.updateAddress(data);
-      setUser(updatedUser);
+      if (!clerkUser) {
+        throw new Error('No user logged in');
+      }
+
+      await clerkUser.update({
+        unsafeMetadata: {
+          ...clerkUser.unsafeMetadata,
+          address: data.address,
+          country: data.country,
+          city: data.city,
+          postal_code: data.postal_code,
+        }
+      });
     } catch (err: any) {
       console.error('Update address error:', err);
-      const errorMessage = err?.response?.data?.message || 'Error al actualizar dirección';
+      const errorMessage = 'Error al actualizar dirección';
       setError(errorMessage);
       throw err;
     }
   };
 
-  // Upload avatar
   const uploadAvatar = async (file: File): Promise<void> => {
     setError(null);
     try {
-      const updatedUser = await authService.uploadAvatar(file);
-      setUser(updatedUser);
+      if (!clerkUser) {
+        throw new Error('No user logged in');
+      }
+
+      await clerkUser.setProfileImage({ file });
     } catch (err: any) {
       console.error('Upload avatar error:', err);
-      const errorMessage = err?.response?.data?.message || 'Error al subir avatar';
+      const errorMessage = 'Error al subir avatar';
       setError(errorMessage);
       throw err;
     }
   };
 
-  // Refresh user data
   const refreshUser = async (): Promise<void> => {
     try {
-      if (user) {
-        const userData = await authService.getCurrentUser();
-        setUser(userData);
-      }
+      await clerkUser?.reload();
     } catch (err) {
       console.error('Error refreshing user:', err);
     }
   };
 
-  // Create context value object
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
-    isLoading,
+    isAuthenticated: !!clerkUser && isUserLoaded,
+    isLoading: !isUserLoaded,
     error,
     
     // Authentication methods
-    login, // Tu método original
-    loginWithCredentials, // Nuevo método para compatibilidad
+    login,
+    loginWithCredentials,
     register,
     logout,
     
@@ -252,5 +221,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Export the context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
+
 export default AuthContext;
