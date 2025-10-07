@@ -1,10 +1,7 @@
-// ========================================
-// PASO 4: saerti-admin/src/services/apiService.ts (ACTUALIZAR)
-// ========================================
-import axios, { AxiosError } from 'axios';
-import { useAuth } from '@clerk/clerk-react';
+// saerti-admin/src/services/apiService.ts
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
 // Create axios instance
@@ -17,27 +14,38 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// ✅ AHORA USAR @clerk/clerk-react en vez de window.Clerk
+// ✅ FUNCIÓN PARA OBTENER TOKEN DIRECTAMENTE DESDE CLERK
+let getTokenFunction: (() => Promise<string | null>) | null = null;
+
+export const setClerkTokenGetter = (getter: () => Promise<string | null>) => {
+  getTokenFunction = getter;
+};
+
+// Request interceptor
 apiClient.interceptors.request.use(
-  async (config) => {
+  async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = sessionStorage.getItem('clerk_token');
-      
-      console.log('[API Request]', {
-        url: config.url,
-        method: config.method,
-        hasToken: !!token,
-        tokenPrefix: token ? token.substring(0, 30) + '...' : 'NO TOKEN'
-      });
-      
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      // ✅ Obtener token fresco desde Clerk
+      if (getTokenFunction) {
+        const token = await getTokenFunction();
+        
+        console.log('[API Request]', {
+          url: config.url,
+          method: config.method,
+          hasToken: !!token,
+          tokenPrefix: token ? token.substring(0, 30) + '...' : 'NO TOKEN'
+        });
+        
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        } else {
+          console.error('[API] ❌ NO SE PUDO OBTENER TOKEN DE CLERK');
+        }
       } else {
-        console.error('[API] ❌ NO HAY TOKEN EN SESSIONSTORAGE');
-        console.log('[API] SessionStorage keys:', Object.keys(sessionStorage));
+        console.error('[API] ❌ getTokenFunction NO ESTÁ CONFIGURADA');
       }
     } catch (error) {
-      console.error('[API] ❌ Error en interceptor:', error);
+      console.error('[API] ❌ Error obteniendo token:', error);
     }
     
     return config;
@@ -67,11 +75,9 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401) {
       console.error('[API] 🚨 401 UNAUTHORIZED - Token inválido o expirado');
-      sessionStorage.removeItem('clerk_token');
       
+      // Redirigir al sign-in de tu app Next.js
       const redirectUrl = encodeURIComponent(window.location.href);
-      console.log('[API] Redirigiendo a login...', redirectUrl);
-      
       window.location.href = `http://localhost:3000/sign-in?redirect_url=${redirectUrl}`;
     }
     

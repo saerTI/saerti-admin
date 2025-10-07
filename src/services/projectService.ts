@@ -43,7 +43,7 @@ export const getProjects = async (filters: ProjectFilter = {}): Promise<Project[
     });
 
     const queryString = queryParams.toString();
-    const endpoint = `/api/projects${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/projects${queryString ? `?${queryString}` : ''}`;
 
     const res = await api.get<ProjectsResponse>(endpoint);
     return res.data;
@@ -56,7 +56,7 @@ export const getProjects = async (filters: ProjectFilter = {}): Promise<Project[
 // Get project by ID
 export const getProjectById = async (id: number): Promise<ProjectDetail> => {
   try {
-    const response = await api.get<{success: boolean, data: ProjectDetail}>(`/api/projects/${id}`);
+    const response = await api.get<{success: boolean, data: ProjectDetail}>(`/projects/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching project ${id}:`, error);
@@ -83,7 +83,7 @@ export const createProject = async (data: ProjectCreateData): Promise<number> =>
     console.log('📤 Creating project with status:', data.status);
     console.log('📤 Full data being sent:', JSON.stringify(backendData, null, 2));
 
-    const response = await api.post<{success: boolean, data: {id: number}}>(`/api/projects`, backendData);
+    const response = await api.post<{success: boolean, data: {id: number}}>(`/projects`, backendData);
     
     // Invalidar cualquier caché de lista de proyectos
     removeFromApiCache(/projects-list/);
@@ -112,7 +112,7 @@ export const updateProject = async (id: number, data: Partial<ProjectCreateData>
       backendData.expectedEndDate = new Date(backendData.expectedEndDate).toISOString().split('T')[0];
     }
 
-    await api.put(`/api/projects/${id}`, backendData);
+    await api.put(`/projects/${id}`, backendData);
     
     // Invalidar cachés relacionadas con este proyecto
     removeFromApiCache(`project-detail-${id}`);
@@ -128,7 +128,7 @@ export const updateProject = async (id: number, data: Partial<ProjectCreateData>
 // Delete project
 export const deleteProject = async (id: number): Promise<boolean> => {
   try {
-    await api.delete(`/api/projects/${id}`);
+    await api.delete(`/projects/${id}`);
     
     // Invalidar cachés relacionadas con este proyecto
     removeFromApiCache(`project-detail-${id}`);
@@ -146,7 +146,7 @@ export const updateProjectStatus = async (id: number, status: string): Promise<b
   try {
     console.log('📤 Updating status to:', status);
     
-    await api.put(`/api/projects/${id}/status`, { status });
+    await api.put(`/projects/${id}/status`, { status });
     
     // Invalidar cachés relacionadas con este proyecto
     removeFromApiCache(`project-detail-${id}`);
@@ -162,7 +162,7 @@ export const updateProjectStatus = async (id: number, status: string): Promise<b
 // Check code availability
 export const checkCodeAvailability = async (code: string): Promise<CodeAvailabilityResponse> => {
   try {
-    const response = await api.get<CodeAvailabilityResponse>(`/api/projects/check-code/${code}`);
+    const response = await api.get<CodeAvailabilityResponse>(`/projects/check-code/${code}`);
     return response;
   } catch (error) {
     console.error(`Error checking code availability:`, error);
@@ -176,7 +176,7 @@ export const checkCodeAvailability = async (code: string): Promise<CodeAvailabil
 
 export const getProjectMilestones = async (projectId: number): Promise<Milestone[]> => {
   try {
-    const response = await api.get<{success: boolean, data: Milestone[]}>(`/api/projects/${projectId}/milestones`);
+    const response = await api.get<{success: boolean, data: Milestone[]}>(`/projects/${projectId}/milestones`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching milestones for project ${projectId}:`, error);
@@ -186,7 +186,7 @@ export const getProjectMilestones = async (projectId: number): Promise<Milestone
 
 export const createMilestone = async (projectId: number, data: Omit<Milestone, 'id'>): Promise<number> => {
   try {
-    const response = await api.post<{success: boolean, data: {id: number}}>(`/api/projects/${projectId}/milestones`, data);
+    const response = await api.post<{success: boolean, data: {id: number}}>(`/projects/${projectId}/milestones`, data);
     removeFromApiCache(`project-detail-${projectId}`);
     return response.data.id;
   } catch (error) {
@@ -197,7 +197,7 @@ export const createMilestone = async (projectId: number, data: Omit<Milestone, '
 
 export const updateMilestone = async (id: number, data: MilestoneUpdateData): Promise<boolean> => {
   try {
-    await api.put(`/api/milestones/${id}`, data);
+    await api.put(`/milestones/${id}`, data);
     removeFromApiCache(/project-detail/);
     return true;
   } catch (error) {
@@ -208,7 +208,7 @@ export const updateMilestone = async (id: number, data: MilestoneUpdateData): Pr
 
 export const deleteMilestone = async (id: number): Promise<boolean> => {
   try {
-    await api.delete(`/api/milestones/${id}`);
+    await api.delete(`/milestones/${id}`);
     removeFromApiCache(/project-detail/);
     return true;
   } catch (error) {
@@ -227,7 +227,7 @@ export const createCashFlowLine = async (
   data: CashFlowLineCreateData
 ): Promise<number> => {
   try {
-    const response = await api.post<{success: boolean, data: {id: number}}>(`/api/projects/${projectId}/cashflow/${type}`, data);
+    const response = await api.post<{success: boolean, data: {id: number}}>(`/projects/${projectId}/cashflow/${type}`, data);
     removeFromApiCache(`project-detail-${projectId}`);
     return response.data.id;
   } catch (error) {
@@ -242,7 +242,7 @@ export const updateCashFlowLine = async (
   data: Partial<CashFlowLineCreateData>
 ): Promise<boolean> => {
   try {
-    await api.put(`/api/cashflow/${type}/${lineId}`, data);
+    await api.put(`/cashflow/${type}/${lineId}`, data);
     removeFromApiCache(/project-detail/);
     return true;
   } catch (error) {
@@ -253,7 +253,7 @@ export const updateCashFlowLine = async (
 
 export const deleteCashFlowLine = async (lineId: number): Promise<boolean> => {
   try {
-    await api.delete(`/api/cashflow/${lineId}`);
+    await api.delete(`/cashflow/${lineId}`);
     removeFromApiCache(/project-detail/);
     return true;
   } catch (error) {
@@ -330,7 +330,7 @@ export const getProjectCostsSpecific = async (projectId: number, filters: CostFi
       }
     });
 
-    const endpoint = `/api/projects/${projectId}/costs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const endpoint = `/projects/${projectId}/costs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await api.get<PaginatedCostsResponse>(endpoint);
     
     return response;
@@ -345,7 +345,7 @@ export const getProjectCostsSpecific = async (projectId: number, filters: CostFi
  */
 export const getProjectCostsDimensionsSpecific = async (projectId: number): Promise<CostsDimensions> => {
   try {
-    const response = await api.get<{ success: boolean; data: CostsDimensions }>(`/api/projects/${projectId}/costs/dimensions`);
+    const response = await api.get<{ success: boolean; data: CostsDimensions }>(`/projects/${projectId}/costs/dimensions`);
     return response.data;
   } catch (error) {
     console.error(`Error obteniendo dimensiones de costos del proyecto ${projectId}:`, error);
@@ -358,7 +358,7 @@ export const getProjectCostsDimensionsSpecific = async (projectId: number): Prom
  */
 export const getProjectCostsAnalysis = async (projectId: number) => {
   try {
-    const response = await api.get<any>(`/api/projects/${projectId}/costs/analysis`);
+    const response = await api.get<any>(`/projects/${projectId}/costs/analysis`);
     return response.data;
   } catch (error) {
     console.error(`Error obteniendo análisis de costos del proyecto ${projectId}:`, error);
@@ -371,7 +371,7 @@ export const getProjectCostsAnalysis = async (projectId: number) => {
  */
 export const getProjectCostsSummarySpecific = async (projectId: number): Promise<any> => {
   try {
-    const response = await api.get<{ success: boolean; data: any }>(`/api/projects/${projectId}/costs/summary`);
+    const response = await api.get<{ success: boolean; data: any }>(`/projects/${projectId}/costs/summary`);
     return response.data;
   } catch (error) {
     console.error(`Error obteniendo resumen de costos del proyecto ${projectId}:`, error);

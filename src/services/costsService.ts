@@ -433,7 +433,7 @@ export const costsApiService = {
     // const ordenes = await getMockOrdenesCompra();
     // return ordenes.find(orden => orden.id === id) || null;
     try {
-        const response = await api.get<{success: boolean, data: IOrdenCompraDetail}>(`/api/ordenes-compra/${id}`);
+        const response = await api.get<{success: boolean, data: IOrdenCompraDetail}>(`/ordenes-compra/${id}`);
         console.log('🔍 Orden de compra fetched:', response.data);
         return response.data;
       } catch (error) {
