@@ -19,11 +19,7 @@ import FinancialTable, {
   generateQuarterPeriods
 } from '../../components/tables/FinancialTable';
 import { FinancialAggregationService } from '../../services/financialAggregationService';
-import { getRemuneracionesByPeriod } from '../../services/CC/remuneracionesService';
 import { factoringService } from '../../services/factoringService';
-import { previsionalesService } from '../../services/CC/previsionalesService';
-import { getFixedCosts } from '../../services/CC/fixedCostsService';
-import { listItems } from '../../services/CC/ordenesCompraItemService';
 import FileInput from '../../components/form/input/FileInput';
 import RecentFinancialTable from '../../components/tables/RecentFinantialTable';
 import { useAuth } from '../../context/AuthContext';
@@ -228,26 +224,7 @@ const CostsIndex = () => {
 
         const allRecords: FinancialRecordItem[] = [];
 
-        // 1. CARGAR REMUNERACIONES
-        try {
-          for (let month = 1; month <= 12; month++) {
-            const remuneraciones = await getRemuneracionesByPeriod(month, selectedYear);
-            remuneraciones
-              .filter(rem => !costCenterFilter || rem.projectId === costCenterFilter)
-              .forEach(rem => {
-                const employeeName = rem.employeeName || 'Sin nombre';
-                allRecords.push({
-                  id: `rem-${rem.id}`,
-                  name: employeeName.charAt(0).toUpperCase() + employeeName.slice(1),
-                  category: 'Remuneraciones',
-                  date: rem.date || `${selectedYear}-${month.toString().padStart(2, '0')}-01`,
-                  amount: rem.sueldoLiquido || rem.amount || 0
-                });
-              });
-          }
-        } catch (error) {
-          console.error('Error loading remuneraciones:', error);
-        }
+        // Módulos contables eliminados (remuneraciones, previsionales, costos fijos)
 
         // 2. CARGAR FACTORING
         try {
@@ -274,96 +251,7 @@ const CostsIndex = () => {
           console.error('Error loading factoring:', error);
         }
 
-        // 3. CARGAR PREVISIONALES
-        try {
-          const response = await previsionalesService.getPrevisionales({ limit: 10000 });
-          response.data
-            .filter(p => {
-              const previsionalYear = new Date(p.date).getFullYear();
-              return previsionalYear === selectedYear;
-            })
-            .forEach(p => {
-              const typeName = p.type.toUpperCase().replace('_', ' ');
-              const employeeName = p.employee_name || 'Sin nombre';
-              const capitalizedEmployeeName = employeeName.charAt(0).toUpperCase() + employeeName.slice(1);
-              allRecords.push({
-                id: `prev-${p.id}`,
-                name: `${typeName} - ${capitalizedEmployeeName}`,
-                category: 'Previsionales',
-                date: p.date,
-                amount: typeof p.amount === 'string' ? parseFloat(p.amount) : Number(p.amount)
-              });
-            });
-        } catch (error) {
-          console.error('Error loading previsionales:', error);
-        }
 
-        // 4. CARGAR COSTOS FIJOS
-        try {
-          const response = await getFixedCosts({}, 1, 10000);
-          response.data
-            .filter(cf => !costCenterFilter || cf.cost_center_id === costCenterFilter)
-            .forEach(cf => {
-              const startDate = new Date(cf.start_date);
-              const quotaCount = Number(cf.quota_count);
-              const quotaValue = typeof cf.quota_value === 'string' ? parseFloat(cf.quota_value) : Number(cf.quota_value);
-
-              // Generar un registro por cada cuota
-              for (let i = 0; i < quotaCount; i++) {
-                const paymentDate = new Date(startDate);
-                paymentDate.setMonth(startDate.getMonth() + i);
-
-                if (paymentDate.getFullYear() === selectedYear) {
-                  const costName = cf.name || 'Sin nombre';
-                  allRecords.push({
-                    id: `cf-${cf.id}-${i}`,
-                    name: costName.charAt(0).toUpperCase() + costName.slice(1),
-                    category: 'Costos Fijos',
-                    date: paymentDate.toISOString().split('T')[0],
-                    amount: quotaValue
-                  });
-                }
-              }
-            });
-        } catch (error) {
-          console.error('Error loading costos fijos:', error);
-        }
-
-        // 5. CARGAR ITEMS DE ÓRDENES DE COMPRA
-        try {
-          // Necesitamos cargar todas las órdenes de compra del año filtrado
-          // Como no tenemos un método directo para obtener todos los items por año,
-          // usaremos el servicio de categorías de cuenta para obtener los items
-          const categories = await import('../../services/accountCategoriesService').then(m => m.accountCategoriesService.getActiveCategories());
-
-          for (const category of categories) {
-            try {
-              const items = await import('../../services/CC/ordenesCompraItemService').then(m =>
-                m.getItemsByAccountCategory(category.id, {
-                  date_from: `${selectedYear}-01-01`,
-                  date_to: `${selectedYear}-12-31`
-                })
-              );
-
-              items
-                .filter(item => !costCenterFilter || item.cost_center_id === costCenterFilter)
-                .forEach(item => {
-                  const description = item.description || item.glosa || 'Sin descripción';
-                  allRecords.push({
-                    id: `oci-${item.id}`,
-                    name: description.charAt(0).toUpperCase() + description.slice(1),
-                    category: 'Orden de Compra',
-                    date: item.date,
-                    amount: typeof item.total === 'string' ? parseFloat(item.total) : Number(item.total)
-                  });
-                });
-            } catch (error) {
-              console.error(`Error loading items for category ${category.name}:`, error);
-            }
-          }
-        } catch (error) {
-          console.error('Error loading purchase order items:', error);
-        }
 
         // Ordenar por fecha descendente
         allRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
