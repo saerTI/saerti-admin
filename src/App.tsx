@@ -30,10 +30,7 @@ import SubcontratosContado from "./pages/Costs/SubcontratosContado";
 import GastosImprevistos from "./pages/Costs/GastosImprevistos";
 import EgresossIndex from "./pages/Costs/CostsIndex";
 import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
-import { IngresosForm } from "./pages/Ingresos/IngresosForm";
-import IngresosFormDetail from "./pages/Ingresos/IngresosDetail";
-import IngresosCategoryDetail from "./pages/Ingresos/IngresosCategoryDetail";
-import IngresosIndex from "./pages/Ingresos/IngresosIndex";
+// Módulo de ingresos antiguo eliminado - será reemplazado por sistema dinámico
 
 // ✅ Componente que configura el token getter para apiService
 function ClerkTokenProvider() {
@@ -177,37 +174,7 @@ export default function App() {
                 </ClerkProtectedRoute>
               } />
 
-              {/* Ingresos */}
-              <Route path="/ingresos" element={
-                <ClerkProtectedRoute>
-                  <IngresosIndex />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/ingresos/index" element={
-                <ClerkProtectedRoute>
-                  <IngresosIndex />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/ingresos/new" element={
-                <ClerkProtectedRoute>
-                  <IngresosForm />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/ingresos/categoria/:category" element={
-                <ClerkProtectedRoute>
-                  <IngresosCategoryDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/ingresos/:id" element={
-                <ClerkProtectedRoute>
-                  <IngresosFormDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/ingresos/editar/:id" element={
-                <ClerkProtectedRoute>
-                  <IngresosForm />
-                </ClerkProtectedRoute>
-              } />
+              {/* Ingresos - Sistema dinámico (a implementar) */}
 
               {/* Profile & Other Pages */}
               <Route path="/profile" element={

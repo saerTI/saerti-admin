@@ -36,11 +36,8 @@ const navItems: NavItem[] = [
   },
   {
     icon: <DollarLineIcon />,
-    name: "Ingresos/Egresos",
-    subItems: [
-      { name: "Ingresos", path: "/ingresos/index", pro: false },
-      { name: "Egresos", path: "/costos/index", pro: false },
-    ],
+    name: "Egresos",
+    path: "/costos/index",
   },
   {
     icon: <UserCircleIcon />,
