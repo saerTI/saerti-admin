@@ -1,6 +1,6 @@
 // src/services/cashFlowService.ts - Integrado con Remuneraciones
 import api from './apiService';
-import ingresosApiService from './ingresosService';
+// import ingresosApiService from './ingresosService'; // ELIMINADO - Sistema antiguo
 
 // ==========================================
 // TYPES & INTERFACES
@@ -881,8 +881,8 @@ class CashFlowApiService {
           payment_status: 'pagado' as const
         };
 
-        const result = await ingresosApiService.createIngreso(ingresoData);
-        return result.data;
+        // const result = await ingresosApiService.createIngreso(ingresoData); // ELIMINADO
+        throw new Error("Función de ingresos deshabilitada - usar nuevo sistema dinámico");
       } else {
         // Para gastos, por ahora no implementado
         throw new Error('La creación de gastos desde flujo de caja no está implementada aún. Use el módulo de costos.');
@@ -908,8 +908,8 @@ class CashFlowApiService {
           category_id: data.categoryId
         };
 
-        const result = await ingresosApiService.updateIngreso(id, ingresoData);
-        return result.data;
+        // const result = await ingresosApiService.updateIngreso(id, ingresoData); // ELIMINADO
+        throw new Error("Función de ingresos deshabilitada - usar nuevo sistema dinámico");
       } else {
         // Para gastos, por ahora no implementado
         throw new Error('La actualización de gastos desde flujo de caja no está implementada aún. Use el módulo de costos.');

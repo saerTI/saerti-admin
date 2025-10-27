@@ -1,6 +1,6 @@
 // src/pages/CashFlow/CashFlowSummary.tsx
 import React, { useState, useEffect } from 'react';
-import ingresosApiService from '../../services/ingresosService';
+// import ingresosApiService from '../../services/ingresosService'; // ELIMINADO
 import { formatCurrency } from '../../utils/formatters';
 import { CashFlowItem, CashFlowSummary as CashFlowSummaryData } from '../../services/cashFlowService';
 

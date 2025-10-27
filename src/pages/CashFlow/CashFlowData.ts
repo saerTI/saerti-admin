@@ -17,7 +17,7 @@
 
 // src/pages/CashFlow/CashFlowData.ts
 import cashFlowService from '../../services/cashFlowService';
-import ingresosApiService from '../../services/ingresosService';
+// import ingresosApiService from '../../services/ingresosService'; // ELIMINADO
 import { 
   DateRange, 
   CashFlowData, 

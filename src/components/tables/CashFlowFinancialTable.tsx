@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../utils/formatters';
-import ingresosApiService from '../../services/ingresosService';
+// import ingresosApiService from '../../services/ingresosService'; // ELIMINADO
 import { FinancialAggregationService } from '../../services/financialAggregationService';
 import { accountCategoriesService } from '../../services/accountCategoriesService';
 import {
