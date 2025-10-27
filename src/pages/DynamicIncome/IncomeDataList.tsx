@@ -1,33 +1,84 @@
 // src/pages/DynamicIncome/IncomeDataList.tsx
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { incomeDataService } from '../../services/incomeDataService';
 import { incomeTypeService } from '../../services/incomeTypeService';
-import type { IncomeData, IncomeType, IncomeFilters } from '../../types/income';
+import { incomeStatusService } from '../../services/incomeStatusService';
+import { incomeCategoryService } from '../../services/incomeCategoryService';
+import { getCostCenters, type CostCenter } from '../../services/costCenterService';
+import DatePicker from '../../components/form/date-picker';
+import type { IncomeData, IncomeType, IncomeFilters, IncomeStatus, IncomeCategory } from '../../types/income';
 
 export default function IncomeDataList() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const typeIdParam = searchParams.get('tipo');
+  const { typeName } = useParams<{ typeName?: string }>();
 
   const [incomes, setIncomes] = useState<IncomeData[]>([]);
   const [incomeTypes, setIncomeTypes] = useState<IncomeType[]>([]);
+  const [currentType, setCurrentType] = useState<IncomeType | null>(null);
+  const [statuses, setStatuses] = useState<IncomeStatus[]>([]);
+  const [categories, setCategories] = useState<IncomeCategory[]>([]);
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<IncomeData | null>(null);
+  const [formData, setFormData] = useState<Partial<IncomeData>>({});
+  const [saving, setSaving] = useState(false);
 
   const [filters, setFilters] = useState<IncomeFilters>({
-    income_type_id: typeIdParam ? Number(typeIdParam) : undefined,
-    page: 1,
+    income_type_id: undefined,
+    offset: 0,
     limit: 20,
   });
 
+  // Client-side filters (visual only, don't trigger API calls)
+  const [clientFilters, setClientFilters] = useState({
+    search: '',
+    status_id: undefined as number | undefined,
+    category_id: undefined as number | undefined,
+  });
+
+  // Load income types first
   useEffect(() => {
     loadIncomeTypes();
   }, []);
 
+  // Update filters when typeName changes
+  useEffect(() => {
+    if (incomeTypes.length > 0 && typeName) {
+      const normalizedTypeName = typeName.replace(/_/g, ' ').toLowerCase();
+      const type = incomeTypes.find(t => t.name.toLowerCase() === normalizedTypeName);
+      if (type) {
+        setCurrentType(type);
+        setFilters(prev => ({ ...prev, income_type_id: type.id, offset: 0 }));
+      }
+    } else if (!typeName) {
+      setCurrentType(null);
+      setFilters(prev => ({ ...prev, income_type_id: undefined, offset: 0 }));
+    }
+  }, [typeName, incomeTypes]);
+
+  // Load incomes when filters change
   useEffect(() => {
     loadIncomes();
   }, [filters]);
+
+  // Load statuses and categories when type changes
+  useEffect(() => {
+    if (currentType?.id) {
+      loadStatusesAndCategories(currentType.id);
+    } else {
+      setStatuses([]);
+      setCategories([]);
+    }
+  }, [currentType]);
+
+  // Load cost centers on mount
+  useEffect(() => {
+    loadCostCenters();
+  }, []);
+
 
   const loadIncomeTypes = async () => {
     try {
@@ -38,13 +89,49 @@ export default function IncomeDataList() {
     }
   };
 
+
+  const loadStatusesAndCategories = async (typeId: number) => {
+    try {
+      const [statusesData, categoriesData] = await Promise.all([
+        incomeStatusService.getByType(typeId),
+        incomeCategoryService.getByType(typeId)
+      ]);
+      setStatuses(statusesData.filter(s => s.is_active) as IncomeStatus[]);
+      setCategories(categoriesData.filter(c => c.is_active) as IncomeCategory[]);
+    } catch (err: any) {
+      console.error('Error loading statuses/categories:', err);
+      setStatuses([]);
+      setCategories([]);
+    }
+  };
+
+  const loadCostCenters = async () => {
+    try {
+      console.log('🏢 Cargando centros de costo...');
+      const response = await getCostCenters();
+      console.log('🏢 Respuesta completa:', response);
+      // El servicio retorna response.data directamente, pero el backend envuelve en {success, data}
+      // El apiService ya extrae response.data, así que response ES el objeto {success, data}
+      const centers = Array.isArray(response) ? response : (response as any).data || [];
+      console.log('🏢 Centros de costo extraídos:', centers);
+      const activeCenters = centers.filter((c: any) => c.active);
+      console.log('🏢 Centros de costo activos:', activeCenters);
+      setCostCenters(activeCenters);
+    } catch (err: any) {
+      console.error('❌ Error loading cost centers:', err);
+      setCostCenters([]);
+    }
+  };
+
   const loadIncomes = async () => {
     try {
       setLoading(true);
+      setError(null);
       const { data } = await incomeDataService.getAll(filters);
-      setIncomes(data);
+      setIncomes(data || []);
     } catch (err: any) {
       setError(err.message || 'Error cargando ingresos');
+      setIncomes([]);
     } finally {
       setLoading(false);
     }
@@ -66,18 +153,119 @@ export default function IncomeDataList() {
     }
   };
 
+
+  const handleOpenModal = (income?: IncomeData) => {
+    console.log('🔵 handleOpenModal called with:', income);
+    console.log('🏢 Cost centers disponibles:', costCenters.length);
+    if (income) {
+      setEditingIncome(income);
+      setFormData(income);
+    } else {
+      setEditingIncome(null);
+      setFormData({
+        income_type_id: currentType?.id,
+        date: new Date().toISOString().split('T')[0],
+        name: '',
+        description: '',
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingIncome(null);
+    setFormData({});
+  };
+
+  const handleSaveIncome = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentType) {
+      alert('No hay tipo de ingreso seleccionado');
+      return;
+    }
+
+    const dataToSend = {
+      ...formData,
+      income_type_id: currentType.id
+    };
+
+    console.log('📤 Datos a enviar:', dataToSend);
+
+    try {
+      setSaving(true);
+
+      if (editingIncome) {
+        const updateResult = await incomeDataService.update(editingIncome.id!, formData);
+        console.log('✅ Resultado de actualización:', updateResult);
+      } else {
+        const createResult = await incomeDataService.create(dataToSend);
+        console.log('✅ Resultado de creación:', createResult);
+      }
+
+      await loadIncomes();
+      handleCloseModal();
+    } catch (err: any) {
+      console.error('❌ Error guardando ingreso:', err);
+      console.error('❌ Error response:', err.response?.data);
+      if (err.response?.data?.errors) {
+        console.error('❌ Errores de validación:', JSON.stringify(err.response.data.errors, null, 2));
+      }
+      const errorMsg = err.response?.data?.errors 
+        ? 'Errores de validación: ' + err.response.data.errors.map((e: any) => `${e.field}: ${e.message}`).join(', ')
+        : err.response?.data?.message || err.message || 'Error guardando ingreso';
+      alert(errorMsg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof IncomeData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleFilterChange = (field: keyof IncomeFilters, value: any) => {
-    setFilters(prev => ({
+    if (field === 'income_type_id' && value) {
+      const type = incomeTypes.find(t => t.id === Number(value));
+      if (type) {
+        const slug = type.name.toLowerCase().replace(/\s+/g, '_');
+        window.location.href = `/ingresos/datos/${slug}`;
+      }
+    } else if (field === 'income_type_id' && !value) {
+      window.location.href = '/ingresos/datos';
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        [field]: value,
+        offset: 0,
+      }));
+    }
+  };
+
+  const handleClientFilterChange = (field: 'search' | 'status_id' | 'category_id', value: any) => {
+    setClientFilters(prev => ({
       ...prev,
       [field]: value,
-      page: 1, // Reset to first page when filtering
     }));
+  };
 
-    // Update URL params
-    if (field === 'income_type_id' && value) {
-      searchParams.set('tipo', String(value));
-      setSearchParams(searchParams);
-    }
+  const clearAllFilters = () => {
+    setClientFilters({
+      search: '',
+      status_id: undefined,
+      category_id: undefined,
+    });
+    setFilters(prev => ({
+      ...prev,
+      date_from: undefined,
+      date_to: undefined,
+      cost_center_id: undefined,
+      offset: 0,
+    }));
   };
 
   const formatCurrency = (amount?: number) => {
@@ -93,7 +281,50 @@ export default function IncomeDataList() {
     return new Date(date).toLocaleDateString('es-CL');
   };
 
-  const selectedType = incomeTypes.find(t => t.id === filters.income_type_id);
+  const getStatusInfo = (statusId?: number) => {
+    const status = statuses.find(s => s.id === statusId);
+    if (!status) return null;
+    return {
+      name: status.name,
+      color: status.color || '#6B7280'
+    };
+  };
+
+  const getCategoryInfo = (categoryId?: number) => {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return null;
+    return {
+      name: category.name,
+      color: category.color || '#6B7280'
+    };
+  };
+
+  const selectedType = currentType;
+
+  // Apply client-side filters
+  const filteredIncomes = incomes.filter(income => {
+    // Search filter (name or description)
+    if (clientFilters.search) {
+      const searchLower = clientFilters.search.toLowerCase();
+      const matchName = income.name?.toLowerCase().includes(searchLower);
+      const matchDescription = income.description?.toLowerCase().includes(searchLower);
+      if (!matchName && !matchDescription) return false;
+    }
+
+    // Status filter
+    if (clientFilters.status_id && income.status_id !== clientFilters.status_id) {
+      return false;
+    }
+
+    // Category filter
+    if (clientFilters.category_id && income.category_id !== clientFilters.category_id) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const hasActiveFilters = clientFilters.search || clientFilters.status_id || clientFilters.category_id || filters.date_from || filters.date_to || filters.cost_center_id;
 
   if (loading && incomes.length === 0) {
     return (
@@ -108,71 +339,158 @@ export default function IncomeDataList() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Datos de Ingresos</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            {selectedType
-              ? `Ingresos tipo: ${selectedType.name}`
-              : 'Todos los ingresos registrados'}
-          </p>
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {selectedType ? selectedType.name : 'Datos de Ingresos'}
+          </h1>
+          {selectedType ? (
+            selectedType.description && (
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
+                {selectedType.description}
+              </p>
+            )
+          ) : (
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Todos los ingresos registrados
+            </p>
+          )}
         </div>
         {selectedType && (
-          <Link
-            to={`/ingresos/datos/nuevo?tipo=${selectedType.id}`}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          <button
+            onClick={() => { console.log("Button clicked!"); handleOpenModal(); }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0"
           >
             + Nuevo Ingreso
-          </Link>
+          </button>
         )}
       </div>
-
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
+        <div className="flex flex-wrap items-end gap-4">
+          {/* Search field */}
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Tipo de Ingreso
+              Buscar
             </label>
-            <select
-              value={filters.income_type_id || ''}
-              onChange={(e) => handleFilterChange('income_type_id', e.target.value ? Number(e.target.value) : undefined)}
+            <input
+              type="text"
+              value={clientFilters.search || ''}
+              onChange={(e) => handleClientFilterChange('search', e.target.value)}
+              placeholder="Nombre o descripción..."
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          {/* Status filter - only show if type is selected and has statuses */}
+          {selectedType && statuses.length > 0 && (
+            <div className="min-w-[180px]">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Estado
+              </label>
+              <select
+                value={clientFilters.status_id || ''}
+                onChange={(e) => handleClientFilterChange('status_id', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Todos</option>
+                {statuses.map((status) => (
+                  <option key={status.id} value={status.id}>
+                    {status.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Category filter - only show if type is selected and has categories */}
+          {selectedType && categories.length > 0 && (
+            <div className="min-w-[180px]">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Categoría
+              </label>
+              <select
+                value={clientFilters.category_id || ''}
+                onChange={(e) => handleClientFilterChange('category_id', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Todas</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Date from */}
+          <div className="min-w-[160px]">
+            <DatePicker
+              id="filter-date-from"
+              label="Desde"
+              placeholder="Seleccionar fecha"
+              defaultDate={filters.date_from}
+              onChange={(selectedDates) => {
+                const date = selectedDates[0];
+                handleFilterChange('date_from', date ? date.toISOString().split('T')[0] : '');
+              }}
+              className="h-[42px]"
+            />
+          </div>
+
+          {/* Date to */}
+          <div className="min-w-[160px]">
+            <DatePicker
+              id="filter-date-to"
+              label="Hasta"
+              placeholder="Seleccionar fecha"
+              defaultDate={filters.date_to}
+              onChange={(selectedDates) => {
+                const date = selectedDates[0];
+                handleFilterChange('date_to', date ? date.toISOString().split('T')[0] : '');
+              }}
+              className="h-[42px]"
+            />
+          </div>
+
+          {/* Cost Center filter */}
+          {costCenters.length > 0 && (
+            <div className="min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Centro de Costo
+              </label>
+              <select
+                value={filters.cost_center_id || ''}
+                onChange={(e) => handleFilterChange('cost_center_id', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Todos</option>
+                {costCenters.map((cc) => (
+                  <option key={cc.id} value={cc.id}>
+                    {cc.code} - {cc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Clear filters button */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              className="min-w-[140px] px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
             >
-              <option value="">Todos los tipos</option>
-              {incomeTypes.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Desde
-            </label>
-            <input
-              type="date"
-              value={filters.date_from || ''}
-              onChange={(e) => handleFilterChange('date_from', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Hasta
-            </label>
-            <input
-              type="date"
-              value={filters.date_to || ''}
-              onChange={(e) => handleFilterChange('date_to', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Limpiar filtros
+            </button>
+          )}
         </div>
       </div>
+
+
 
       {error && (
         <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -200,23 +518,41 @@ export default function IncomeDataList() {
             </div>
           </div>
         </div>
-      ) : incomes.length === 0 ? (
+      ) : filteredIncomes.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
           <div className="max-w-md mx-auto">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              {hasActiveFilters ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              )}
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay ingresos registrados</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+              {hasActiveFilters ? 'No se encontraron resultados' : 'No hay ingresos registrados'}
+            </h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Comience creando su primer ingreso de tipo {selectedType?.name}
+              {hasActiveFilters 
+                ? 'Intenta ajustar los filtros para encontrar lo que buscas' 
+                : `Comience creando su primer ingreso de tipo ${selectedType?.name}`
+              }
             </p>
             <div className="mt-6">
-              <Link
-                to={`/ingresos/datos/nuevo?tipo=${selectedType?.id}`}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                + Crear Primer Ingreso
-              </Link>
+              {hasActiveFilters ? (
+                <button
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+                >
+                  Limpiar filtros
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleOpenModal()}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  + Crear Primer Ingreso
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -234,9 +570,19 @@ export default function IncomeDataList() {
                       Monto
                     </th>
                   )}
-                  {selectedType?.show_date && (
+                  { (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Fecha
+                    </th>
+                  )}
+                  {selectedType?.show_category && categories.length > 0 && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Categoría
+                    </th>
+                  )}
+                  {statuses.length > 0 && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Estado
                     </th>
                   )}
                   {selectedType?.show_payment_method && (
@@ -250,7 +596,7 @@ export default function IncomeDataList() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {incomes.map((income) => (
+                {filteredIncomes.map((income) => (
                   <tr key={income.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -264,11 +610,51 @@ export default function IncomeDataList() {
                         </div>
                       </td>
                     )}
-                    {selectedType?.show_date && (
+                    { (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-white">
                           {formatDate(income.date)}
                         </div>
+                      </td>
+                    )}
+                    {selectedType?.show_category && categories.length > 0 && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          const categoryInfo = getCategoryInfo(income.category_id);
+                          if (!categoryInfo) return <span className="text-sm text-gray-500">-</span>;
+                          return (
+                            <span
+                              className="px-3 py-1 text-xs font-medium rounded-full"
+                              style={{
+                                backgroundColor: `${categoryInfo.color}20`,
+                                color: categoryInfo.color,
+                                border: `1px solid ${categoryInfo.color}40`
+                              }}
+                            >
+                              {categoryInfo.name}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    )}
+                    {statuses.length > 0 && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          const statusInfo = getStatusInfo(income.status_id);
+                          if (!statusInfo) return <span className="text-sm text-gray-500">-</span>;
+                          return (
+                            <span
+                              className="px-3 py-1 text-xs font-medium rounded-full"
+                              style={{
+                                backgroundColor: `${statusInfo.color}20`,
+                                color: statusInfo.color,
+                                border: `1px solid ${statusInfo.color}40`
+                              }}
+                            >
+                              {statusInfo.name}
+                            </span>
+                          );
+                        })()}
                       </td>
                     )}
                     {selectedType?.show_payment_method && (
@@ -279,12 +665,12 @@ export default function IncomeDataList() {
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link
-                        to={`/ingresos/datos/${income.id}/editar?tipo=${income.income_type_id}`}
+                      <button
+                        onClick={() => handleOpenModal(income)}
                         className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
                       >
                         Editar
-                      </Link>
+                      </button>
                       <button
                         onClick={() => handleDelete(income.id!)}
                         disabled={deleteLoading === income.id}
@@ -300,6 +686,120 @@ export default function IncomeDataList() {
           </div>
         </div>
       )}
+
+      {/* Modal for Create/Edit Income */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={handleCloseModal}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {editingIncome ? 'Editar Ingreso' : 'Nuevo Ingreso'}
+                </h2>
+                <button onClick={handleCloseModal} type="button" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveIncome} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nombre {currentType?.required_name && <span className="text-red-500">*</span>}
+                  </label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} required={currentType?.required_name} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                </div>
+
+                {currentType?.show_amount && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Monto {currentType?.required_amount && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="number" value={formData.amount || ''} onChange={(e) => handleInputChange('amount', parseFloat(e.target.value))} required={currentType?.required_amount} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Fecha {currentType?.required_date && <span className="text-red-500">*</span>}
+                  </label>
+                  <input type="date" value={formData.date || ''} onChange={(e) => handleInputChange('date', e.target.value)} required={currentType?.required_date} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Centro de Costo {currentType?.required_cost_center && <span className="text-red-500">*</span>}
+                  </label>
+                  <select value={formData.cost_center_id || ''} onChange={(e) => handleInputChange('cost_center_id', e.target.value ? Number(e.target.value) : undefined)} required={currentType?.required_cost_center} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    <option value="">Seleccionar...</option>
+                    {costCenters.map((cc) => (<option key={cc.id} value={cc.id}>{cc.code} - {cc.name}</option>))}
+                  </select>
+                </div>
+
+                {currentType?.show_category && categories.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Categoría {currentType?.required_category && <span className="text-red-500">*</span>}
+                    </label>
+                    <select value={formData.category_id || ''} onChange={(e) => handleInputChange('category_id', e.target.value ? Number(e.target.value) : undefined)} required={currentType?.required_category} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                      <option value="">Seleccionar...</option>
+                      {categories.map((cat) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
+                    </select>
+                  </div>
+                )}
+
+                {statuses.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Estado {currentType?.required_status && <span className="text-red-500">*</span>}
+                    </label>
+                    <select value={formData.status_id || ''} onChange={(e) => handleInputChange('status_id', e.target.value ? Number(e.target.value) : undefined)} required={currentType?.required_status} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                      <option value="">Seleccionar...</option>
+                      {statuses.map((status) => (<option key={status.id} value={status.id}>{status.name}</option>))}
+                    </select>
+                  </div>
+                )}
+
+                {currentType?.show_payment_method && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Método de Pago {currentType?.required_payment_method && <span className="text-red-500">*</span>}
+                    </label>
+                    <select value={formData.payment_method || ''} onChange={(e) => handleInputChange('payment_method', e.target.value)} required={currentType?.required_payment_method} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                      <option value="">Seleccionar...</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="efectivo">Efectivo</option>
+                      <option value="tarjeta">Tarjeta</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Descripción
+                  </label>
+                  <textarea value={formData.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} rows={3} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={handleCloseModal} className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  {saving ? 'Guardando...' : editingIncome ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

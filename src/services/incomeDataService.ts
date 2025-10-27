@@ -8,8 +8,8 @@ export const incomeDataService = {
   async getAll(filters?: IncomeFilters): Promise<{ data: IncomeData[]; pagination: PaginationInfo }> {
     const response = await apiService.get(`${BASE_URL}/incomes`, { params: filters });
     return {
-      data: response.data.data,
-      pagination: response.data.pagination
+      data: response.data,
+      pagination: response.pagination
     };
   },
 
@@ -21,14 +21,14 @@ export const incomeDataService = {
   async create(data: Partial<IncomeData>): Promise<{ id: number; warnings?: any[] }> {
     const response = await apiService.post(`${BASE_URL}/incomes`, data);
     return {
-      id: response.data.data.id,
-      warnings: response.data.warnings
+      id: response.data.id,
+      warnings: response.warnings
     };
   },
 
   async update(id: number, data: Partial<IncomeData>): Promise<{ warnings?: any[] }> {
     const response = await apiService.put(`${BASE_URL}/incomes/${id}`, data);
-    return { warnings: response.data.warnings };
+    return { warnings: response.warnings };
   },
 
   async delete(id: number): Promise<void> {
