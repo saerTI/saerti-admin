@@ -30,8 +30,11 @@ import SubcontratosContado from "./pages/Costs/SubcontratosContado";
 import GastosImprevistos from "./pages/Costs/GastosImprevistos";
 import EgresossIndex from "./pages/Costs/CostsIndex";
 import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
-// Módulo de ingresos antiguo eliminado - será reemplazado por sistema dinámico
+// Sistema dinámico de ingresos
 import IncomeTypesIndex from './pages/DynamicIncome/IncomeTypesIndex';
+import IncomeTypeForm from './pages/DynamicIncome/IncomeTypeForm';
+import IncomeDataList from './pages/DynamicIncome/IncomeDataList';
+import IncomeDataForm from './pages/DynamicIncome/IncomeDataForm';
 
 // ✅ Componente que configura el token getter para apiService
 function ClerkTokenProvider() {
@@ -175,13 +178,37 @@ export default function App() {
                 </ClerkProtectedRoute>
               } />
 
-              {/* Ingresos - Sistema dinámico (a implementar) */}
+              {/* Ingresos - Sistema dinámico */}
               <Route path="/ingresos/tipos" element={
                 <ClerkProtectedRoute>
                   <IncomeTypesIndex />
                 </ClerkProtectedRoute>
               } />
-
+              <Route path="/ingresos/tipos/nuevo" element={
+                <ClerkProtectedRoute>
+                  <IncomeTypeForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/ingresos/tipos/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <IncomeTypeForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/ingresos/datos" element={
+                <ClerkProtectedRoute>
+                  <IncomeDataList />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/ingresos/datos/nuevo" element={
+                <ClerkProtectedRoute>
+                  <IncomeDataForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/ingresos/datos/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <IncomeDataForm />
+                </ClerkProtectedRoute>
+              } />
 
               {/* Profile & Other Pages */}
               <Route path="/profile" element={
