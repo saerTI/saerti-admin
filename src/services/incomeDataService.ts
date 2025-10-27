@@ -15,7 +15,7 @@ export const incomeDataService = {
 
   async getById(id: number): Promise<IncomeData> {
     const response = await apiService.get(`${BASE_URL}/incomes/${id}`);
-    return response.data.data;
+    return response.data;
   },
 
   async create(data: Partial<IncomeData>): Promise<{ id: number; warnings?: any[] }> {
@@ -39,12 +39,12 @@ export const incomeDataService = {
     const response = await apiService.get(`${BASE_URL}/incomes/stats`, {
       params: { income_type_id: incomeTypeId, date_from: dateFrom, date_to: dateTo }
     });
-    return response.data.data;
+    return response.data;
   },
 
   async getByStatus(typeId: number): Promise<any[]> {
     const response = await apiService.get(`${BASE_URL}/income-types/${typeId}/incomes-by-status`);
-    return response.data.data;
+    return response.data;
   }
 };
 

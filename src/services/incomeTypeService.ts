@@ -18,22 +18,22 @@ export const incomeTypeService = {
     const response = await apiService.get(`${BASE_URL}/income-types`, {
       params: { only_active: onlyActive }
     });
-    return response.data.data;
+    return response.data;
   },
 
   async getById(id: number): Promise<IncomeType> {
     const response = await apiService.get(`${BASE_URL}/income-types/${id}`);
-    return response.data.data;
+    return response.data;
   },
 
   async getFields(id: number): Promise<VisibleFields> {
     const response = await apiService.get(`${BASE_URL}/income-types/${id}/fields`);
-    return response.data.data;
+    return response.data;
   },
 
   async create(data: Partial<IncomeType>): Promise<{ id: number }> {
     const response = await apiService.post(`${BASE_URL}/income-types`, data);
-    return response.data.data;
+    return response.data;
   },
 
   async update(id: number, data: Partial<IncomeType>): Promise<void> {
@@ -49,12 +49,12 @@ export const incomeTypeService = {
     const response = await apiService.get(`${BASE_URL}/income-types/${typeId}/categories`, {
       params: { only_active: onlyActive }
     });
-    return response.data.data;
+    return response.data;
   },
 
   async createCategory(typeId: number, data: Partial<IncomeCategory>): Promise<{ id: number }> {
     const response = await apiService.post(`${BASE_URL}/income-types/${typeId}/categories`, data);
-    return response.data.data;
+    return response.data;
   },
 
   async updateCategory(id: number, data: Partial<IncomeCategory>): Promise<void> {
@@ -70,12 +70,12 @@ export const incomeTypeService = {
     const response = await apiService.get(`${BASE_URL}/income-types/${typeId}/statuses`, {
       params: { only_active: onlyActive }
     });
-    return response.data.data;
+    return response.data;
   },
 
   async createStatus(typeId: number, data: Partial<IncomeStatus>): Promise<{ id: number }> {
     const response = await apiService.post(`${BASE_URL}/income-types/${typeId}/statuses`, data);
-    return response.data.data;
+    return response.data;
   },
 
   async updateStatus(id: number, data: Partial<IncomeStatus>): Promise<void> {
