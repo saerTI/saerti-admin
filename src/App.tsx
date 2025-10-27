@@ -35,6 +35,11 @@ import IncomeTypesIndex from './pages/DynamicIncome/IncomeTypesIndex';
 import IncomeTypeForm from './pages/DynamicIncome/IncomeTypeForm';
 import IncomeDataList from './pages/DynamicIncome/IncomeDataList';
 import IncomeDataForm from './pages/DynamicIncome/IncomeDataForm';
+// Sistema dinámico de egresos
+import ExpenseTypesIndex from './pages/DynamicExpense/ExpenseTypesIndex';
+import ExpenseTypeForm from './pages/DynamicExpense/ExpenseTypeForm';
+import ExpenseDataList from './pages/DynamicExpense/ExpenseDataList';
+import ExpenseDataForm from './pages/DynamicExpense/ExpenseDataForm';
 
 // ✅ Componente que configura el token getter para apiService
 function ClerkTokenProvider() {
@@ -212,6 +217,43 @@ export default function App() {
               <Route path="/ingresos/datos/:id/editar" element={
                 <ClerkProtectedRoute>
                   <IncomeDataForm />
+                </ClerkProtectedRoute>
+              } />
+
+              {/* Egresos - Sistema dinámico */}
+              <Route path="/egresos/tipos" element={
+                <ClerkProtectedRoute>
+                  <ExpenseTypesIndex />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/tipos/nuevo" element={
+                <ClerkProtectedRoute>
+                  <ExpenseTypeForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/tipos/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <ExpenseTypeForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/datos" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDataList />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/datos/:typeName" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDataList />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/datos/nuevo" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDataForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/datos/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDataForm />
                 </ClerkProtectedRoute>
               } />
 

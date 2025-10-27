@@ -19,6 +19,8 @@ import SidebarWidget from "./SidebarWidget";
 import { Calculator, Settings } from "lucide-react";
 import { incomeTypeService } from "../services/incomeTypeService";
 import type { IncomeType } from "../types/income";
+import { expenseTypeService } from "../services/expenseTypeService";
+import type { ExpenseType } from "../types/expense";
 
 type NavItem = {
   name: string;
@@ -57,6 +59,7 @@ const navItems: NavItem[] = [
     name: "Configuraciones",
     subItems: [
       { name: "Tipos de Ingresos", path: "/ingresos/tipos", pro: false },
+      { name: "Tipos de Egresos", path: "/egresos/tipos", pro: false },
     ],
   },
   // {
@@ -120,6 +123,7 @@ const AppSidebar: React.FC = () => {
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [incomeTypes, setIncomeTypes] = useState<IncomeType[]>([]);
+  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [dynamicNavItems, setDynamicNavItems] = useState<NavItem[]>(navItems);
 
 
@@ -144,22 +148,27 @@ const AppSidebar: React.FC = () => {
   }, [setIsMobileOpen, navigate]);
 
 
-  // Load income types dynamically
+  // Load income and expense types dynamically
   useEffect(() => {
-    const loadIncomeTypes = async () => {
+    const loadTypes = async () => {
       try {
-        const types = await incomeTypeService.getAll();
-        setIncomeTypes(types);
-        
-        // Update navItems with income types
+        const [incomeTypesData, expenseTypesData] = await Promise.all([
+          incomeTypeService.getAll(),
+          expenseTypeService.getAll()
+        ]);
+
+        setIncomeTypes(incomeTypesData);
+        setExpenseTypes(expenseTypesData);
+
+        // Update navItems with income and expense types
         const updatedNavItems = navItems.map(item => {
           if (item.name === "Ingresos") {
             // If there are income types, show them as submenu
-            if (types.length > 0) {
+            if (incomeTypesData.length > 0) {
               return {
                 ...item,
                 path: undefined, // Remove direct path when there are subtypes
-                subItems: types.map(type => {
+                subItems: incomeTypesData.map(type => {
                   const slug = type.name.toLowerCase().replace(/\s+/g, '_');
                   return {
                     name: type.name,
@@ -171,17 +180,35 @@ const AppSidebar: React.FC = () => {
             }
             // If no types, keep it as direct link
             return item;
+          } else if (item.name === "Egresos") {
+            // If there are expense types, show them as submenu
+            if (expenseTypesData.length > 0) {
+              return {
+                ...item,
+                path: undefined, // Remove direct path when there are subtypes
+                subItems: expenseTypesData.map(type => {
+                  const slug = type.name.toLowerCase().replace(/\s+/g, '_');
+                  return {
+                    name: type.name,
+                    path: `/egresos/datos/${slug}`,
+                    pro: false
+                  };
+                })
+              };
+            }
+            // If no types, keep it as direct link
+            return item;
           }
           return item;
         });
-        
+
         setDynamicNavItems(updatedNavItems);
       } catch (error) {
-        console.error('Error loading income types:', error);
+        console.error('Error loading types:', error);
       }
     };
-    
-    loadIncomeTypes();
+
+    loadTypes();
   }, [refreshTrigger]);
 
   useEffect(() => {

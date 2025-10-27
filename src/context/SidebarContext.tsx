@@ -14,6 +14,7 @@ type SidebarContextType = {
   setActiveItem: (item: string | null) => void;
   toggleSubmenu: (item: string) => void;
   refreshIncomeTypes: () => void;
+  refreshExpenseTypes: () => void;
 };
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -58,6 +59,10 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const refreshExpenseTypes = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   const toggleSidebar = () => {
     setIsExpanded((prev) => !prev);
   };
@@ -86,6 +91,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
         setActiveItem,
         toggleSubmenu,
         refreshIncomeTypes,
+        refreshExpenseTypes,
       }}
     >
       {children}
