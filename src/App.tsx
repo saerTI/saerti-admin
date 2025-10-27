@@ -199,6 +199,11 @@ export default function App() {
                   <IncomeDataList />
                 </ClerkProtectedRoute>
               } />
+              <Route path="/ingresos/datos/:typeName" element={
+                <ClerkProtectedRoute>
+                  <IncomeDataList />
+                </ClerkProtectedRoute>
+              } />
               <Route path="/ingresos/datos/nuevo" element={
                 <ClerkProtectedRoute>
                   <IncomeDataForm />

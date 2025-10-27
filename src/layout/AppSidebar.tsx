@@ -15,7 +15,9 @@ import {
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
-import { Calculator } from "lucide-react";
+import { Calculator, Settings } from "lucide-react";
+import { incomeTypeService } from "../services/incomeTypeService";
+import type { IncomeType } from "../types/income";
 
 type NavItem = {
   name: string;
@@ -37,10 +39,7 @@ const navItems: NavItem[] = [
   {
     icon: <DollarLineIcon />,
     name: "Ingresos",
-    subItems: [
-      { name: "Tipos de Ingresos", path: "/ingresos/tipos", pro: false },
-      { name: "Datos de Ingresos", path: "/ingresos/datos", pro: false },
-    ],
+    path: "/ingresos/datos",
   },
   {
     icon: <DollarLineIcon />,
@@ -51,6 +50,13 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Centros de Costo",
     path: "/cost-centers",
+  },
+  {
+    icon: <Settings className="w-5 h-5" />,
+    name: "Configuraciones",
+    subItems: [
+      { name: "Tipos de Ingresos", path: "/ingresos/tipos", pro: false },
+    ],
   },
   // {
   //   icon: <Calculator />,
@@ -112,6 +118,9 @@ const AppSidebar: React.FC = () => {
   
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [incomeTypes, setIncomeTypes] = useState<IncomeType[]>([]);
+  const [dynamicNavItems, setDynamicNavItems] = useState<NavItem[]>(navItems);
+
 
   const isActive = useCallback(
     (path: string) => location.pathname === path,
@@ -132,6 +141,47 @@ const AppSidebar: React.FC = () => {
     }
     // On desktop, the default link behavior will work normally
   }, [setIsMobileOpen, navigate]);
+
+
+  // Load income types dynamically
+  useEffect(() => {
+    const loadIncomeTypes = async () => {
+      try {
+        const types = await incomeTypeService.getAll();
+        setIncomeTypes(types);
+        
+        // Update navItems with income types
+        const updatedNavItems = navItems.map(item => {
+          if (item.name === "Ingresos") {
+            // If there are income types, show them as submenu
+            if (types.length > 0) {
+              return {
+                ...item,
+                path: undefined, // Remove direct path when there are subtypes
+                subItems: types.map(type => {
+                  const slug = type.name.toLowerCase().replace(/\s+/g, '_');
+                  return {
+                    name: type.name,
+                    path: `/ingresos/datos/${slug}`,
+                    pro: false
+                  };
+                })
+              };
+            }
+            // If no types, keep it as direct link
+            return item;
+          }
+          return item;
+        });
+        
+        setDynamicNavItems(updatedNavItems);
+      } catch (error) {
+        console.error('Error loading income types:', error);
+      }
+    };
+    
+    loadIncomeTypes();
+  }, []);
 
   useEffect(() => {
     let submenuMatched = false;
@@ -363,7 +413,7 @@ const AppSidebar: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div>
               <br/>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(dynamicNavItems, "main")}
             </div>
             {/* Commented out "Others" section - keeping it in code for future reference
             <div className="">

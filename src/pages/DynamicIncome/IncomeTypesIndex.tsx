@@ -42,21 +42,34 @@ export default function IncomeTypesIndex() {
     }
   };
 
-  const countActiveFields = (type: IncomeType): number => {
-    let count = 0;
-    if (type.show_amount) count++;
-    if (type.show_category) count++;
-    if (type.show_status) count++;
-    if (type.show_date) count++;
-    if (type.show_due_date) count++;
-    if (type.show_payment_method) count++;
-    if (type.show_invoice_number) count++;
-    if (type.show_description) count++;
-    if (type.show_cost_center) count++;
-    if (type.show_currency) count++;
-    if (type.show_exchange_rate) count++;
-    if (type.show_attachments) count++;
-    return count;
+  const getAllFields = (type: IncomeType) => {
+    const fields = [
+      { label: 'Nombre', required: true, always: true },
+      { label: 'Monto', required: true, always: true },
+      { label: 'Fecha', required: true, always: true },
+      { label: 'Estado', required: true, always: true },
+      { label: 'Descripción', required: true, always: true },
+      { label: 'Centro de Costo', required: true, always: true },
+    ];
+
+    // Add optional fields if they are shown
+    if (type.show_category) {
+      fields.push({ label: 'Categoría', required: !!type.required_category, always: false });
+    }
+    if (type.show_payment_date) {
+      fields.push({ label: 'Fecha Vencimiento', required: !!type.required_payment_date, always: false });
+    }
+    if (type.show_reference_number) {
+      fields.push({ label: 'Identificador', required: !!type.required_reference_number, always: false });
+    }
+    if (type.show_currency) {
+      fields.push({ label: 'Moneda', required: !!type.required_currency, always: false });
+    }
+    if (type.show_exchange_rate) {
+      fields.push({ label: 'Tipo de Cambio', required: !!type.required_exchange_rate, always: false });
+    }
+
+    return fields;
   };
 
   if (loading) {
@@ -144,60 +157,39 @@ export default function IncomeTypesIndex() {
               )}
 
               <div className="mb-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  {countActiveFields(type)} campos activos
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Campos Configurados ({getAllFields(type).length})
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {type.show_amount && (
-                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded">
-                      Monto{type.required_amount && '*'}
+                <div className="flex flex-wrap gap-1.5">
+                  {getAllFields(type).map((field, idx) => (
+                    <span
+                      key={idx}
+                      className={`px-2 py-1 text-xs rounded ${
+                        field.always
+                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                      }`}
+                    >
+                      {field.label}{field.required ? '*' : ''}
                     </span>
-                  )}
-                  {type.show_category && (
-                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs rounded">
-                      Categoría{type.required_category && '*'}
-                    </span>
-                  )}
-                  {type.show_status && (
-                    <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs rounded">
-                      Estado{type.required_status && '*'}
-                    </span>
-                  )}
-                  {type.show_date && (
-                    <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs rounded">
-                      Fecha{type.required_date && '*'}
-                    </span>
-                  )}
-                  {type.show_payment_method && (
-                    <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 text-xs rounded">
-                      Método Pago{type.required_payment_method && '*'}
-                    </span>
-                  )}
-                  {type.show_cost_center && (
-                    <span className="px-2 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300 text-xs rounded">
-                      Centro Costo{type.required_cost_center && '*'}
-                    </span>
-                  )}
+                  ))}
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  * = Campo obligatorio
+                </p>
               </div>
 
               <div className="flex space-x-2">
                 <Link
                   to={`/ingresos/tipos/${type.id}/editar`}
-                  className="flex-1 px-3 py-2 text-center text-sm border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Editar
-                </Link>
-                <Link
-                  to={`/ingresos/datos?tipo=${type.id}`}
                   className="flex-1 px-3 py-2 text-center text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                 >
-                  Ver Datos
+                  Editar
                 </Link>
                 <button
                   onClick={() => handleDelete(type.id!, type.name)}
                   disabled={deleteLoading === type.id}
-                  className="px-3 py-2 text-sm border border-red-300 dark:border-red-600 rounded text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                  className="flex-1 px-3 py-2 text-sm border border-red-300 dark:border-red-600 rounded text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
                 >
                   {deleteLoading === type.id ? '...' : 'Desactivar'}
                 </button>
