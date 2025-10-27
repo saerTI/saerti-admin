@@ -108,6 +108,12 @@ export default function IncomeTypeForm() {
 
   const handleFieldToggle = (showKey: keyof IncomeType, requiredKey: keyof IncomeType) => {
     const currentShowValue = formData[showKey];
+    const isRequired = formData[requiredKey];
+
+    // No permitir desmarcar si el campo es obligatorio
+    if (currentShowValue && isRequired) {
+      return;
+    }
 
     setFormData(prev => ({
       ...prev,
@@ -117,11 +123,23 @@ export default function IncomeTypeForm() {
     }));
   };
 
-  const handleRequiredToggle = (requiredKey: keyof IncomeType) => {
-    setFormData(prev => ({
-      ...prev,
-      [requiredKey]: !prev[requiredKey]
-    }));
+  const handleRequiredToggle = (requiredKey: keyof IncomeType, showKey: keyof IncomeType) => {
+    const isCurrentlyRequired = formData[requiredKey];
+
+    // Si está marcando como obligatorio, asegurar que show esté activo
+    if (!isCurrentlyRequired) {
+      setFormData(prev => ({
+        ...prev,
+        [showKey]: true,
+        [requiredKey]: true
+      }));
+    } else {
+      // Si está desmarcando obligatorio
+      setFormData(prev => ({
+        ...prev,
+        [requiredKey]: false
+      }));
+    }
   };
 
   if (loading && isEditing) {
@@ -202,27 +220,40 @@ export default function IncomeTypeForm() {
             {configurableFields.map((field) => {
               const isShown = formData[field.showKey] as boolean;
               const isRequired = formData[field.requiredKey] as boolean;
+              const isLocked = isRequired;
 
               return (
                 <div
                   key={field.label}
-                  className={`p-4 rounded-lg border ${
-                    isShown
+                  className={`p-4 rounded-lg border transition-all ${
+                    isRequired
+                      ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+                      : isShown
                       ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20'
                       : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <label className="flex items-center cursor-pointer">
+                      <label className={`flex items-center ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                         <input
                           type="checkbox"
                           checked={isShown}
                           onChange={() => handleFieldToggle(field.showKey, field.requiredKey)}
-                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          disabled={isLocked}
+                          className={`w-5 h-5 rounded focus:ring-2 ${
+                            isLocked
+                              ? 'text-red-600 opacity-60 cursor-not-allowed'
+                              : 'text-blue-600 focus:ring-blue-500'
+                          }`}
                         />
-                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
+                        <span className={`ml-3 text-sm font-medium ${
+                          isLocked
+                            ? 'text-red-700 dark:text-red-300'
+                            : 'text-gray-900 dark:text-white'
+                        }`}>
                           {field.label}
+                          {isLocked && <span className="ml-2 text-xs">(bloqueado)</span>}
                         </span>
                       </label>
                     </div>
@@ -232,7 +263,7 @@ export default function IncomeTypeForm() {
                         <input
                           type="checkbox"
                           checked={isRequired}
-                          onChange={() => handleRequiredToggle(field.requiredKey)}
+                          onChange={() => handleRequiredToggle(field.requiredKey, field.showKey)}
                           className="w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
