@@ -25,27 +25,11 @@ import Home from "./pages/Dashboard/Home";
 import CashFlow from "./pages/CashFlow/CashFlow";
 import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
 import Cotizaciones from "./pages/Costs/Cotizaciones";
-import Previsionales from "./pages/Costs/Previsionales";
 import SubcontratosCredito from "./pages/Costs/SubcontratosCredito";
 import SubcontratosContado from "./pages/Costs/SubcontratosContado";
-import Remuneraciones from "./pages/Costs/Remuneraciones";
 import GastosImprevistos from "./pages/Costs/GastosImprevistos";
-import OrdenesCompra from "./pages/Costs/OrdenesCompra";
 import EgresossIndex from "./pages/Costs/CostsIndex";
-import Factoring from "./pages/Costs/Factoring";
-import CostosFijos from "./pages/Costs/CostosFijos";
-import { RemuneracionesDetail } from "./pages/Costs/RemuneracionesDetail";
-import RemuneracionesForm from "./pages/Costs/RemuneracionesForm";
-import OrdenCompraDetail from "./pages/Costs/OrdenCompraDetail";
-import { CostosFijosDetail } from "./pages/Costs/CostosFijosDetail";
-import Empleados from "./pages/Costs/Empleados";
-import EmpleadosNuevo from "./pages/Costs/EmpleadosNuevo";
-import EmpleadosDetalle from "./pages/Costs/EmpleadosDetalle";
-import EmpleadosEdición from "./pages/Costs/EmpleadosEdicion";
-import { CostosFijosEdicion } from "./pages/Costs/CostosFijosEdicion";
 import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
-import OrdenCompraForm from "./pages/Costs/OrdenCompraForm";
-import OrdenCompraEdicion from "./pages/Costs/OrdenCompraEdicion";
 import { IngresosForm } from "./pages/Ingresos/IngresosForm";
 import IngresosFormDetail from "./pages/Ingresos/IngresosDetail";
 import IngresosCategoryDetail from "./pages/Ingresos/IngresosCategoryDetail";
@@ -171,69 +155,10 @@ export default function App() {
                 </ClerkProtectedRoute>
               } />
 
-              {/* Costos Fijos */}
-              <Route path="/costos/costos-fijos" element={
-                <ClerkProtectedRoute>
-                  <CostosFijos />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/costos-fijos/:id" element={
-                <ClerkProtectedRoute>
-                  <CostosFijosDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/costos-fijos/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <CostosFijosEdicion />
-                </ClerkProtectedRoute>
-              } />
-
-              {/* Empleados */}
-              <Route path="/costos/empleados" element={
-                <ClerkProtectedRoute>
-                  <Empleados />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/empleados/new" element={
-                <ClerkProtectedRoute>
-                  <EmpleadosNuevo />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/empleados/:id" element={
-                <ClerkProtectedRoute>
-                  <EmpleadosDetalle />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/empleados/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <EmpleadosEdición />
-                </ClerkProtectedRoute>
-              } />
-
               {/* Otros Costos */}
               <Route path="/costos/cotizaciones" element={
                 <ClerkProtectedRoute>
                   <Cotizaciones />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/previsionales" element={
-                <ClerkProtectedRoute>
-                  <Previsionales />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/remuneraciones" element={
-                <ClerkProtectedRoute>
-                  <Remuneraciones />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/remuneraciones/:id" element={
-                <ClerkProtectedRoute>
-                  <RemuneracionesDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/remuneraciones/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <RemuneracionesForm />
                 </ClerkProtectedRoute>
               } />
               <Route path="/costos/subcontratos-credito" element={
@@ -249,34 +174,6 @@ export default function App() {
               <Route path="/costos/imprevistos" element={
                 <ClerkProtectedRoute>
                   <GastosImprevistos />
-                </ClerkProtectedRoute>
-              } />
-              
-              {/* Órdenes de Compra */}
-              <Route path="/costos/ordenes-compra" element={
-                <ClerkProtectedRoute>
-                  <OrdenesCompra />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/ordenes-compra/new" element={
-                <ClerkProtectedRoute>
-                  <OrdenCompraForm />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/ordenes-compra/:id" element={
-                <ClerkProtectedRoute>
-                  <OrdenCompraDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/ordenes-compra/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <OrdenCompraEdicion />
-                </ClerkProtectedRoute>
-              } />
-              
-              <Route path="/costos/factoring" element={
-                <ClerkProtectedRoute>
-                  <Factoring />
                 </ClerkProtectedRoute>
               } />
 
