@@ -31,6 +31,7 @@ import GastosImprevistos from "./pages/Costs/GastosImprevistos";
 import EgresossIndex from "./pages/Costs/CostsIndex";
 import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
 // Módulo de ingresos antiguo eliminado - será reemplazado por sistema dinámico
+import IncomeTypesIndex from './pages/DynamicIncome/IncomeTypesIndex';
 
 // ✅ Componente que configura el token getter para apiService
 function ClerkTokenProvider() {
@@ -175,6 +176,12 @@ export default function App() {
               } />
 
               {/* Ingresos - Sistema dinámico (a implementar) */}
+              <Route path="/ingresos/tipos" element={
+                <ClerkProtectedRoute>
+                  <IncomeTypesIndex />
+                </ClerkProtectedRoute>
+              } />
+
 
               {/* Profile & Other Pages */}
               <Route path="/profile" element={

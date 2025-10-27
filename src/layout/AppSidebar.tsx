@@ -36,6 +36,11 @@ const navItems: NavItem[] = [
   },
   {
     icon: <DollarLineIcon />,
+    name: "Ingresos",
+    path: "/ingresos/tipos",
+  },
+  {
+    icon: <DollarLineIcon />,
     name: "Egresos",
     path: "/costos/index",
   },

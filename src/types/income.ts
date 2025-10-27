@@ -1,154 +1,147 @@
-export interface Income {
+// src/types/income.ts
+// Tipos TypeScript para sistema dinámico de ingresos
+
+export interface IncomeType {
   id: number;
-  document_number: string;
-  ep_detail?: string;
-  client_name: string;
-  client_tax_id: string;
-  ep_value: number;
-  adjustments: number;
-  ep_total: number;
-  fine: number;
-  retention: number;
-  advance: number;
-  exempt: number;
-  net_amount: number;
-  tax_amount: number;
-  total_amount: number;
-  factoring?: string;
-  payment_date?: string;
-  factoring_due_date?: string;
-  state: 'borrador' | 'activo' | 'facturado' | 'pagado' | 'cancelado';
-  payment_status: 'no_pagado' | 'pago_parcial' | 'pagado';
-  date: string;
-  cost_center_id?: number;
-  cost_center_code?: string;
-  center_name?: string;
-  project_name?: string;
+  organization_id: string;
+  name: string;
   description?: string;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  icon?: string;
+  color?: string;
+
+  // Campos show_* (12 campos opcionales)
+  show_amount: boolean;
+  show_category: boolean;
+  show_payment_date: boolean;
+  show_reference_number: boolean;
+  show_tax_amount: boolean;
+  show_net_amount: boolean;
+  show_total_amount: boolean;
+  show_payment_method: boolean;
+  show_payment_status: boolean;
+  show_currency: boolean;
+  show_exchange_rate: boolean;
+  show_invoice_number: boolean;
+
+  // Campos required_* (16 campos: 4 base + 12 opcionales)
+  required_name: boolean;
+  required_date: boolean;
+  required_status: boolean;
+  required_cost_center: boolean;
+  required_amount: boolean;
+  required_category: boolean;
+  required_payment_date: boolean;
+  required_reference_number: boolean;
+  required_tax_amount: boolean;
+  required_net_amount: boolean;
+  required_total_amount: boolean;
+  required_payment_method: boolean;
+  required_payment_status: boolean;
+  required_currency: boolean;
+  required_exchange_rate: boolean;
+  required_invoice_number: boolean;
+
+  is_active: boolean;
+  created_by?: number;
+  updated_by?: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface IncomeDetail extends Income {
-  center_name: string;
-  project_name: string;
+export interface IncomeCategory {
+  id: number;
+  income_type_id: number;
+  organization_id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface IncomeFilter {
-  // Búsqueda
-  search?: string;
-  
-  // Filtros principales
-  state?: string;
-  costCenterId?: number;
-  clientId?: string;
-  
-  // Filtros de fecha
-  startDate?: string;
-  endDate?: string;
-  
-  // Filtros de monto
-  minAmount?: number;
-  maxAmount?: number;
-  
-  // Filtros específicos
-  paymentType?: string;
-  factoring?: string;
-  payment_status?: string;
-  
-  // Paginación y ordenamiento
-  page?: number;
-  perPage?: number;
-  sortBy?: string;
-  sortDirection?: 'asc' | 'desc';
-}
-
-export interface IncomeStats {
-  total: number;
-  totalIngresos: number;
-  montoTotal: number;
-  borrador: number;
-  activo: number;
-  facturado: number;
-  pagado: number;
-  cancelado: number;
-  draft: number;
-  active: number;
-  invoiced: number;
-  paid: number;
-  cancelled: number;
-  factoringCount: number;
-  transferCount: number;
-  porCliente: Record<string, {
-    tax_id: string;
-    cantidad: number;
-    monto_total: number;
-  }>;
-  porCentro: Record<string, {
-    nombre: string;
-    cantidad: number;
-    monto_total: number;
-  }>;
+export interface IncomeStatus {
+  id: number;
+  income_type_id: number;
+  organization_id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  is_final: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface IncomeData {
-  totalIncomes: number;
-  pendingIncomes: number;
-  recentIncomes: IncomeItem[];
-  byPeriodData: IncomesByPeriod[];
-  byClientData: IncomesByClient[];
-  byCenterData: IncomesByCenter[];
+  id: number;
+  income_type_id: number;
+  organization_id: string;
+  name?: string;
+  description?: string;
+  notes?: string;
+  date?: string;
+  status_id?: number;
+  cost_center_id?: number;
+  amount?: number;
+  category_id?: number;
+  payment_date?: string;
+  reference_number?: string;
+  tax_amount?: number;
+  net_amount?: number;
+  total_amount?: number;
+  payment_method?: 'transferencia' | 'cheque' | 'efectivo' | 'tarjeta' | 'otro';
+  payment_status?: 'pendiente' | 'parcial' | 'pagado' | 'anulado';
+  currency?: string;
+  exchange_rate?: number;
+  invoice_number?: string;
+  created_by?: number;
+  updated_by?: number;
+  created_at: string;
+  updated_at: string;
+  income_type_name?: string;
+  status_name?: string;
+  status_color?: string;
+  category_name?: string;
+  cost_center_name?: string;
+  created_by_email?: string;
+  updated_by_email?: string;
 }
 
-export interface IncomeItem {
-  income_id: number;
-  transaction_type: string;
-  description: string;
-  amount: number;
-  date: string;
-  period_year: number;
-  period_month: number;
-  status: string;
-  cost_center_name: string;
-  client_name: string;
-  client_tax_id: string;
-  factoring?: string;
-  source_type: string;
-  period_key: string;
+export interface FieldDefinition {
+  name: string;
+  required: boolean;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select';
+  options?: string[];
 }
 
-export interface IncomesByPeriod {
-  client: string;
-  path: string;
-  amounts: Record<string, number>;
+export interface VisibleFields {
+  base: FieldDefinition[];
+  optional: FieldDefinition[];
 }
 
-export interface IncomesByClient {
-  client_id: string;
-  client_name: string;
-  client_tax_id: string;
-  amount: number;
-  count: number;
-  path: string;
-  has_data: boolean;
-}
-
-export interface IncomesByCenter {
-  center_id: number;
-  center_name: string;
-  center_code: string;
-  amount: number;
-  count: number;
-  path: string;
-  has_data: boolean;
+export interface ValidationError {
+  field: string;
+  message: string;
 }
 
 export interface IncomeFilters {
-  periodType: 'weekly' | 'monthly' | 'quarterly' | 'annual';
-  year: string;
-  projectId?: string;
-  costCenterId?: string;
-  clientId?: string;
-  status?: string;
+  organization_id?: string;
+  income_type_id?: number;
+  status_id?: number;
+  category_id?: number;
+  cost_center_id?: number;
+  date_from?: string;
+  date_to?: string;
+  payment_status?: 'pendiente' | 'parcial' | 'pagado' | 'anulado';
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaginationInfo {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 }
