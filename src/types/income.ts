@@ -14,9 +14,6 @@ export interface IncomeType {
   show_category: boolean;
   show_payment_date: boolean;
   show_reference_number: boolean;
-  show_tax_amount: boolean;
-  show_net_amount: boolean;
-  show_total_amount: boolean;
   show_payment_method: boolean;
   show_payment_status: boolean;
   show_currency: boolean;
@@ -32,9 +29,6 @@ export interface IncomeType {
   required_category: boolean;
   required_payment_date: boolean;
   required_reference_number: boolean;
-  required_tax_amount: boolean;
-  required_net_amount: boolean;
-  required_total_amount: boolean;
   required_payment_method: boolean;
   required_payment_status: boolean;
   required_currency: boolean;
@@ -87,9 +81,6 @@ export interface IncomeData {
   category_id?: number;
   payment_date?: string;
   reference_number?: string;
-  tax_amount?: number;
-  net_amount?: number;
-  total_amount?: number;
   payment_method?: 'transferencia' | 'cheque' | 'efectivo' | 'tarjeta' | 'otro';
   payment_status?: 'pendiente' | 'parcial' | 'pagado' | 'anulado';
   currency?: string;

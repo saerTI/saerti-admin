@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { incomeTypeService } from '../../services/incomeTypeService';
 import { incomeDataService } from '../../services/incomeDataService';
-import type { IncomeType, IncomeData, IncomeCategory, IncomeStatus, VisibleFields } from '../../types/income';
+import DatePicker from '../../components/form/date-picker';
+import type { IncomeType, IncomeData, IncomeCategory, IncomeStatus } from '../../types/income';
 
 export default function IncomeDataForm() {
   const navigate = useNavigate();
@@ -19,7 +20,6 @@ export default function IncomeDataForm() {
   const [warnings, setWarnings] = useState<any[]>([]);
 
   const [incomeType, setIncomeType] = useState<IncomeType | null>(null);
-  const [visibleFields, setVisibleFields] = useState<VisibleFields | null>(null);
   const [categories, setCategories] = useState<IncomeCategory[]>([]);
   const [statuses, setStatuses] = useState<IncomeStatus[]>([]);
 
@@ -46,37 +46,27 @@ export default function IncomeDataForm() {
         const typeConfig = await incomeTypeService.getById(data.income_type_id!);
         setIncomeType(typeConfig);
 
-        const fields = await incomeTypeService.getFields(data.income_type_id!);
-        setVisibleFields(fields);
-
-        if (fields.show_category) {
+        if (typeConfig.show_category) {
           const cats = await incomeTypeService.getCategories(data.income_type_id!);
           setCategories(cats);
         }
 
-        if (fields.show_status) {
-          const stats = await incomeTypeService.getStatuses(data.income_type_id!);
-          setStatuses(stats);
-        }
+        const stats = await incomeTypeService.getStatuses(data.income_type_id!);
+        setStatuses(stats);
       } else if (typeIdParam) {
         // Creating new income with specific type
         const typeConfig = await incomeTypeService.getById(Number(typeIdParam));
         setIncomeType(typeConfig);
 
-        const fields = await incomeTypeService.getFields(Number(typeIdParam));
-        setVisibleFields(fields);
-
         setFormData(prev => ({ ...prev, income_type_id: Number(typeIdParam) }));
 
-        if (fields.show_category) {
+        if (typeConfig.show_category) {
           const cats = await incomeTypeService.getCategories(Number(typeIdParam));
           setCategories(cats);
         }
 
-        if (fields.show_status) {
-          const stats = await incomeTypeService.getStatuses(Number(typeIdParam));
-          setStatuses(stats);
-        }
+        const stats = await incomeTypeService.getStatuses(Number(typeIdParam));
+        setStatuses(stats);
       } else {
         setError('Debe especificar un tipo de ingreso');
       }
@@ -135,7 +125,7 @@ export default function IncomeDataForm() {
     );
   }
 
-  if (error && !visibleFields) {
+  if (error && !incomeType) {
     return (
       <div className="p-6">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
@@ -178,23 +168,21 @@ export default function IncomeDataForm() {
       <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Name - Always shown */}
-          {visibleFields?.show_name && (
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nombre {incomeType?.required_name && <span className="text-red-500">*</span>}
-              </label>
-              <input
-                type="text"
-                value={formData.name || ''}
-                onChange={(e) => handleChange('name', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required={incomeType?.required_name}
-              />
-            </div>
-          )}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Nombre {incomeType?.required_name && <span className="text-red-500">*</span>}
+            </label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={(e) => handleChange('name', e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              required={incomeType?.required_name}
+            />
+          </div>
 
           {/* Amount */}
-          {visibleFields?.show_amount && (
+          {incomeType?.show_amount && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Monto {incomeType?.required_amount && <span className="text-red-500">*</span>}
@@ -211,23 +199,24 @@ export default function IncomeDataForm() {
           )}
 
           {/* Date */}
-          {visibleFields?.show_date && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Fecha {incomeType?.required_date && <span className="text-red-500">*</span>}
-              </label>
-              <input
-                type="date"
-                value={formData.date || ''}
-                onChange={(e) => handleChange('date', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required={incomeType?.required_date}
-              />
-            </div>
-          )}
+          <div>
+            <DatePicker
+              id="form-date"
+              label={<>Fecha {incomeType?.required_date && <span className="text-red-500">*</span>}</>}
+              defaultDate={formData.date || new Date().toISOString().split('T')[0]}
+              onChange={(selectedDates) => {
+                if (selectedDates.length > 0) {
+                  const date = selectedDates[0];
+                  const formattedDate = date.toISOString().split('T')[0];
+                  handleChange('date', formattedDate);
+                }
+              }}
+              placeholder="Seleccionar fecha"
+            />
+          </div>
 
           {/* Category */}
-          {visibleFields?.show_category && (
+          {incomeType?.show_category && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Categoría {incomeType?.required_category && <span className="text-red-500">*</span>}
@@ -249,29 +238,27 @@ export default function IncomeDataForm() {
           )}
 
           {/* Status */}
-          {visibleFields?.show_status && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Estado {incomeType?.required_status && <span className="text-red-500">*</span>}
-              </label>
-              <select
-                value={formData.status_id || ''}
-                onChange={(e) => handleChange('status_id', e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required={incomeType?.required_status}
-              >
-                <option value="">Seleccione estado</option>
-                {statuses.map((status) => (
-                  <option key={status.id} value={status.id}>
-                    {status.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Estado {incomeType?.required_status && <span className="text-red-500">*</span>}
+            </label>
+            <select
+              value={formData.status_id || ''}
+              onChange={(e) => handleChange('status_id', e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              required={incomeType?.required_status}
+            >
+              <option value="">Seleccione estado</option>
+              {statuses.map((status) => (
+                <option key={status.id} value={status.id}>
+                  {status.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Payment Method */}
-          {visibleFields?.show_payment_method && (
+          {incomeType?.show_payment_method && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Método de Pago {incomeType?.required_payment_method && <span className="text-red-500">*</span>}
@@ -292,24 +279,27 @@ export default function IncomeDataForm() {
             </div>
           )}
 
-          {/* Due Date */}
-          {visibleFields?.show_due_date && (
+          {/* Payment Date */}
+          {incomeType?.show_payment_date && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Fecha de Vencimiento {incomeType?.required_due_date && <span className="text-red-500">*</span>}
-              </label>
-              <input
-                type="date"
-                value={formData.due_date || ''}
-                onChange={(e) => handleChange('due_date', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required={incomeType?.required_due_date}
+              <DatePicker
+                id="form-payment-date"
+                label={<>Fecha de Pago {incomeType?.required_payment_date && <span className="text-red-500">*</span>}</>}
+                defaultDate={formData.payment_date || ''}
+                onChange={(selectedDates) => {
+                  if (selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const formattedDate = date.toISOString().split('T')[0];
+                    handleChange('payment_date', formattedDate);
+                  }
+                }}
+                placeholder="Seleccionar fecha de pago"
               />
             </div>
           )}
 
           {/* Invoice Number */}
-          {visibleFields?.show_invoice_number && (
+          {incomeType?.show_invoice_number && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Número de Factura {incomeType?.required_invoice_number && <span className="text-red-500">*</span>}
@@ -325,7 +315,7 @@ export default function IncomeDataForm() {
           )}
 
           {/* Currency */}
-          {visibleFields?.show_currency && (
+          {incomeType?.show_currency && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Moneda {incomeType?.required_currency && <span className="text-red-500">*</span>}
@@ -344,7 +334,7 @@ export default function IncomeDataForm() {
           )}
 
           {/* Exchange Rate */}
-          {visibleFields?.show_exchange_rate && (
+          {incomeType?.show_exchange_rate && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tipo de Cambio {incomeType?.required_exchange_rate && <span className="text-red-500">*</span>}
@@ -360,21 +350,107 @@ export default function IncomeDataForm() {
             </div>
           )}
 
-          {/* Description */}
-          {visibleFields?.show_description && (
-            <div className="md:col-span-2">
+
+
+          {/* Reference Number */}
+          {incomeType?.show_reference_number && (
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Descripción {incomeType?.required_description && <span className="text-red-500">*</span>}
+                Número de Referencia {incomeType?.required_reference_number && <span className="text-red-500">*</span>}
               </label>
-              <textarea
-                value={formData.description || ''}
-                onChange={(e) => handleChange('description', e.target.value)}
-                rows={3}
+              <input
+                type="text"
+                value={formData.reference_number || ''}
+                onChange={(e) => handleChange('reference_number', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required={incomeType?.required_description}
+                required={incomeType?.required_reference_number}
               />
             </div>
           )}
+
+          {/* Payment Status */}
+          {incomeType?.show_payment_status && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Estado de Pago {incomeType?.required_payment_status && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                value={formData.payment_status || ''}
+                onChange={(e) => handleChange('payment_status', e.target.value as any)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                required={incomeType?.required_payment_status}
+              >
+                <option value="">Seleccione estado</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="parcial">Parcial</option>
+                <option value="pagado">Pagado</option>
+                <option value="anulado">Anulado</option>
+              </select>
+            </div>
+          )}
+
+          {/* Tax Amount */}
+          {incomeType?.show_tax_amount && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Monto de Impuesto (IVA) {incomeType?.required_tax_amount && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.tax_amount || ''}
+                onChange={(e) => handleChange('tax_amount', parseFloat(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                required={incomeType?.required_tax_amount}
+              />
+            </div>
+          )}
+
+          {/* Net Amount */}
+          {incomeType?.show_net_amount && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Monto Neto {incomeType?.required_net_amount && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.net_amount || ''}
+                onChange={(e) => handleChange('net_amount', parseFloat(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                required={incomeType?.required_net_amount}
+              />
+            </div>
+          )}
+
+          {/* Total Amount */}
+          {incomeType?.show_total_amount && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Monto Total {incomeType?.required_total_amount && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.total_amount || ''}
+                onChange={(e) => handleChange('total_amount', parseFloat(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                required={incomeType?.required_total_amount}
+              />
+            </div>
+          )}
+          {/* Description - Always shown */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Descripción
+            </label>
+            <textarea
+              value={formData.description || ''}
+              onChange={(e) => handleChange('description', e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
         </div>
 
         {/* Action Buttons */}

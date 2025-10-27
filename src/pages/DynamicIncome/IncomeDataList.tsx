@@ -341,9 +341,14 @@ export default function IncomeDataList() {
     <div className="p-6">
       <div className="flex justify-between items-start mb-6">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {selectedType ? selectedType.name : 'Datos de Ingresos'}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {selectedType ? selectedType.name : 'Datos de Ingresos'}
+            </h1>
+            <span className="px-3 py-1 text-sm font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+              Ingresos
+            </span>
+          </div>
           {selectedType ? (
             selectedType.description && (
               <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -570,11 +575,9 @@ export default function IncomeDataList() {
                       Monto
                     </th>
                   )}
-                  { (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Fecha
+                  </th>
                   {selectedType?.show_category && categories.length > 0 && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Categoría
@@ -585,9 +588,39 @@ export default function IncomeDataList() {
                       Estado
                     </th>
                   )}
+                  {selectedType?.show_payment_date && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      F. Pago
+                    </th>
+                  )}
+                  {selectedType?.show_reference_number && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Ref.
+                    </th>
+                  )}
+                  {selectedType?.show_invoice_number && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Factura
+                    </th>
+                  )}
                   {selectedType?.show_payment_method && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Método
+                    </th>
+                  )}
+                  {selectedType?.show_payment_status && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Estado Pago
+                    </th>
+                  )}
+                  {selectedType?.show_currency && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Moneda
+                    </th>
+                  )}
+                  {selectedType?.show_exchange_rate && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      T. Cambio
                     </th>
                   )}
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -610,13 +643,11 @@ export default function IncomeDataList() {
                         </div>
                       </td>
                     )}
-                    { (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {formatDate(income.date)}
-                        </div>
-                      </td>
-                    )}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {formatDate(income.date)}
+                      </div>
+                    </td>
                     {selectedType?.show_category && categories.length > 0 && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         {(() => {
@@ -657,11 +688,58 @@ export default function IncomeDataList() {
                         })()}
                       </td>
                     )}
+                    {selectedType?.show_payment_date && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {formatDate(income.payment_date)}
+                        </div>
+                      </td>
+                    )}
+                    {selectedType?.show_reference_number && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {income.reference_number || '-'}
+                        </div>
+                      </td>
+                    )}
+                    {selectedType?.show_invoice_number && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {income.invoice_number || '-'}
+                        </div>
+                      </td>
+                    )}
                     {selectedType?.show_payment_method && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
                           {income.payment_method || '-'}
                         </span>
+                      </td>
+                    )}
+                    {selectedType?.show_payment_status && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          income.payment_status === 'pagado' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                          income.payment_status === 'pendiente' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                          income.payment_status === 'parcial' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
+                          'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                        }`}>
+                          {income.payment_status || '-'}
+                        </span>
+                      </td>
+                    )}
+                    {selectedType?.show_currency && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {income.currency || 'CLP'}
+                        </div>
+                      </td>
+                    )}
+                    {selectedType?.show_exchange_rate && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {income.exchange_rate ? income.exchange_rate.toFixed(4) : '-'}
+                        </div>
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -723,10 +801,19 @@ export default function IncomeDataList() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Fecha {currentType?.required_date && <span className="text-red-500">*</span>}
-                  </label>
-                  <input type="date" value={formData.date || ''} onChange={(e) => handleInputChange('date', e.target.value)} required={currentType?.required_date} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                  <DatePicker
+                    id="modal-date"
+                    label={<>Fecha {currentType?.required_date && <span className="text-red-500">*</span>}</>}
+                    defaultDate={formData.date || new Date().toISOString().split('T')[0]}
+                    onChange={(selectedDates) => {
+                      if (selectedDates.length > 0) {
+                        const date = selectedDates[0];
+                        const formattedDate = date.toISOString().split('T')[0];
+                        handleInputChange('date', formattedDate);
+                      }
+                    }}
+                    placeholder="Seleccionar fecha"
+                  />
                 </div>
 
                 <div>
@@ -776,6 +863,106 @@ export default function IncomeDataList() {
                       <option value="tarjeta">Tarjeta</option>
                       <option value="otro">Otro</option>
                     </select>
+                  </div>
+                )}
+
+                {currentType?.show_payment_date && (
+                  <div>
+                    <DatePicker
+                      id="modal-payment-date"
+                      label={<>Fecha de Pago {currentType?.required_payment_date && <span className="text-red-500">*</span>}</>}
+                      defaultDate={formData.payment_date || ''}
+                      onChange={(selectedDates) => {
+                        if (selectedDates.length > 0) {
+                          const date = selectedDates[0];
+                          const formattedDate = date.toISOString().split('T')[0];
+                          handleInputChange('payment_date', formattedDate);
+                        }
+                      }}
+                      placeholder="Seleccionar fecha de pago"
+                    />
+                  </div>
+                )}
+
+                {currentType?.show_payment_status && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Estado de Pago {currentType?.required_payment_status && <span className="text-red-500">*</span>}
+                    </label>
+                    <select value={formData.payment_status || ''} onChange={(e) => handleInputChange('payment_status', e.target.value)} required={currentType?.required_payment_status} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                      <option value="">Seleccionar...</option>
+                      <option value="pendiente">Pendiente</option>
+                      <option value="parcial">Parcial</option>
+                      <option value="pagado">Pagado</option>
+                      <option value="anulado">Anulado</option>
+                    </select>
+                  </div>
+                )}
+
+                {currentType?.show_reference_number && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Número de Referencia {currentType?.required_reference_number && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="text" value={formData.reference_number || ''} onChange={(e) => handleInputChange('reference_number', e.target.value)} required={currentType?.required_reference_number} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                  </div>
+                )}
+
+                {currentType?.show_invoice_number && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Número de Factura {currentType?.required_invoice_number && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="text" value={formData.invoice_number || ''} onChange={(e) => handleInputChange('invoice_number', e.target.value)} required={currentType?.required_invoice_number} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                  </div>
+                )}
+
+                {currentType?.show_tax_amount && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Monto de IVA {currentType?.required_tax_amount && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="number" step="0.01" value={formData.tax_amount || ''} onChange={(e) => handleInputChange('tax_amount', parseFloat(e.target.value))} required={currentType?.required_tax_amount} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                  </div>
+                )}
+
+                {currentType?.show_net_amount && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Monto Neto {currentType?.required_net_amount && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="number" step="0.01" value={formData.net_amount || ''} onChange={(e) => handleInputChange('net_amount', parseFloat(e.target.value))} required={currentType?.required_net_amount} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                  </div>
+                )}
+
+                {currentType?.show_total_amount && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Monto Total {currentType?.required_total_amount && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="number" step="0.01" value={formData.total_amount || ''} onChange={(e) => handleInputChange('total_amount', parseFloat(e.target.value))} required={currentType?.required_total_amount} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                  </div>
+                )}
+
+                {currentType?.show_currency && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Moneda {currentType?.required_currency && <span className="text-red-500">*</span>}
+                    </label>
+                    <select value={formData.currency || 'CLP'} onChange={(e) => handleInputChange('currency', e.target.value)} required={currentType?.required_currency} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                      <option value="CLP">Peso Chileno (CLP)</option>
+                      <option value="USD">Dólar (USD)</option>
+                      <option value="EUR">Euro (EUR)</option>
+                    </select>
+                  </div>
+                )}
+
+                {currentType?.show_exchange_rate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Tipo de Cambio {currentType?.required_exchange_rate && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="number" step="0.0001" value={formData.exchange_rate || ''} onChange={(e) => handleInputChange('exchange_rate', parseFloat(e.target.value))} required={currentType?.required_exchange_rate} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                   </div>
                 )}
 

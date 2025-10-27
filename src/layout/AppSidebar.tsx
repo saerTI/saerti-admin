@@ -11,7 +11,8 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
-  DollarLineIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -37,12 +38,12 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <DollarLineIcon />,
+    icon: <ArrowUpIcon />,
     name: "Ingresos",
     path: "/ingresos/datos",
   },
   {
-    icon: <DollarLineIcon />,
+    icon: <ArrowDownIcon />,
     name: "Egresos",
     path: "/costos/index",
   },
@@ -107,7 +108,7 @@ const othersItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered, setIsMobileOpen } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, setIsMobileOpen, refreshTrigger } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -181,7 +182,7 @@ const AppSidebar: React.FC = () => {
     };
     
     loadIncomeTypes();
-  }, []);
+  }, [refreshTrigger]);
 
   useEffect(() => {
     let submenuMatched = false;

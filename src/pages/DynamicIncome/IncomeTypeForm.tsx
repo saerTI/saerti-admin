@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { incomeTypeService } from '../../services/incomeTypeService';
 import type { IncomeType } from '../../types/income';
+import { useSidebar } from '../../context/SidebarContext';
 import StatusTable, { type StatusTableHandle } from './StatusTable';
 import CategoryTable, { type CategoryTableHandle } from './CategoryTable';
 
@@ -17,7 +18,10 @@ interface FieldConfig {
 const configurableFields: FieldConfig[] = [
   { key: 'show_category', label: 'Categoría', showKey: 'show_category', requiredKey: 'required_category' },
   { key: 'show_payment_date', label: 'Fecha de Vencimiento', showKey: 'show_payment_date', requiredKey: 'required_payment_date' },
-  { key: 'show_reference_number', label: 'Identificador', showKey: 'show_reference_number', requiredKey: 'required_reference_number' },
+  { key: 'show_reference_number', label: 'Número de Referencia', showKey: 'show_reference_number', requiredKey: 'required_reference_number' },
+  { key: 'show_invoice_number', label: 'Número de Factura', showKey: 'show_invoice_number', requiredKey: 'required_invoice_number' },
+  { key: 'show_payment_method', label: 'Método de Pago', showKey: 'show_payment_method', requiredKey: 'required_payment_method' },
+  { key: 'show_payment_status', label: 'Estado de Pago', showKey: 'show_payment_status', requiredKey: 'required_payment_status' },
   { key: 'show_currency', label: 'Moneda', showKey: 'show_currency', requiredKey: 'required_currency' },
   { key: 'show_exchange_rate', label: 'Tipo de Cambio', showKey: 'show_exchange_rate', requiredKey: 'required_exchange_rate' },
 ];
@@ -32,6 +36,7 @@ const configurableFields: FieldConfig[] = [
 
 export default function IncomeTypeForm() {
   const navigate = useNavigate();
+  const { refreshIncomeTypes } = useSidebar();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
 
@@ -133,8 +138,6 @@ export default function IncomeTypeForm() {
         const result = await incomeTypeService.create(formData);
         incomeTypeId = result.id;
         console.log('✅ Income type created with ID:', incomeTypeId);
-        // Navigate to edit mode with the new ID so tables can load
-        navigate(`/ingresos/tipos/${incomeTypeId}`, { replace: true });
       }
 
       // Then save statuses and categories (both for create and edit)
@@ -165,8 +168,9 @@ export default function IncomeTypeForm() {
       setSuccessMessage('Datos guardados exitosamente');
       console.log('✅ All data saved successfully');
       
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000);
+      // Refresh sidebar and navigate to income types list
+      refreshIncomeTypes();
+      setTimeout(() => navigate('/ingresos/tipos'), 1000);
     } catch (err: any) {
       console.error('❌ Error saving:', err);
       setError(err.message || 'Error guardando tipo de ingreso');
