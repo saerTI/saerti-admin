@@ -7,7 +7,7 @@ import type {
   VisibleFields
 } from '../types/income';
 
-const BASE_URL = '/api';
+const BASE_URL = ''; // apiService already adds /api prefix
 
 // ============================================
 // INCOME TYPES

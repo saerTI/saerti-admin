@@ -2,7 +2,7 @@
 import apiService from './apiService';
 import type { IncomeData, IncomeFilters, PaginationInfo } from '../types/income';
 
-const BASE_URL = '/api';
+const BASE_URL = ''; // apiService already adds /api prefix
 
 export const incomeDataService = {
   async getAll(filters?: IncomeFilters): Promise<{ data: IncomeData[]; pagination: PaginationInfo }> {
