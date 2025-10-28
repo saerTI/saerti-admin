@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { consolidatedDashboardService } from '../../services/consolidatedDashboardService';
 import { useCostCenter } from '../../context/CostCenterContext';
-import type { ConsolidatedData, FinancialKPIs, OperationalMetrics as OperationalMetricsType } from '../../services/consolidatedDashboardService';
+import type { ConsolidatedData, FinancialKPIs } from '../../services/consolidatedDashboardService';
 import FinancialKPICards from '../../components/Dashboard/FinancialKPICards';
-import OperationalMetrics from '../../components/Dashboard/OperationalMetrics';
 import ComparativeLineChart from '../../components/Dashboard/ComparativeLineChart';
 import TopTypesBarChart from '../../components/Dashboard/TopTypesBarChart';
 import TopNTable from '../../components/Dashboard/TopNTable';
 
 const ConsolidatedHome: React.FC = () => {
-  const { selectedCostCenterId, costCenters } = useCostCenter();
+  const { selectedCostCenterId } = useCostCenter();
   const [data, setData] = useState<ConsolidatedData | null>(null);
   const [kpis, setKpis] = useState<FinancialKPIs | null>(null);
-  const [metrics, setMetrics] = useState<OperationalMetricsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,21 +30,14 @@ const ConsolidatedHome: React.FC = () => {
 
       console.log('[ConsolidatedHome] Cargando datos con filtros:', filters);
 
-      // Fetch all data in parallel
-      const [consolidatedData, operationalMetrics] = await Promise.all([
-        consolidatedDashboardService.fetchAllData(filters),
-        consolidatedDashboardService.getOperationalMetrics(filters)
-      ]);
+      // Fetch consolidated data
+      const consolidatedData = await consolidatedDashboardService.fetchAllData(filters);
 
       setData(consolidatedData);
 
       // Calculate KPIs
       const calculatedKPIs = consolidatedDashboardService.calculateKPIs(consolidatedData);
       setKpis(calculatedKPIs);
-
-      // Update metrics with total transactions
-      const totalTransactions = calculatedKPIs.incomeCount + calculatedKPIs.expenseCount;
-      setMetrics({ ...operationalMetrics, totalTransactions });
 
     } catch (err) {
       console.error('Error loading dashboard data:', err);
@@ -82,20 +73,6 @@ const ConsolidatedHome: React.FC = () => {
         <>
             {/* Financial KPI Cards */}
             {kpis && <FinancialKPICards kpis={kpis} loading={loading} />}
-
-            {/* Operational Metrics */}
-            {metrics && (
-              <OperationalMetrics
-                metrics={metrics}
-                totalTransactions={metrics.totalTransactions}
-                loading={loading}
-                selectedCostCenterName={
-                  selectedCostCenterId
-                    ? costCenters.find(cc => cc.id === selectedCostCenterId)?.name
-                    : undefined
-                }
-              />
-            )}
 
             {/* Charts Section - 2 columns */}
             {data && (

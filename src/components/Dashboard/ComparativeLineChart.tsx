@@ -235,7 +235,7 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
         }
       }
     },
-    colors: ['#10b981'],
+    colors: ['#3b82f6'],
     grid: {
       borderColor: '#e5e7eb',
       strokeDashArray: 4,
@@ -252,16 +252,7 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
       yaxis: [{
         y: 0,
         borderColor: '#ef4444',
-        strokeDashArray: 4,
-        label: {
-          borderColor: '#ef4444',
-          style: {
-            color: '#fff',
-            background: '#ef4444',
-            fontSize: '10px'
-          },
-          text: 'Punto de equilibrio'
-        }
+        strokeDashArray: 4
       }]
     }
   };
