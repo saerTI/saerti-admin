@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { setClerkTokenGetter } from "./services/apiService";
 import { AuthProvider } from "./context/AuthContext";
+import { CostCenterProvider } from "./context/CostCenterContext";
 import ClerkProtectedRoute from "./components/auth/ClerkProtectedRoute";
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
@@ -35,11 +36,17 @@ import IncomeTypesIndex from './pages/DynamicIncome/IncomeTypesIndex';
 import IncomeTypeForm from './pages/DynamicIncome/IncomeTypeForm';
 import IncomeDataList from './pages/DynamicIncome/IncomeDataList';
 import IncomeDataForm from './pages/DynamicIncome/IncomeDataForm';
+import IncomeDashboard from './pages/DynamicIncome/IncomeDashboard';
+import ConsolidatedHome from './pages/Dashboard/ConsolidatedHome';
 // Sistema dinámico de egresos
 import ExpenseTypesIndex from './pages/DynamicExpense/ExpenseTypesIndex';
 import ExpenseTypeForm from './pages/DynamicExpense/ExpenseTypeForm';
 import ExpenseDataList from './pages/DynamicExpense/ExpenseDataList';
 import ExpenseDataForm from './pages/DynamicExpense/ExpenseDataForm';
+import ExpenseDashboard from './pages/DynamicExpense/ExpenseDashboard';
+// Centros de costo
+import CostCentersIndex from './pages/CostCenters/CostCentersIndex';
+import CostCenterForm from './pages/CostCenters/CostCenterForm';
 
 // ✅ Componente que configura el token getter para apiService
 function ClerkTokenProvider() {
@@ -99,17 +106,18 @@ export default function App() {
     <>
       {/* Configurar token getter */}
       <ClerkTokenProvider />
-      
+
       <Router>
         <AuthProvider>
-          <ScrollToTop />
-          <Routes>
+          <CostCenterProvider>
+            <ScrollToTop />
+            <Routes>
             {/* Protected Dashboard Layout */}
             <Route element={<AppLayout />}>
               {/* Dashboard */}
               <Route path="/" element={
                 <ClerkProtectedRoute>
-                  <Home />
+                  <ConsolidatedHome />
                 </ClerkProtectedRoute>
               } />
               
@@ -120,27 +128,29 @@ export default function App() {
                 </ClerkProtectedRoute>
               } />
 
-              {/* Centros de Costo */}
-              <Route path="/cost-centers" element={
+              {/* Projects - Commented out until backend is implemented */}
+              {/*
+              <Route path="/projects" element={
                 <ClerkProtectedRoute>
                   <ProjectList />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/cost-centers/new" element={
+              <Route path="/projects/new" element={
                 <ClerkProtectedRoute>
                   <ProjectForm />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/cost-centers/:id" element={
+              <Route path="/projects/:id" element={
                 <ClerkProtectedRoute>
                   <ProjectDetails />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/cost-centers/:id/edit" element={
+              <Route path="/projects/:id/edit" element={
                 <ClerkProtectedRoute>
                   <ProjectForm />
                 </ClerkProtectedRoute>
               } />
+              */}
 
               {/* Budget Analyzer */}
               <Route path="/budget-analysis" element={
@@ -183,7 +193,29 @@ export default function App() {
                 </ClerkProtectedRoute>
               } />
 
+              {/* Centros de Costo */}
+              <Route path="/centros-costo" element={
+                <ClerkProtectedRoute>
+                  <CostCentersIndex />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/centros-costo/nuevo" element={
+                <ClerkProtectedRoute>
+                  <CostCenterForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/centros-costo/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <CostCenterForm />
+                </ClerkProtectedRoute>
+              } />
+
               {/* Ingresos - Sistema dinámico */}
+              <Route path="/ingresos/resumen" element={
+                <ClerkProtectedRoute>
+                  <IncomeDashboard />
+                </ClerkProtectedRoute>
+              } />
               <Route path="/ingresos/tipos" element={
                 <ClerkProtectedRoute>
                   <IncomeTypesIndex />
@@ -221,6 +253,11 @@ export default function App() {
               } />
 
               {/* Egresos - Sistema dinámico */}
+              <Route path="/egresos/resumen" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDashboard />
+                </ClerkProtectedRoute>
+              } />
               <Route path="/egresos/tipos" element={
                 <ClerkProtectedRoute>
                   <ExpenseTypesIndex />
@@ -336,6 +373,7 @@ export default function App() {
             {/* Fallback Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </CostCenterProvider>
         </AuthProvider>
       </Router>
     </>

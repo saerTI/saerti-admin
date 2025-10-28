@@ -5,19 +5,19 @@ import { expenseDataService } from '@/services/expenseDataService';
 import { expenseTypeService } from '@/services/expenseTypeService';
 import { expenseStatusService } from '@/services/expenseStatusService';
 import { expenseCategoryService } from '@/services/expenseCategoryService';
-import { getCostCenters, type CostCenter } from '@/services/costCenterService';
+import { useCostCenter } from '@/context/CostCenterContext';
 import DatePicker from '@/components/form/date-picker';
 import type { ExpenseData, ExpenseType, ExpenseFilters, ExpenseStatus, ExpenseCategory } from '@/types/expense';
 
 export default function ExpenseDataList() {
   const { typeName } = useParams<{ typeName?: string }>();
+  const { selectedCostCenterId } = useCostCenter();
 
   const [expenses, setExpenses] = useState<ExpenseData[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [currentType, setCurrentType] = useState<ExpenseType | null>(null);
   const [statuses, setStatuses] = useState<ExpenseStatus[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
-  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
@@ -30,6 +30,7 @@ export default function ExpenseDataList() {
     expense_type_id: undefined,
     offset: 0,
     limit: 20,
+    cost_center_id: selectedCostCenterId || undefined,
   });
 
   // Client-side filters (visual only, don't trigger API calls)
@@ -74,10 +75,14 @@ export default function ExpenseDataList() {
     }
   }, [currentType]);
 
-  // Load cost centers on mount
+  // Update filters when selectedCostCenterId changes
   useEffect(() => {
-    loadCostCenters();
-  }, []);
+    setFilters(prev => ({
+      ...prev,
+      cost_center_id: selectedCostCenterId || undefined,
+      offset: 0
+    }));
+  }, [selectedCostCenterId]);
 
 
   const loadExpenseTypes = async () => {
@@ -102,24 +107,6 @@ export default function ExpenseDataList() {
       console.error('Error loading statuses/categories:', err);
       setStatuses([]);
       setCategories([]);
-    }
-  };
-
-  const loadCostCenters = async () => {
-    try {
-      console.log('🏢 Cargando centros de costo...');
-      const response = await getCostCenters();
-      console.log('🏢 Respuesta completa:', response);
-      // El servicio retorna response.data directamente, pero el backend envuelve en {success, data}
-      // El apiService ya extrae response.data, así que response ES el objeto {success, data}
-      const centers = Array.isArray(response) ? response : (response as any).data || [];
-      console.log('🏢 Centros de costo extraídos:', centers);
-      const activeCenters = centers.filter((c: any) => c.active);
-      console.log('🏢 Centros de costo activos:', activeCenters);
-      setCostCenters(activeCenters);
-    } catch (err: any) {
-      console.error('❌ Error loading cost centers:', err);
-      setCostCenters([]);
     }
   };
 
@@ -263,7 +250,6 @@ export default function ExpenseDataList() {
       ...prev,
       date_from: undefined,
       date_to: undefined,
-      cost_center_id: undefined,
       offset: 0,
     }));
   };
@@ -324,7 +310,7 @@ export default function ExpenseDataList() {
     return true;
   });
 
-  const hasActiveFilters = clientFilters.search || clientFilters.status_id || clientFilters.category_id || filters.date_from || filters.date_to || filters.cost_center_id;
+  const hasActiveFilters = clientFilters.search || clientFilters.status_id || clientFilters.category_id || filters.date_from || filters.date_to;
 
   if (loading && expenses.length === 0) {
     return (
@@ -458,27 +444,6 @@ export default function ExpenseDataList() {
               className="h-[42px]"
             />
           </div>
-
-          {/* Cost Center filter */}
-          {costCenters.length > 0 && (
-            <div className="min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Centro de Costo
-              </label>
-              <select
-                value={filters.cost_center_id || ''}
-                onChange={(e) => handleFilterChange('cost_center_id', e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">Todos</option>
-                {costCenters.map((cc) => (
-                  <option key={cc.id} value={cc.id}>
-                    {cc.code} - {cc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Clear filters button */}
           {hasActiveFilters && (

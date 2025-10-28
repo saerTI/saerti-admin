@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
   {
     icon: <UserCircleIcon />,
     name: "Centros de Costo",
-    path: "/cost-centers",
+    path: "/centros-costo",
   },
   {
     icon: <Settings className="w-5 h-5" />,
@@ -168,14 +168,26 @@ const AppSidebar: React.FC = () => {
               return {
                 ...item,
                 path: undefined, // Remove direct path when there are subtypes
-                subItems: incomeTypesData.map(type => {
-                  const slug = type.name.toLowerCase().replace(/\s+/g, '_');
-                  return {
-                    name: type.name,
-                    path: `/ingresos/datos/${slug}`,
+                subItems: [
+                  {
+                    name: "Resumen",
+                    path: "/ingresos/resumen",
                     pro: false
-                  };
-                })
+                  },
+                  ...incomeTypesData.map(type => {
+                    const slug = type.name.toLowerCase().replace(/\s+/g, '_');
+                    return {
+                      name: type.name,
+                      path: `/ingresos/datos/${slug}`,
+                      pro: false
+                    };
+                  }),
+                  {
+                    name: "Todos los Ingresos",
+                    path: "/ingresos/datos",
+                    pro: false
+                  }
+                ]
               };
             }
             // If no types, keep it as direct link
@@ -186,14 +198,26 @@ const AppSidebar: React.FC = () => {
               return {
                 ...item,
                 path: undefined, // Remove direct path when there are subtypes
-                subItems: expenseTypesData.map(type => {
-                  const slug = type.name.toLowerCase().replace(/\s+/g, '_');
-                  return {
-                    name: type.name,
-                    path: `/egresos/datos/${slug}`,
+                subItems: [
+                  {
+                    name: "Resumen",
+                    path: "/egresos/resumen",
                     pro: false
-                  };
-                })
+                  },
+                  ...expenseTypesData.map(type => {
+                    const slug = type.name.toLowerCase().replace(/\s+/g, '_');
+                    return {
+                      name: type.name,
+                      path: `/egresos/datos/${slug}`,
+                      pro: false
+                    };
+                  }),
+                  {
+                    name: "Todos los Egresos",
+                    path: "/egresos/datos",
+                    pro: false
+                  }
+                ]
               };
             }
             // If no types, keep it as direct link
