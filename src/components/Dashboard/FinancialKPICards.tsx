@@ -57,7 +57,7 @@ const FinancialKPICards: React.FC<FinancialKPICardsProps> = ({ kpis, loading = f
       value: kpis.totalIncome,
       trend: kpis.incomeGrowth,
       secondary: `${kpis.incomeCount} registros`,
-      icon: DollarSign,
+      icon: TrendingUp,
       color: 'emerald',
       bgColor: 'bg-emerald-500',
       lightBg: 'bg-emerald-50 dark:bg-emerald-900/20'
@@ -68,7 +68,7 @@ const FinancialKPICards: React.FC<FinancialKPICardsProps> = ({ kpis, loading = f
       value: kpis.totalExpense,
       trend: kpis.expenseGrowth,
       secondary: `${kpis.expenseCount} registros`,
-      icon: Activity,
+      icon: TrendingDown,
       color: 'red',
       bgColor: 'bg-red-500',
       lightBg: 'bg-red-50 dark:bg-red-900/20',

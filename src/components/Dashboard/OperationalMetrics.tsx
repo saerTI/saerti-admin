@@ -6,12 +6,14 @@ interface OperationalMetricsProps {
   metrics: OperationalMetricsType;
   totalTransactions?: number;
   loading?: boolean;
+  selectedCostCenterName?: string;
 }
 
 const OperationalMetrics: React.FC<OperationalMetricsProps> = ({
   metrics,
   totalTransactions = 0,
-  loading = false
+  loading = false,
+  selectedCostCenterName
 }) => {
   if (loading) {
     return (
@@ -32,7 +34,7 @@ const OperationalMetrics: React.FC<OperationalMetricsProps> = ({
       id: 'cost-centers',
       title: 'Centros de Costo',
       value: metrics.costCentersCount,
-      label: 'Activos',
+      label: selectedCostCenterName || 'Activos',
       icon: Building2,
       color: 'bg-blue-500',
       lightBg: 'bg-blue-50 dark:bg-blue-900/20',

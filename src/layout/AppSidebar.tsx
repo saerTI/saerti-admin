@@ -11,12 +11,10 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
-import { Calculator, Settings } from "lucide-react";
+import { Calculator, Settings, TrendingUp, TrendingDown } from "lucide-react";
 import { incomeTypeService } from "../services/incomeTypeService";
 import type { IncomeType } from "../types/income";
 import { expenseTypeService } from "../services/expenseTypeService";
@@ -40,12 +38,12 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <ArrowUpIcon />,
+    icon: <TrendingUp className="w-5 h-5" />,
     name: "Ingresos",
     path: "/ingresos/datos",
   },
   {
-    icon: <ArrowDownIcon />,
+    icon: <TrendingDown className="w-5 h-5" />,
     name: "Egresos",
     path: "/costos/index",
   },
@@ -181,12 +179,7 @@ const AppSidebar: React.FC = () => {
                       path: `/ingresos/datos/${slug}`,
                       pro: false
                     };
-                  }),
-                  {
-                    name: "Todos los Ingresos",
-                    path: "/ingresos/datos",
-                    pro: false
-                  }
+                  })
                 ]
               };
             }
@@ -211,12 +204,7 @@ const AppSidebar: React.FC = () => {
                       path: `/egresos/datos/${slug}`,
                       pro: false
                     };
-                  }),
-                  {
-                    name: "Todos los Egresos",
-                    path: "/egresos/datos",
-                    pro: false
-                  }
+                  })
                 ]
               };
             }
@@ -418,13 +406,13 @@ const AppSidebar: React.FC = () => {
   return (
     <aside
       onClick={handleSidebarClick}
-      className={`fixed top-0 flex flex-col px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed top-0 flex flex-col left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200
         ${
           isExpanded || isMobileOpen
-            ? "w-[290px]"
+            ? "w-[200px]"
             : isHovered
-              ? "w-[290px]"
-              : "w-[90px]"
+              ? "w-[200px]"
+              : "w-[60px]"
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -439,15 +427,15 @@ const AppSidebar: React.FC = () => {
                 className="dark:hidden"
                 src="/images/logo/logo_mpf.svg"
                 alt="Logo"
-                width={180}
-                height={40}
+                width={160}
+                height={35}
               />
               <img
                 className="hidden dark:block"
                 src="/images/logo/logo_mpf.svg"
                 alt="Logo"
-                width={180}
-                height={40}
+                width={160}
+                height={35}
               />
             </>
           ) : (

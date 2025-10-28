@@ -14,7 +14,7 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
   expenseData,
   loading = false
 }) => {
-  const { series, categories } = useMemo(() => {
+  const { series, categories, balanceSeries } = useMemo(() => {
     // Combine and sort both datasets by period
     const allPeriods = new Set<string>();
 
@@ -31,6 +31,13 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
     const incomeSeries = sortedPeriods.map(period => incomeMap.get(period) || 0);
     const expenseSeries = sortedPeriods.map(period => expenseMap.get(period) || 0);
 
+    // Calculate balance (income - expense)
+    const balanceData = sortedPeriods.map(period => {
+      const income = incomeMap.get(period) || 0;
+      const expense = expenseMap.get(period) || 0;
+      return income - expense;
+    });
+
     return {
       series: [
         {
@@ -42,6 +49,10 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
           data: expenseSeries
         }
       ],
+      balanceSeries: [{
+        name: 'Balance',
+        data: balanceData
+      }],
       categories: sortedPeriods
     };
   }, [incomeData, expenseData]);
@@ -49,22 +60,16 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
   const options: ApexOptions = {
     chart: {
       type: 'area',
-      height: 350,
+      height: 280,
       toolbar: {
-        show: true,
-        tools: {
-          download: true,
-          selection: false,
-          zoom: true,
-          zoomin: true,
-          zoomout: true,
-          pan: false,
-          reset: true
-        }
+        show: false
       },
       animations: {
         enabled: true,
         speed: 800
+      },
+      zoom: {
+        enabled: false
       }
     },
     dataLabels: {
@@ -154,6 +159,113 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
     }
   };
 
+  const balanceOptions: ApexOptions = {
+    chart: {
+      type: 'area',
+      height: 250,
+      toolbar: {
+        show: false
+      },
+      animations: {
+        enabled: true,
+        easing: 'easeinout',
+        speed: 800
+      },
+      zoom: {
+        enabled: false
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    stroke: {
+      curve: 'smooth',
+      width: 2
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.3,
+        stops: [0, 90, 100]
+      }
+    },
+    xaxis: {
+      categories: categories,
+      labels: {
+        style: {
+          fontSize: '11px'
+        },
+        rotate: -45,
+        rotateAlways: categories.length > 12
+      }
+    },
+    yaxis: {
+      title: {
+        text: 'Balance (CLP)',
+        style: {
+          fontSize: '12px'
+        }
+      },
+      labels: {
+        formatter: (val: number) => {
+          return new Intl.NumberFormat('es-CL', {
+            style: 'currency',
+            currency: 'CLP',
+            minimumFractionDigits: 0,
+            notation: 'compact',
+            compactDisplay: 'short'
+          }).format(val);
+        },
+        style: {
+          fontSize: '12px'
+        }
+      }
+    },
+    tooltip: {
+      shared: false,
+      y: {
+        formatter: (val: number) => {
+          return new Intl.NumberFormat('es-CL', {
+            style: 'currency',
+            currency: 'CLP',
+            minimumFractionDigits: 0
+          }).format(val);
+        }
+      }
+    },
+    colors: ['#10b981'],
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 4,
+      yaxis: {
+        lines: {
+          show: true
+        }
+      }
+    },
+    legend: {
+      show: false
+    },
+    annotations: {
+      yaxis: [{
+        y: 0,
+        borderColor: '#ef4444',
+        strokeDashArray: 4,
+        label: {
+          borderColor: '#ef4444',
+          style: {
+            color: '#fff',
+            background: '#ef4444',
+            fontSize: '10px'
+          },
+          text: 'Punto de equilibrio'
+        }
+      }]
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -180,8 +292,27 @@ const ComparativeLineChart: React.FC<ComparativeLineChartProps> = ({
         options={options}
         series={series}
         type="area"
-        height={350}
+        height={280}
       />
+
+      {/* Balance Area Chart */}
+      <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="mb-4">
+          <h4 className="text-md font-semibold text-gray-900 dark:text-white">
+            Evolución del Balance (Ingresos - Egresos)
+          </h4>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Balance neto por período
+          </p>
+        </div>
+
+        <ReactApexChart
+          options={balanceOptions}
+          series={balanceSeries}
+          type="area"
+          height={250}
+        />
+      </div>
     </div>
   );
 };

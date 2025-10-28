@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { consolidatedDashboardService } from '../../services/consolidatedDashboardService';
 import { useCostCenter } from '../../context/CostCenterContext';
 import type { ConsolidatedData, FinancialKPIs, OperationalMetrics as OperationalMetricsType } from '../../services/consolidatedDashboardService';
@@ -8,15 +7,9 @@ import OperationalMetrics from '../../components/Dashboard/OperationalMetrics';
 import ComparativeLineChart from '../../components/Dashboard/ComparativeLineChart';
 import TopTypesBarChart from '../../components/Dashboard/TopTypesBarChart';
 import TopNTable from '../../components/Dashboard/TopNTable';
-import CashFlowComparison from '../../components/Dashboard/CashFlowComparison';
-import IncomeDashboard from '../DynamicIncome/IncomeDashboard';
-import ExpenseDashboard from '../DynamicExpense/ExpenseDashboard';
-
-type TabType = 'overview' | 'income-analysis' | 'expense-analysis' | 'cash-flow';
 
 const ConsolidatedHome: React.FC = () => {
-  const { selectedCostCenterId } = useCostCenter();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const { selectedCostCenterId, costCenters } = useCostCenter();
   const [data, setData] = useState<ConsolidatedData | null>(null);
   const [kpis, setKpis] = useState<FinancialKPIs | null>(null);
   const [metrics, setMetrics] = useState<OperationalMetricsType | null>(null);
@@ -63,76 +56,18 @@ const ConsolidatedHome: React.FC = () => {
     }
   };
 
-  const tabs = [
-    {
-      id: 'overview' as TabType,
-      label: 'Resumen General',
-      icon: BarChart3,
-      description: 'KPIs consolidados'
-    },
-    {
-      id: 'income-analysis' as TabType,
-      label: 'Análisis de Ingresos',
-      icon: TrendingUp,
-      description: 'Vista detallada'
-    },
-    {
-      id: 'expense-analysis' as TabType,
-      label: 'Análisis de Egresos',
-      icon: TrendingDown,
-      description: 'Vista detallada'
-    },
-    {
-      id: 'cash-flow' as TabType,
-      label: 'Flujo de Caja',
-      icon: Activity,
-      description: 'Comparativa'
-    }
-  ];
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Dashboard Principal
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Vista consolidada de ingresos, egresos y flujo de caja
-        </p>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="flex overflow-x-auto">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 px-6 py-4 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
-                    ${isActive
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  <Icon className="w-5 h-5" />
-                  <div className="text-left">
-                    <div>{tab.label}</div>
-                    <div className="text-xs opacity-75">{tab.description}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
+    <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="mb-6 flex items-end gap-3">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white/90">
+            Dashboard Principal
+          </h2>
+          <span className="text-sm text-gray-500 dark:text-gray-400 pb-0.5">
+            · Vista consolidada de ingresos y egresos
+          </span>
         </div>
-      </div>
 
       {/* Error Display */}
       {error && (
@@ -141,11 +76,10 @@ const ConsolidatedHome: React.FC = () => {
         </div>
       )}
 
-      {/* Tab Content */}
+      {/* Content */}
       <div className="space-y-6">
-        {/* Tab 1: Overview - Resumen General */}
-        {activeTab === 'overview' && (
-          <>
+        {/* Overview Content */}
+        <>
             {/* Financial KPI Cards */}
             {kpis && <FinancialKPICards kpis={kpis} loading={loading} />}
 
@@ -155,13 +89,18 @@ const ConsolidatedHome: React.FC = () => {
                 metrics={metrics}
                 totalTransactions={metrics.totalTransactions}
                 loading={loading}
+                selectedCostCenterName={
+                  selectedCostCenterId
+                    ? costCenters.find(cc => cc.id === selectedCostCenterId)?.name
+                    : undefined
+                }
               />
             )}
 
             {/* Charts Section - 2 columns */}
             {data && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Comparative Line Chart */}
+                {/* Comparative Line Chart with Balance */}
                 <ComparativeLineChart
                   incomeData={data.income.cashFlow}
                   expenseData={data.expense.cashFlow}
@@ -216,31 +155,8 @@ const ConsolidatedHome: React.FC = () => {
                 />
               </div>
             )}
-          </>
-        )}
-
-        {/* Tab 2: Income Analysis */}
-        {activeTab === 'income-analysis' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <IncomeDashboard />
-          </div>
-        )}
-
-        {/* Tab 3: Expense Analysis */}
-        {activeTab === 'expense-analysis' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <ExpenseDashboard />
-          </div>
-        )}
-
-        {/* Tab 4: Cash Flow Comparison */}
-        {activeTab === 'cash-flow' && data && (
-          <CashFlowComparison
-            incomeData={data.income.cashFlow}
-            expenseData={data.expense.cashFlow}
-            loading={loading}
-          />
-        )}
+        </>
+      </div>
       </div>
     </div>
   );

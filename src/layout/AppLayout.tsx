@@ -18,9 +18,9 @@ const LayoutContent: React.FC = () => {
       <AppSidebar />
       
       {/* Contenedor principal - con margen ajustado */}
-      <div 
+      <div
         className={`w-full min-h-screen transition-all duration-300 ease-in-out
-          ${isExpanded || isHovered ? "lg:pl-[290px]" : "lg:pl-[90px]"}`}
+          ${isExpanded || isHovered ? "lg:pl-[200px]" : "lg:pl-[60px]"}`}
       >
         {/* Header */}
         <div className="sticky top-0 w-full z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -28,7 +28,7 @@ const LayoutContent: React.FC = () => {
         </div>
         
         {/* Contenido principal */}
-        <div className="w-full p-4 md:p-6">
+        <div className="w-full">
           <Outlet />
         </div>
       </div>

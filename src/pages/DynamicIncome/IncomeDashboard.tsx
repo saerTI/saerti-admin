@@ -84,24 +84,17 @@ export default function IncomeDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <TrendingUp className="text-green-600" size={32} />
+    <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="mb-6 flex items-end gap-3">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white/90">
             Resumen de Ingresos
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Análisis detallado de ingresos por tipo, categoría y período
-          </p>
+          </h2>
+          <span className="text-sm text-gray-500 dark:text-gray-400 pb-0.5">
+            · Análisis detallado de ingresos por tipo, categoría y período
+          </span>
         </div>
-
-        {/* Pill Badge */}
-        <span className="px-3 py-1 text-sm font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-full">
-          Ingresos
-        </span>
-      </div>
 
       {/* Tabs */}
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} color="green" />
@@ -168,6 +161,7 @@ export default function IncomeDashboard() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

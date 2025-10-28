@@ -77,7 +77,7 @@ const TopTypesBarChart: React.FC<TopTypesBarChartProps> = ({
       offsetX: 5,
       style: {
         fontSize: '11px',
-        colors: ['#fff']
+        colors: ['#000']
       }
     },
     xaxis: {

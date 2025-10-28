@@ -85,24 +85,17 @@ export default function ExpenseDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <TrendingDown className="text-red-600" size={32} />
+    <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="mb-6 flex items-end gap-3">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white/90">
             Resumen de Egresos
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Análisis detallado de egresos por tipo, categoría y período
-          </p>
+          </h2>
+          <span className="text-sm text-gray-500 dark:text-gray-400 pb-0.5">
+            · Análisis detallado de egresos por tipo, categoría y período
+          </span>
         </div>
-
-        {/* Pill Badge */}
-        <span className="px-3 py-1 text-sm font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-full">
-          Egresos
-        </span>
-      </div>
 
       {/* Tabs */}
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} color="red" />
@@ -169,6 +162,7 @@ export default function ExpenseDashboard() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

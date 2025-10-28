@@ -231,11 +231,6 @@ export default function App() {
                   <IncomeTypeForm />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/ingresos/datos" element={
-                <ClerkProtectedRoute>
-                  <IncomeDataList />
-                </ClerkProtectedRoute>
-              } />
               <Route path="/ingresos/datos/:typeName" element={
                 <ClerkProtectedRoute>
                   <IncomeDataList />
@@ -271,11 +266,6 @@ export default function App() {
               <Route path="/egresos/tipos/:id/editar" element={
                 <ClerkProtectedRoute>
                   <ExpenseTypeForm />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/egresos/datos" element={
-                <ClerkProtectedRoute>
-                  <ExpenseDataList />
                 </ClerkProtectedRoute>
               } />
               <Route path="/egresos/datos/:typeName" element={

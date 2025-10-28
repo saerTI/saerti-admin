@@ -135,16 +135,44 @@ class ConsolidatedDashboardService {
    */
   async getOperationalMetrics(filters: { cost_center_id?: number } = {}): Promise<OperationalMetrics> {
     try {
-      // Fetch active types and categories
-      const [incomeTypes, expenseTypes] = await Promise.all([
-        api.get('/income-types'),
-        api.get('/expense-types')
+      // Fetch active types, categories, and cost centers
+      const [incomeTypes, expenseTypes, costCenters] = await Promise.all([
+        api.get('/income-types', { params: { only_active: true } }),
+        api.get('/expense-types', { params: { only_active: true } }),
+        api.get('/cost-centers')
       ]);
 
+      console.log('[consolidatedDashboardService] API responses:', {
+        incomeTypes: incomeTypes.data,
+        expenseTypes: expenseTypes.data,
+        costCenters: costCenters.data
+      });
+
+      // If filtering by cost center, count only active (1), otherwise count all active
+      const costCentersCount = filters.cost_center_id
+        ? 1
+        : (Array.isArray(costCenters.data)
+            ? costCenters.data.filter((cc: any) => cc.is_active !== false).length
+            : (costCenters.data?.data?.filter((cc: any) => cc.is_active !== false)?.length || 0));
+
+      const incomeTypesCount = Array.isArray(incomeTypes.data)
+        ? incomeTypes.data.length
+        : (incomeTypes.data?.length || 0);
+
+      const expenseTypesCount = Array.isArray(expenseTypes.data)
+        ? expenseTypes.data.length
+        : (expenseTypes.data?.length || 0);
+
+      console.log('[consolidatedDashboardService] Calculated counts:', {
+        costCentersCount,
+        incomeTypesCount,
+        expenseTypesCount
+      });
+
       return {
-        costCentersCount: 0, // Implement if you have cost centers endpoint
-        incomeTypesCount: incomeTypes.data?.data?.length || 0,
-        expenseTypesCount: expenseTypes.data?.data?.length || 0,
+        costCentersCount,
+        incomeTypesCount,
+        expenseTypesCount,
         totalTransactions: 0 // Will be calculated from summary
       };
     } catch (error) {
