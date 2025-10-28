@@ -178,15 +178,6 @@ export default function CombinedCashFlowTable({
   const incomeCategories = [...new Set(incomeCategoryData.map(c => c.category_name || 'Sin Categoría'))];
   const expenseCategories = [...new Set(expenseCategoryData.map(c => c.category_name || 'Sin Categoría'))];
 
-  // Debug: Log para ver qué datos tenemos
-  console.log('[CombinedCashFlowTable] Período seleccionado:', selectedPeriod);
-  console.log('[CombinedCashFlowTable] Períodos generados:', periods.map(p => p.backend));
-  console.log('[CombinedCashFlowTable] Period labels del backend (ingresos):', [...new Set(incomeCategoryData.map(d => d.period_label))]);
-  console.log('[CombinedCashFlowTable] Period labels del backend (egresos):', [...new Set(expenseCategoryData.map(d => d.period_label))]);
-  console.log('[CombinedCashFlowTable] Keys del incomeMap:', Array.from(incomeMap.keys()).slice(0, 10));
-  console.log('[CombinedCashFlowTable] Categorías de ingresos:', incomeCategories);
-  console.log('[CombinedCashFlowTable] Categorías de egresos:', expenseCategories);
-
   // Función para obtener monto de una categoría en un período
   const getAmount = (categoryName: string, periodBackend: string, isIncome: boolean): number => {
     const map = isIncome ? incomeMap : expenseMap;
