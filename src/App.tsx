@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { setClerkTokenGetter } from "./services/apiService";
 import { AuthProvider } from "./context/AuthContext";
+import { CostCenterProvider } from "./context/CostCenterContext";
 import ClerkProtectedRoute from "./components/auth/ClerkProtectedRoute";
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
@@ -25,31 +26,27 @@ import Home from "./pages/Dashboard/Home";
 import CashFlow from "./pages/CashFlow/CashFlow";
 import { ProjectDetails, ProjectForm, ProjectList } from "./pages/Projects";
 import Cotizaciones from "./pages/Costs/Cotizaciones";
-import Previsionales from "./pages/Costs/Previsionales";
 import SubcontratosCredito from "./pages/Costs/SubcontratosCredito";
 import SubcontratosContado from "./pages/Costs/SubcontratosContado";
-import Remuneraciones from "./pages/Costs/Remuneraciones";
 import GastosImprevistos from "./pages/Costs/GastosImprevistos";
-import OrdenesCompra from "./pages/Costs/OrdenesCompra";
 import EgresossIndex from "./pages/Costs/CostsIndex";
-import Factoring from "./pages/Costs/Factoring";
-import CostosFijos from "./pages/Costs/CostosFijos";
-import { RemuneracionesDetail } from "./pages/Costs/RemuneracionesDetail";
-import RemuneracionesForm from "./pages/Costs/RemuneracionesForm";
-import OrdenCompraDetail from "./pages/Costs/OrdenCompraDetail";
-import { CostosFijosDetail } from "./pages/Costs/CostosFijosDetail";
-import Empleados from "./pages/Costs/Empleados";
-import EmpleadosNuevo from "./pages/Costs/EmpleadosNuevo";
-import EmpleadosDetalle from "./pages/Costs/EmpleadosDetalle";
-import EmpleadosEdición from "./pages/Costs/EmpleadosEdicion";
-import { CostosFijosEdicion } from "./pages/Costs/CostosFijosEdicion";
 import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
-import OrdenCompraForm from "./pages/Costs/OrdenCompraForm";
-import OrdenCompraEdicion from "./pages/Costs/OrdenCompraEdicion";
-import { IngresosForm } from "./pages/Ingresos/IngresosForm";
-import IngresosFormDetail from "./pages/Ingresos/IngresosDetail";
-import IngresosCategoryDetail from "./pages/Ingresos/IngresosCategoryDetail";
-import IngresosIndex from "./pages/Ingresos/IngresosIndex";
+// Sistema dinámico de ingresos
+import IncomeTypesIndex from './pages/DynamicIncome/IncomeTypesIndex';
+import IncomeTypeForm from './pages/DynamicIncome/IncomeTypeForm';
+import IncomeDataList from './pages/DynamicIncome/IncomeDataList';
+import IncomeDataForm from './pages/DynamicIncome/IncomeDataForm';
+import IncomeDashboard from './pages/DynamicIncome/IncomeDashboard';
+import ConsolidatedHome from './pages/Dashboard/ConsolidatedHome';
+// Sistema dinámico de egresos
+import ExpenseTypesIndex from './pages/DynamicExpense/ExpenseTypesIndex';
+import ExpenseTypeForm from './pages/DynamicExpense/ExpenseTypeForm';
+import ExpenseDataList from './pages/DynamicExpense/ExpenseDataList';
+import ExpenseDataForm from './pages/DynamicExpense/ExpenseDataForm';
+import ExpenseDashboard from './pages/DynamicExpense/ExpenseDashboard';
+// Centros de costo
+import CostCentersIndex from './pages/CostCenters/CostCentersIndex';
+import CostCenterForm from './pages/CostCenters/CostCenterForm';
 
 // ✅ Componente que configura el token getter para apiService
 function ClerkTokenProvider() {
@@ -109,17 +106,18 @@ export default function App() {
     <>
       {/* Configurar token getter */}
       <ClerkTokenProvider />
-      
+
       <Router>
         <AuthProvider>
-          <ScrollToTop />
-          <Routes>
+          <CostCenterProvider>
+            <ScrollToTop />
+            <Routes>
             {/* Protected Dashboard Layout */}
             <Route element={<AppLayout />}>
               {/* Dashboard */}
               <Route path="/" element={
                 <ClerkProtectedRoute>
-                  <Home />
+                  <ConsolidatedHome />
                 </ClerkProtectedRoute>
               } />
               
@@ -130,27 +128,29 @@ export default function App() {
                 </ClerkProtectedRoute>
               } />
 
-              {/* Centros de Costo */}
-              <Route path="/cost-centers" element={
+              {/* Projects - Commented out until backend is implemented */}
+              {/*
+              <Route path="/projects" element={
                 <ClerkProtectedRoute>
                   <ProjectList />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/cost-centers/new" element={
+              <Route path="/projects/new" element={
                 <ClerkProtectedRoute>
                   <ProjectForm />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/cost-centers/:id" element={
+              <Route path="/projects/:id" element={
                 <ClerkProtectedRoute>
                   <ProjectDetails />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/cost-centers/:id/edit" element={
+              <Route path="/projects/:id/edit" element={
                 <ClerkProtectedRoute>
                   <ProjectForm />
                 </ClerkProtectedRoute>
               } />
+              */}
 
               {/* Budget Analyzer */}
               <Route path="/budget-analysis" element={
@@ -171,69 +171,10 @@ export default function App() {
                 </ClerkProtectedRoute>
               } />
 
-              {/* Costos Fijos */}
-              <Route path="/costos/costos-fijos" element={
-                <ClerkProtectedRoute>
-                  <CostosFijos />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/costos-fijos/:id" element={
-                <ClerkProtectedRoute>
-                  <CostosFijosDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/costos-fijos/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <CostosFijosEdicion />
-                </ClerkProtectedRoute>
-              } />
-
-              {/* Empleados */}
-              <Route path="/costos/empleados" element={
-                <ClerkProtectedRoute>
-                  <Empleados />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/empleados/new" element={
-                <ClerkProtectedRoute>
-                  <EmpleadosNuevo />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/empleados/:id" element={
-                <ClerkProtectedRoute>
-                  <EmpleadosDetalle />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/empleados/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <EmpleadosEdición />
-                </ClerkProtectedRoute>
-              } />
-
               {/* Otros Costos */}
               <Route path="/costos/cotizaciones" element={
                 <ClerkProtectedRoute>
                   <Cotizaciones />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/previsionales" element={
-                <ClerkProtectedRoute>
-                  <Previsionales />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/remuneraciones" element={
-                <ClerkProtectedRoute>
-                  <Remuneraciones />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/remuneraciones/:id" element={
-                <ClerkProtectedRoute>
-                  <RemuneracionesDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/remuneraciones/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <RemuneracionesForm />
                 </ClerkProtectedRoute>
               } />
               <Route path="/costos/subcontratos-credito" element={
@@ -251,64 +192,95 @@ export default function App() {
                   <GastosImprevistos />
                 </ClerkProtectedRoute>
               } />
-              
-              {/* Órdenes de Compra */}
-              <Route path="/costos/ordenes-compra" element={
+
+              {/* Centros de Costo */}
+              <Route path="/centros-costo" element={
                 <ClerkProtectedRoute>
-                  <OrdenesCompra />
+                  <CostCentersIndex />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/costos/ordenes-compra/new" element={
+              <Route path="/centros-costo/nuevo" element={
                 <ClerkProtectedRoute>
-                  <OrdenCompraForm />
+                  <CostCenterForm />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/costos/ordenes-compra/:id" element={
+              <Route path="/centros-costo/:id/editar" element={
                 <ClerkProtectedRoute>
-                  <OrdenCompraDetail />
-                </ClerkProtectedRoute>
-              } />
-              <Route path="/costos/ordenes-compra/:id/edit" element={
-                <ClerkProtectedRoute>
-                  <OrdenCompraEdicion />
-                </ClerkProtectedRoute>
-              } />
-              
-              <Route path="/costos/factoring" element={
-                <ClerkProtectedRoute>
-                  <Factoring />
+                  <CostCenterForm />
                 </ClerkProtectedRoute>
               } />
 
-              {/* Ingresos */}
-              <Route path="/ingresos" element={
+              {/* Ingresos - Sistema dinámico */}
+              <Route path="/ingresos/resumen" element={
                 <ClerkProtectedRoute>
-                  <IngresosIndex />
+                  <IncomeDashboard />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/ingresos/index" element={
+              <Route path="/ingresos/tipos" element={
                 <ClerkProtectedRoute>
-                  <IngresosIndex />
+                  <IncomeTypesIndex />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/ingresos/new" element={
+              <Route path="/ingresos/tipos/nuevo" element={
                 <ClerkProtectedRoute>
-                  <IngresosForm />
+                  <IncomeTypeForm />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/ingresos/categoria/:category" element={
+              <Route path="/ingresos/tipos/:id/editar" element={
                 <ClerkProtectedRoute>
-                  <IngresosCategoryDetail />
+                  <IncomeTypeForm />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/ingresos/:id" element={
+              <Route path="/ingresos/datos/:typeName" element={
                 <ClerkProtectedRoute>
-                  <IngresosFormDetail />
+                  <IncomeDataList />
                 </ClerkProtectedRoute>
               } />
-              <Route path="/ingresos/editar/:id" element={
+              <Route path="/ingresos/datos/nuevo" element={
                 <ClerkProtectedRoute>
-                  <IngresosForm />
+                  <IncomeDataForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/ingresos/datos/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <IncomeDataForm />
+                </ClerkProtectedRoute>
+              } />
+
+              {/* Egresos - Sistema dinámico */}
+              <Route path="/egresos/resumen" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDashboard />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/tipos" element={
+                <ClerkProtectedRoute>
+                  <ExpenseTypesIndex />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/tipos/nuevo" element={
+                <ClerkProtectedRoute>
+                  <ExpenseTypeForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/tipos/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <ExpenseTypeForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/datos/:typeName" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDataList />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/datos/nuevo" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDataForm />
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/egresos/datos/:id/editar" element={
+                <ClerkProtectedRoute>
+                  <ExpenseDataForm />
                 </ClerkProtectedRoute>
               } />
 
@@ -391,6 +363,7 @@ export default function App() {
             {/* Fallback Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </CostCenterProvider>
         </AuthProvider>
       </Router>
     </>

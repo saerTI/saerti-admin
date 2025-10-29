@@ -1,11 +1,13 @@
 // src/services/financialAggregationService.ts
 
-import { getRemuneracionesByPeriod } from './CC/remuneracionesService';
+// Módulos contables eliminados
+// import { getRemuneracionesByPeriod } from './CC/remuneracionesService';
+// import { previsionalesService } from './CC/previsionalesService';
+// import { getFixedCosts } from './CC/fixedCostsService';
+// import { getItemsByAccountCategory, ItemFilters, PurchaseOrderItem } from './CC/ordenesCompraItemService';
+
 import { factoringService } from './factoringService';
-import { previsionalesService } from './CC/previsionalesService';
-import { getFixedCosts } from './CC/fixedCostsService';
 import { accountCategoriesService, AccountCategoryType, AccountCategory } from './accountCategoriesService';
-import { getItemsByAccountCategory, ItemFilters, PurchaseOrderItem } from './CC/ordenesCompraItemService';
 import { FinancialPeriod } from '../components/tables/FinancialTable';
 
 export interface FinancialDataByPeriod {
@@ -120,47 +122,8 @@ export class FinancialAggregationService {
    * Get remuneraciones data aggregated by period
    */
   static async getRemuneracionesData(periods: FinancialPeriod[], year: number, costCenterId?: number): Promise<Record<string, number>> {
-    const remuneracionesAmounts: Record<string, number> = this.initializeEmptyPeriods(periods);
-
-    try {
-      // Load all remuneraciones for the year
-      const allRemuneraciones: any[] = [];
-      for (let month = 1; month <= 12; month++) {
-        try {
-          const monthData = await getRemuneracionesByPeriod(month, year);
-          monthData.forEach(rem => {
-            allRemuneraciones.push({
-              ...rem,
-              date: rem.date || `${year}-${month.toString().padStart(2, '0')}-01`
-            });
-          });
-        } catch (error) {
-          console.error(`Error loading remuneraciones for month ${month}:`, error);
-        }
-      }
-
-      // Group by period
-      allRemuneraciones.forEach(rem => {
-        // Filter by cost center if specified
-        if (costCenterId && rem.projectId !== costCenterId) {
-          return;
-        }
-
-        const remDate = new Date(rem.date);
-        const periodId = this.getPeriodIdFromDate(remDate, periods);
-
-        if (periodId && remuneracionesAmounts.hasOwnProperty(periodId)) {
-          const amount = rem.amount || rem.sueldoLiquido || 0;
-          const numericAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
-          remuneracionesAmounts[periodId] += isNaN(numericAmount) ? 0 : numericAmount;
-        }
-      });
-
-      return remuneracionesAmounts;
-    } catch (error) {
-      console.error('Error loading remuneraciones data:', error);
-      return this.initializeEmptyPeriods(periods);
-    }
+    // ELIMINADO - Módulo contable removido
+    return this.initializeEmptyPeriods(periods);
   }
 
   /**
@@ -213,94 +176,16 @@ export class FinancialAggregationService {
    * Get previsionales data aggregated by period
    */
   static async getPrevisionalesData(periods: FinancialPeriod[], year: number, costCenterId?: number): Promise<Record<string, number>> {
-    const previsionalesAmounts: Record<string, number> = this.initializeEmptyPeriods(periods);
-
-    try {
-      // Load all previsionales and filter in frontend
-      const response = await previsionalesService.getPrevisionales({ limit: 1000 }); // Get a large number to include all records
-      const allPrevisionales = response.data;
-
-      // Filter and group previsionales by period
-      allPrevisionales.forEach(previsional => {
-        if (previsional.date) {
-          // Note: For cost center filtering in previsionales, we would need to:
-          // 1. Either extend the API to include cost center data
-          // 2. Or make a separate call to get employee-cost center mappings
-          // For now, we skip cost center filtering for previsionales
-          // TODO: Implement cost center filtering for previsionales
-
-          const previsionalDate = new Date(previsional.date);
-          const previsionalYear = previsionalDate.getFullYear();
-
-          // Only process if it's from the selected year
-          if (previsionalYear === year) {
-            const periodId = this.getPeriodIdFromDate(previsionalDate, periods);
-
-            if (periodId && previsionalesAmounts.hasOwnProperty(periodId)) {
-              // Ensure we're working with numbers, not strings
-              const amount = typeof previsional.amount === 'string' ? parseFloat(previsional.amount) : Number(previsional.amount);
-              previsionalesAmounts[periodId] += isNaN(amount) ? 0 : amount;
-            }
-          }
-        }
-      });
-
-      return previsionalesAmounts;
-    } catch (error) {
-      console.error('Error loading previsionales data:', error);
-      return this.initializeEmptyPeriods(periods);
-    }
+    // ELIMINADO - Módulo contable removido
+    return this.initializeEmptyPeriods(periods);
   }
 
   /**
    * Get costos fijos data aggregated by period
    */
   static async getCostosFijosData(periods: FinancialPeriod[], year: number, costCenterId?: number): Promise<Record<string, number>> {
-    const costosFijosAmounts: Record<string, number> = this.initializeEmptyPeriods(periods);
-
-    try {
-      // Load all costos fijos and filter in frontend
-      const response = await getFixedCosts({}, 1, 1000); // Get a large number to include all records
-      const allCostosFijos = response.data;
-
-      // Filter and group costos fijos by month, handling recurring payments
-      allCostosFijos.forEach(costoFijo => {
-        if (costoFijo.start_date && costoFijo.quota_count && costoFijo.quota_value) {
-          // Filter by cost center if specified
-          if (costCenterId && costoFijo.cost_center_id !== costCenterId) {
-            return;
-          }
-
-          const startDate = new Date(costoFijo.start_date);
-          const quotaCount = Number(costoFijo.quota_count);
-          const quotaValue = typeof costoFijo.quota_value === 'string' ? parseFloat(costoFijo.quota_value) : Number(costoFijo.quota_value);
-
-          if (isNaN(quotaValue) || isNaN(quotaCount)) return;
-
-          // Generate all payment months for this costo fijo
-          for (let i = 0; i < quotaCount; i++) {
-            const paymentDate = new Date(startDate);
-            paymentDate.setMonth(startDate.getMonth() + i);
-
-            const paymentYear = paymentDate.getFullYear();
-
-            // Only process if it's from the selected year
-            if (paymentYear === year) {
-              const periodId = this.getPeriodIdFromDate(paymentDate, periods);
-
-              if (periodId && costosFijosAmounts.hasOwnProperty(periodId)) {
-                costosFijosAmounts[periodId] += quotaValue;
-              }
-            }
-          }
-        }
-      });
-
-      return costosFijosAmounts;
-    } catch (error) {
-      console.error('Error loading costos fijos data:', error);
-      return this.initializeEmptyPeriods(periods);
-    }
+    // ELIMINADO - Módulo contable removido
+    return this.initializeEmptyPeriods(periods);
   }
 
   /**
@@ -335,33 +220,9 @@ export class FinancialAggregationService {
             date_to: `${year}-12-31`
           };
 
-          // Get all items for this account category
-          let items = await getItemsByAccountCategory(category.id, filters);
-          console.log(`Found ${items.length} items for category ${category.name} (ID: ${category.id})`);
-
-          // Apply cost center filter if specified
-          if (costCenterId && costCenterId > 0) {
-            items = items.filter(item => item.cost_center_id === costCenterId);
-          }
-
-          // Group items by period
-          items.forEach(item => {
-            if (item.date) {
-              const itemDate = new Date(item.date);
-              const itemYear = itemDate.getFullYear();
-
-              // Only process if it's from the selected year
-              if (itemYear === year) {
-                const periodId = this.getPeriodIdFromDate(itemDate, periods);
-
-                if (periodId && categoryAmounts.hasOwnProperty(periodId)) {
-                  // Ensure we're working with numbers
-                  const total = typeof item.total === 'string' ? parseFloat(item.total) : Number(item.total);
-                  categoryAmounts[periodId] += isNaN(total) ? 0 : total;
-                }
-              }
-            }
-          });
+          // ELIMINADO - Purchase order items module removed
+          // Los datos de órdenes de compra ya no están disponibles
+          console.log(`Category ${category.name}: purchase order items module removed`);
 
           categoryData[categoryKey] = categoryAmounts;
 

@@ -1,244 +1,252 @@
-// src/pages/CashFlow/CashFlow.tsx - Usando backend real (solo costos)
-import React, { useState, useEffect } from 'react';
+// src/pages/CashFlow/CashFlow.tsx - Vista combinada de ingresos y egresos por categorías
+import React, { useState, useEffect, useMemo } from 'react';
+import { LayoutGrid, TrendingUp } from 'lucide-react';
 import PageMeta from '../../components/common/PageMeta';
-import ChartTab from '../../components/common/ChartTab';
-import CashFlowSummary from './CashFlowSummary';
-import CashFlowDetails from './CashFlowDetails';
-import CashFlowChart from './CashFlowChart';
-import CashFlowFinancialTable from '../../components/tables/CashFlowFinancialTable';
-import { useAuth } from '../../context/AuthContext';
-import { useTenant } from '../../context/TenantContext';
-import { 
-  cashFlowApiService, 
-  CashFlowFilters, 
-  CashFlowData
-} from '../../services/cashFlowService';
+import { incomeDashboardService } from '../../services/incomeDashboardService';
+import { expenseDashboardService } from '../../services/expenseDashboardService';
+import { useCostCenter } from '../../context/CostCenterContext';
+import { getFullYearDateRange } from '../../utils/dashboardHelpers';
+import CombinedCashFlowTable from '../../components/Dashboard/CombinedCashFlowTable';
+import FilterBar from '../../components/Dashboard/FilterBar';
+import WaterfallChart from '../../components/Dashboard/WaterfallChart';
+import Tabs from '../../components/Dashboard/Tabs';
 
-// Tipos para compatibilidad con componentes existentes
-export interface DateRange {
-  startDate: string;
-  endDate: string;
+interface CategoryPeriodData {
+  category_id: number | null;
+  category_name: string | null;
+  type_id: number;
+  type_name: string;
+  period_label: string;
+  total_amount: number;
+  count: number;
 }
 
 const CashFlow: React.FC = () => {
-  // Estados principales
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [cashFlowData, setCashFlowData] = useState<CashFlowData | null>(null);
+  const { selectedCostCenterId } = useCostCenter();
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Financial table controls
-  const [periodType, setPeriodType] = useState<'weekly' | 'monthly' | 'quarterly' | 'annual'>('monthly');
-  const [year, setYear] = useState<number>(new Date().getFullYear());
-  const [activeTab, setActiveTab] = useState<string>('overview');
 
-  // Estados de filtros (usando la misma estructura que CostsIndex)
-  const [filters, setFilters] = useState<CashFlowFilters>({
-    periodType: 'monthly',
-    year: new Date().getFullYear().toString(),
-    projectId: 'all',
-    costCenterId: 'all',
-    categoryId: 'all',
-    status: 'all'
-  });
+  // Estados para datos de categorías por período
+  const [incomeCategoryData, setIncomeCategoryData] = useState<CategoryPeriodData[]>([]);
+  const [expenseCategoryData, setExpenseCategoryData] = useState<CategoryPeriodData[]>([]);
 
-  // Date range para compatibilidad con componentes existentes
-  const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
-  });
-  
-  const { user, isAuthenticated } = useAuth();
-  const { currentTenant } = useTenant();
-  
-  // Tabs for cash flow view
-  const tabs = [
-    { id: 'overview', label: 'Vista General' },
-    { id: 'details', label: 'Detalles' },
-    { id: 'chart', label: 'Gráficos' },
-    { id: 'historical', label: 'Tabla Financiera' },
-  ];
-  
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
+  const [dateRange, setDateRange] = useState(getFullYearDateRange());
+  const [activeTab, setActiveTab] = useState('table');
+
   // Cargar datos cuando cambien los filtros
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
+    loadData();
+  }, [selectedPeriod, selectedCostCenterId]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
       setError(null);
-      
-      if (!isAuthenticated || !user) {
-        setError('Necesita iniciar sesión para ver esta página');
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        console.log('🔄 Loading cash flow data with filters:', filters);
-        
-        // Obtener datos del backend usando el mismo servicio que costos
-        const data = await cashFlowApiService.getCashFlowData(filters);
-        setCashFlowData(data);
-        
-        console.log('✅ Cash flow data loaded successfully');
-      } catch (error) {
-        console.error('❌ Error loading cash flow data:', error);
-        setError(error instanceof Error ? error.message : 'Error desconocido al cargar datos');
-      } finally {
-        setIsLoading(false);
+
+      const filters = {
+        ...dateRange,
+        cost_center_id: selectedCostCenterId || undefined
+      };
+
+      console.log('[CashFlow] Cargando datos con filtros:', filters, 'período:', selectedPeriod);
+
+      // Cargar datos solo del período seleccionado
+      const [incomeData, expenseData] = await Promise.all([
+        incomeDashboardService.getCategoryByPeriod(selectedPeriod, filters),
+        expenseDashboardService.getCategoryByPeriod(selectedPeriod, filters)
+      ]);
+
+      setIncomeCategoryData(incomeData);
+      setExpenseCategoryData(expenseData);
+
+      console.log('[CashFlow] Datos cargados:', {
+        ingresos: incomeData.length,
+        egresos: expenseData.length
+      });
+    } catch (err) {
+      console.error('Error loading cash flow data:', err);
+      setError(err instanceof Error ? err.message : 'Error al cargar datos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePeriodChange = (period: 'week' | 'month' | 'quarter' | 'year') => {
+    setSelectedPeriod(period);
+  };
+
+  // Extraer el año del dateRange para pasarlo al componente
+  const year = new Date(dateRange.date_from).getFullYear();
+
+  // Calcular datos para el gráfico de cascada
+  const { periods, balanceData } = useMemo(() => {
+    // Obtener todos los period_labels únicos y ordenarlos
+    const allPeriodLabels = [...new Set([
+      ...incomeCategoryData.map(d => d.period_label),
+      ...expenseCategoryData.map(d => d.period_label)
+    ])].sort();
+
+    // Crear mapas de datos por período
+    const incomeMap = new Map<string, number>();
+    incomeCategoryData.forEach(item => {
+      const key = item.period_label;
+      incomeMap.set(key, (incomeMap.get(key) || 0) + item.total_amount);
+    });
+
+    const expenseMap = new Map<string, number>();
+    expenseCategoryData.forEach(item => {
+      const key = item.period_label;
+      expenseMap.set(key, (expenseMap.get(key) || 0) + item.total_amount);
+    });
+
+    // Funciones auxiliares para calcular fechas de semana
+    const getISOWeekStart = (year: number, week: number): Date => {
+      const jan4 = new Date(year, 0, 4);
+      const jan4Day = jan4.getDay() || 7;
+      const weekStart = new Date(jan4);
+      weekStart.setDate(jan4.getDate() - jan4Day + 1 + (week - 1) * 7);
+      return weekStart;
+    };
+
+    const formatDayMonth = (date: Date): string => {
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      return `${day}/${month}`;
+    };
+
+    // Función para generar display label
+    const getDisplayLabel = (periodLabel: string): string => {
+      switch (selectedPeriod) {
+        case 'week': {
+          // periodLabel viene como "2025-W01", "2025-W02", etc
+          const match = periodLabel.match(/(\d{4})-W(\d+)/);
+          if (match) {
+            const year = parseInt(match[1]);
+            const weekNum = parseInt(match[2]);
+            const weekStart = getISOWeekStart(year, weekNum);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            return `${formatDayMonth(weekStart)} - ${formatDayMonth(weekEnd)}`;
+          }
+          return periodLabel;
+        }
+        case 'month': {
+          const match = periodLabel.match(/\d{4}-(\d{2})/);
+          if (match) {
+            const monthNum = parseInt(match[1]) - 1;
+            const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            return monthNames[monthNum] || periodLabel;
+          }
+          return periodLabel;
+        }
+        case 'quarter': {
+          const match = periodLabel.match(/-Q(\d)/);
+          if (match) {
+            return `Q${match[1]}`;
+          }
+          return periodLabel;
+        }
+        case 'year': {
+          return periodLabel;
+        }
+        default:
+          return periodLabel;
       }
     };
-    
-    loadData();
-  }, [filters, isAuthenticated, user, currentTenant]);
-  
-  // Manejador para cambio de rango de fechas (para compatibilidad)
-  const handleDateChange = (newRange: DateRange) => {
-    setDateRange(newRange);
-    
-    // Opcional: Convertir el rango de fechas a filtros de año/mes si es necesario
-    const startYear = new Date(newRange.startDate).getFullYear();
-    if (startYear.toString() !== filters.year) {
-      setFilters(prev => ({
-        ...prev,
-        year: startYear.toString()
-      }));
-    }
-  };
 
-  const handlePeriodTypeChange = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'annual') => {
-    setPeriodType(newPeriodType);
-    // También actualizamos los filtros para mantener consistencia
-    setFilters(prev => ({
-      ...prev,
-      periodType: newPeriodType
+    // Crear array de períodos con display label
+    const periods = allPeriodLabels.map(periodLabel => ({
+      display: getDisplayLabel(periodLabel),
+      backend: periodLabel
     }));
-  };
 
-  // Función adaptadora para el componente CashFlowFinancialTable que usa 'yearly' en lugar de 'annual'
-  const handlePeriodTypeChangeForTable = (newPeriodType: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
-    const mappedPeriodType = newPeriodType === 'yearly' ? 'annual' : newPeriodType;
-    handlePeriodTypeChange(mappedPeriodType);
-  };
+    // Calcular balance por período
+    const balanceData = allPeriodLabels.map(periodLabel => {
+      const income = incomeMap.get(periodLabel) || 0;
+      const expense = expenseMap.get(periodLabel) || 0;
+      return income - expense;
+    });
 
-  const handleYearChange = (newYear: number) => {
-    setYear(newYear);
-    // También actualizamos los filtros para mantener consistencia
-    setFilters(prev => ({
-      ...prev,
-      year: newYear.toString()
-    }));
-  };
-  
-  const renderTabContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex h-60 items-center justify-center">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+    return { periods, balanceData };
+  }, [incomeCategoryData, expenseCategoryData, selectedPeriod]);
+
+  const tabs = [
+    { id: 'table', label: 'Tabla', icon: <LayoutGrid size={16} /> },
+    { id: 'chart', label: 'Gráfico de Cascada', icon: <TrendingUp size={16} /> }
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Cargando flujo de caja...</p>
         </div>
-      );
-    }
-    
-    if (error) {
-      return (
-        <div className="rounded-sm border border-red-200 bg-red-50 p-4 text-center text-red-500 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-400">
-          <p>{error}</p>
-          <button 
-            className="mt-4 rounded-md bg-primary px-4 py-2 text-white"
-            onClick={() => window.location.reload()}
-          >
-            Reintentar
-          </button>
-        </div>
-      );
-    }
-    
-    if (!cashFlowData) {
-      return (
-        <div className="rounded-sm border border-gray-200 bg-gray-50 p-4 text-center text-gray-500 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400">
-          <p>No hay datos disponibles para el período seleccionado.</p>
-        </div>
-      );
-    }
-    
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <CashFlowSummary 
-            summary={cashFlowData.summary} 
-            items={cashFlowData.recentItems || []} 
-          />
-        );
-      case 'details':
-        return (
-          <CashFlowDetails 
-            items={cashFlowData.recentItems || []} 
-            dateRange={dateRange} 
-            onDateChange={handleDateChange} 
-          />
-        );
-      case 'chart':
-        console.log('CashFlow - cashFlowData:', cashFlowData);
-        console.log('CashFlow - chartData:', cashFlowData?.chartData);
-
-        // Use real data from the backend
-        const dataToUse = cashFlowData?.chartData || [];
-
-        console.log('CashFlow - dataToUse:', dataToUse);
-
-        return <CashFlowChart data={dataToUse} />;
-      case 'historical':
-        return (
-          <CashFlowFinancialTable
-            title="Análisis Financiero de Flujo de Caja"
-            periodType={periodType === 'annual' ? 'yearly' : periodType}
-            year={year}
-            onPeriodTypeChange={handlePeriodTypeChangeForTable}
-            onYearChange={handleYearChange}
-            loading={false}
-            showExpenses={true}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
-  // Tenant-aware title
-  const getTitle = () => {
-    if (currentTenant) {
-      return `Flujo de Caja - ${currentTenant.name}`;
-    }
-    return 'Flujo de Caja';
-  };
+      </div>
+    );
+  }
 
   return (
     <>
-      <PageMeta title={getTitle()} description="Gestión y análisis del flujo de caja" />
-      
-      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-        <div className="mb-6">
+      <PageMeta title="Flujo de Caja" description="Visualización de ingresos y egresos por todos los períodos" />
+
+      <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
+        {/* Header */}
+        <div className="mb-6 flex items-end gap-3">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white/90">
-            {getTitle()}
+            Flujo de Caja
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Administre y visualice el flujo de caja de su empresa
-          </p>
-          {/* Nota temporal sobre ingresos */}
-          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm text-blue-700 dark:text-blue-300">
-                Actualmente mostrando solo egresos (costos y gastos). Los ingresos se añadirán próximamente.
-              </span>
-            </div>
+          <span className="text-sm text-gray-500 dark:text-gray-400 pb-0.5">
+            · Vista combinada de ingresos y egresos por categorías en todos los períodos
+          </span>
+        </div>
+
+        {/* Tabs */}
+        <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} color="green" />
+
+        {/* Filtros */}
+        <FilterBar
+          selectedPeriod={selectedPeriod}
+          setSelectedPeriod={handlePeriodChange}
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+          onRefresh={loadData}
+          color="green"
+        />
+
+        {/* Info del centro de costo si está seleccionado */}
+        {selectedCostCenterId && (
+          <div className="mb-6 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300 w-fit">
+            Filtrando por centro de costo seleccionado
           </div>
-        </div>
-        
-        <ChartTab tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
-        
-        <div className="mt-4">
-          {renderTabContent()}
-        </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
+        {/* Tab: Tabla */}
+        {activeTab === 'table' && (
+          <CombinedCashFlowTable
+            incomeCategoryData={incomeCategoryData}
+            expenseCategoryData={expenseCategoryData}
+            selectedYear={year}
+            selectedPeriod={selectedPeriod}
+          />
+        )}
+
+        {/* Tab: Gráfico de Cascada */}
+        {activeTab === 'chart' && (
+          <WaterfallChart
+            periods={periods}
+            balanceData={balanceData}
+            title={`Balance por ${selectedPeriod === 'week' ? 'Semana' : selectedPeriod === 'month' ? 'Mes' : selectedPeriod === 'quarter' ? 'Trimestre' : 'Año'}`}
+          />
+        )}
       </div>
     </>
   );

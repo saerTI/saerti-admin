@@ -1,6 +1,6 @@
 // src/services/cashFlowService.ts - Integrado con Remuneraciones
 import api from './apiService';
-import ingresosApiService from './ingresosService';
+// import ingresosApiService from './ingresosService'; // ELIMINADO - Sistema antiguo
 
 // ==========================================
 // TYPES & INTERFACES
@@ -178,18 +178,19 @@ class CashFlowApiService {
       // Obtener datos para gráfico combinado
       const chartData = await this.getCashFlowByPeriod(filters);
 
-      // Calcular resumen combinado
+      // Obtener totales de ingresos y egresos del chart data
+      const totalIncome = chartData.reduce((sum, period) => sum + period.income, 0);
       const totalCostsExpense = parseFloat(costsData.summary.total_expenses.toString()) || 0;
       const totalRemuneracionesExpense = parseFloat(remuneracionesData.summary.total_expenses.toString()) || 0;
       const totalExpense = totalCostsExpense + totalRemuneracionesExpense;
 
       const cashFlowSummary: CashFlowSummary = {
-        totalIncome: 0, // Sin ingresos por ahora
+        totalIncome,
         totalExpense,
-        netCashFlow: -totalExpense,
-        forecastIncome: 0,
+        netCashFlow: totalIncome - totalExpense,
+        forecastIncome: totalIncome,
         forecastExpense: totalExpense,
-        actualIncome: 0,
+        actualIncome: totalIncome,
         actualExpense: totalExpense,
         pendingItems: costsData.summary.pending_count + remuneracionesData.summary.pending_count,
         totalItems: costsData.items.length + remuneracionesData.items.length,
@@ -431,20 +432,68 @@ class CashFlowApiService {
   }
 
   /**
-   * Obtener datos de flujo de caja por período combinando ambas fuentes
+   * Obtener datos de flujo de caja por período combinando todas las fuentes (ingresos + egresos)
    */
   async getCashFlowByPeriod(filters: CashFlowFilters): Promise<CashFlowChartData[]> {
     try {
-      console.log('🔄 Fetching cash flow by period (combined):', filters);
-      
-      // Obtener datos de ambas fuentes en paralelo
-      const [costsChart, remuneracionesChart] = await Promise.all([
+      console.log('🔄 Fetching cash flow by period (combined incomes + expenses):', filters);
+
+      // Obtener datos de todas las fuentes en paralelo
+      const [incomesChart, expensesChart, costsChart, remuneracionesChart] = await Promise.all([
+        this.getIncomesByPeriod(filters),
+        this.getExpensesByPeriod(filters),
         this.getCostsByPeriod(filters),
         this.getRemuneracionesByPeriod(filters)
       ]);
 
       // Combinar datos por período
       const periodMap = new Map<string, CashFlowChartData>();
+
+      // Procesar datos de ingresos
+      incomesChart.forEach(item => {
+        if (!periodMap.has(item.name)) {
+          periodMap.set(item.name, {
+            name: item.name,
+            income: 0,
+            expense: 0,
+            balance: 0,
+            forecast_income: 0,
+            forecast_expense: 0,
+            actual_income: 0,
+            actual_expense: 0,
+            costs_expense: 0,
+            remuneraciones_expense: 0
+          });
+        }
+
+        const period = periodMap.get(item.name)!;
+        period.income += item.income;
+        period.forecast_income += item.forecast_income;
+        period.actual_income += item.actual_income;
+      });
+
+      // Procesar datos de egresos dinámicos
+      expensesChart.forEach(item => {
+        if (!periodMap.has(item.name)) {
+          periodMap.set(item.name, {
+            name: item.name,
+            income: 0,
+            expense: 0,
+            balance: 0,
+            forecast_income: 0,
+            forecast_expense: 0,
+            actual_income: 0,
+            actual_expense: 0,
+            costs_expense: 0,
+            remuneraciones_expense: 0
+          });
+        }
+
+        const period = periodMap.get(item.name)!;
+        period.expense += item.expense;
+        period.forecast_expense += item.forecast_expense;
+        period.actual_expense += item.actual_expense;
+      });
 
       // Procesar datos de costos
       costsChart.forEach(item => {
@@ -462,7 +511,7 @@ class CashFlowApiService {
             remuneraciones_expense: 0
           });
         }
-        
+
         const period = periodMap.get(item.name)!;
         period.costs_expense = item.expense;
         period.expense += item.expense;
@@ -486,7 +535,7 @@ class CashFlowApiService {
             remuneraciones_expense: 0
           });
         }
-        
+
         const period = periodMap.get(item.name)!;
         period.remuneraciones_expense = item.expense;
         period.expense += item.expense;
@@ -500,11 +549,112 @@ class CashFlowApiService {
         balance: period.income - period.expense
       }));
 
-      console.log('✅ Combined period data fetched successfully:', chartData.length, 'periods');
-      
+      console.log('✅ Combined period data fetched successfully:', chartData.length, 'periods', {
+        totalIncome: chartData.reduce((sum, p) => sum + p.income, 0),
+        totalExpense: chartData.reduce((sum, p) => sum + p.expense, 0)
+      });
+
       return chartData;
     } catch (error) {
       console.error('❌ Error fetching combined period data:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener datos de ingresos por período
+   */
+  private async getIncomesByPeriod(filters: CashFlowFilters): Promise<CashFlowChartData[]> {
+    try {
+      const period = this.mapPeriodType(filters.periodType);
+      const params: any = { period };
+
+      if (filters.year) {
+        const yearNum = parseInt(filters.year);
+        params.date_from = `${yearNum}-01-01`;
+        params.date_to = `${yearNum}-12-31`;
+      }
+
+      if (filters.costCenterId && filters.costCenterId !== 'all') {
+        params.cost_center_id = filters.costCenterId;
+      }
+
+      const response = await api.get<{
+        success: boolean;
+        data: Array<{
+          period_label: string;
+          total_amount: number;
+          count: number;
+        }>;
+      }>('/incomes/dashboard/cash-flow', { params });
+
+      if (!response.success) {
+        return [];
+      }
+
+      return response.data.map(item => ({
+        name: item.period_label,
+        income: parseFloat(item.total_amount.toString()) || 0,
+        expense: 0,
+        balance: parseFloat(item.total_amount.toString()) || 0,
+        forecast_income: parseFloat(item.total_amount.toString()) || 0,
+        forecast_expense: 0,
+        actual_income: parseFloat(item.total_amount.toString()) || 0,
+        actual_expense: 0,
+        costs_expense: 0,
+        remuneraciones_expense: 0
+      }));
+    } catch (error) {
+      console.warn('⚠️ Error fetching incomes by period:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener datos de egresos por período
+   */
+  private async getExpensesByPeriod(filters: CashFlowFilters): Promise<CashFlowChartData[]> {
+    try {
+      const period = this.mapPeriodType(filters.periodType);
+      const params: any = { period };
+
+      if (filters.year) {
+        const yearNum = parseInt(filters.year);
+        params.date_from = `${yearNum}-01-01`;
+        params.date_to = `${yearNum}-12-31`;
+      }
+
+      if (filters.costCenterId && filters.costCenterId !== 'all') {
+        params.cost_center_id = filters.costCenterId;
+      }
+
+      const response = await api.get<{
+        success: boolean;
+        data: Array<{
+          period_label: string;
+          total_amount: number;
+          count: number;
+        }>;
+      }>('/expenses/dashboard/cash-flow', { params });
+
+      if (!response.success) {
+        return [];
+      }
+
+      return response.data.map(item => ({
+        name: item.period_label,
+        income: 0,
+        expense: parseFloat(item.total_amount.toString()) || 0,
+        balance: -parseFloat(item.total_amount.toString()) || 0,
+        forecast_income: 0,
+        forecast_expense: parseFloat(item.total_amount.toString()) || 0,
+        actual_income: 0,
+        actual_expense: parseFloat(item.total_amount.toString()) || 0,
+        costs_expense: 0,
+        remuneraciones_expense: 0
+      }));
+    } catch (error) {
+      console.warn('⚠️ Error fetching expenses by period:', error);
       return [];
     }
   }
@@ -881,8 +1031,8 @@ class CashFlowApiService {
           payment_status: 'pagado' as const
         };
 
-        const result = await ingresosApiService.createIngreso(ingresoData);
-        return result.data;
+        // const result = await ingresosApiService.createIngreso(ingresoData); // ELIMINADO
+        throw new Error("Función de ingresos deshabilitada - usar nuevo sistema dinámico");
       } else {
         // Para gastos, por ahora no implementado
         throw new Error('La creación de gastos desde flujo de caja no está implementada aún. Use el módulo de costos.');
@@ -908,8 +1058,8 @@ class CashFlowApiService {
           category_id: data.categoryId
         };
 
-        const result = await ingresosApiService.updateIngreso(id, ingresoData);
-        return result.data;
+        // const result = await ingresosApiService.updateIngreso(id, ingresoData); // ELIMINADO
+        throw new Error("Función de ingresos deshabilitada - usar nuevo sistema dinámico");
       } else {
         // Para gastos, por ahora no implementado
         throw new Error('La actualización de gastos desde flujo de caja no está implementada aún. Use el módulo de costos.');
@@ -918,6 +1068,16 @@ class CashFlowApiService {
       console.error('Error updating cash flow item:', error);
       throw new Error(error instanceof Error ? error.message : 'Error al actualizar item de flujo de caja');
     }
+  }
+
+  private mapPeriodType(periodType: string): 'week' | 'month' | 'quarter' | 'year' {
+    const mapping: Record<string, 'week' | 'month' | 'quarter' | 'year'> = {
+      'weekly': 'week',
+      'monthly': 'month',
+      'quarterly': 'quarter',
+      'annual': 'year'
+    };
+    return mapping[periodType] || 'month';
   }
 
   private generatePeriodsForYear(year: string, periodType: string): string[] {

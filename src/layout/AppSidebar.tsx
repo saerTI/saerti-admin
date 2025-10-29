@@ -11,11 +11,14 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
-  DollarLineIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
-import { Calculator } from "lucide-react";
+import { Calculator, Settings, TrendingUp, TrendingDown } from "lucide-react";
+import { incomeTypeService } from "../services/incomeTypeService";
+import type { IncomeType } from "../types/income";
+import { expenseTypeService } from "../services/expenseTypeService";
+import type { ExpenseType } from "../types/expense";
 
 type NavItem = {
   name: string;
@@ -35,31 +38,26 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <DollarLineIcon />,
-    name: "Ingresos/Egresos",
-    subItems: [
-      { name: "Ingresos", path: "/ingresos/index", pro: false },
-      { name: "Egresos", path: "/costos/index", pro: false },
-    ],
+    icon: <TrendingUp className="w-5 h-5" />,
+    name: "Ingresos",
+    path: "/ingresos/datos",
+  },
+  {
+    icon: <TrendingDown className="w-5 h-5" />,
+    name: "Egresos",
+    path: "/costos/index",
   },
   {
     icon: <UserCircleIcon />,
     name: "Centros de Costo",
-    path: "/cost-centers",
+    path: "/centros-costo",
   },
   {
-    // New Gastos menu with all the required sub-items
-    icon: <ListIcon />,
-    name: "Cuentas Contables",
+    icon: <Settings className="w-5 h-5" />,
+    name: "Configuraciones",
     subItems: [
-      { name: "Remuneraciones", path: "/costos/remuneraciones", pro: false },
-      { 
-        name: "Orden de Compra", path: "/costos/ordenes-compra", pro: false,
-      },
-      { name: "Factoring", path: "/costos/factoring", pro: false },
-      { name: "Costos Fijos", path: "/costos/costos-fijos", pro: false },
-      { name: "Previsionales", path: "/costos/previsionales", pro: false },
-      { name: "Empleados", path: "/costos/empleados", pro: false },
+      { name: "Tipos de Ingresos", path: "/ingresos/tipos", pro: false },
+      { name: "Tipos de Egresos", path: "/egresos/tipos", pro: false },
     ],
   },
   // {
@@ -111,7 +109,7 @@ const othersItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered, setIsMobileOpen } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, setIsMobileOpen, refreshTrigger } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -122,6 +120,10 @@ const AppSidebar: React.FC = () => {
   
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [incomeTypes, setIncomeTypes] = useState<IncomeType[]>([]);
+  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
+  const [dynamicNavItems, setDynamicNavItems] = useState<NavItem[]>(navItems);
+
 
   const isActive = useCallback(
     (path: string) => location.pathname === path,
@@ -142,6 +144,84 @@ const AppSidebar: React.FC = () => {
     }
     // On desktop, the default link behavior will work normally
   }, [setIsMobileOpen, navigate]);
+
+
+  // Load income and expense types dynamically
+  useEffect(() => {
+    const loadTypes = async () => {
+      try {
+        const [incomeTypesData, expenseTypesData] = await Promise.all([
+          incomeTypeService.getAll(),
+          expenseTypeService.getAll()
+        ]);
+
+        setIncomeTypes(incomeTypesData);
+        setExpenseTypes(expenseTypesData);
+
+        // Update navItems with income and expense types
+        const updatedNavItems = navItems.map(item => {
+          if (item.name === "Ingresos") {
+            // If there are income types, show them as submenu
+            if (incomeTypesData.length > 0) {
+              return {
+                ...item,
+                path: undefined, // Remove direct path when there are subtypes
+                subItems: [
+                  {
+                    name: "Resumen",
+                    path: "/ingresos/resumen",
+                    pro: false
+                  },
+                  ...incomeTypesData.map(type => {
+                    const slug = type.name.toLowerCase().replace(/\s+/g, '_');
+                    return {
+                      name: type.name,
+                      path: `/ingresos/datos/${slug}`,
+                      pro: false
+                    };
+                  })
+                ]
+              };
+            }
+            // If no types, keep it as direct link
+            return item;
+          } else if (item.name === "Egresos") {
+            // If there are expense types, show them as submenu
+            if (expenseTypesData.length > 0) {
+              return {
+                ...item,
+                path: undefined, // Remove direct path when there are subtypes
+                subItems: [
+                  {
+                    name: "Resumen",
+                    path: "/egresos/resumen",
+                    pro: false
+                  },
+                  ...expenseTypesData.map(type => {
+                    const slug = type.name.toLowerCase().replace(/\s+/g, '_');
+                    return {
+                      name: type.name,
+                      path: `/egresos/datos/${slug}`,
+                      pro: false
+                    };
+                  })
+                ]
+              };
+            }
+            // If no types, keep it as direct link
+            return item;
+          }
+          return item;
+        });
+
+        setDynamicNavItems(updatedNavItems);
+      } catch (error) {
+        console.error('Error loading types:', error);
+      }
+    };
+
+    loadTypes();
+  }, [refreshTrigger]);
 
   useEffect(() => {
     let submenuMatched = false;
@@ -326,13 +406,13 @@ const AppSidebar: React.FC = () => {
   return (
     <aside
       onClick={handleSidebarClick}
-      className={`fixed top-0 flex flex-col px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed top-0 flex flex-col left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200
         ${
           isExpanded || isMobileOpen
-            ? "w-[290px]"
+            ? "w-[200px]"
             : isHovered
-              ? "w-[290px]"
-              : "w-[90px]"
+              ? "w-[200px]"
+              : "w-[60px]"
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -347,15 +427,15 @@ const AppSidebar: React.FC = () => {
                 className="dark:hidden"
                 src="/images/logo/logo_mpf.svg"
                 alt="Logo"
-                width={180}
-                height={40}
+                width={160}
+                height={35}
               />
               <img
                 className="hidden dark:block"
                 src="/images/logo/logo_mpf.svg"
                 alt="Logo"
-                width={180}
-                height={40}
+                width={160}
+                height={35}
               />
             </>
           ) : (
@@ -373,7 +453,7 @@ const AppSidebar: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div>
               <br/>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(dynamicNavItems, "main")}
             </div>
             {/* Commented out "Others" section - keeping it in code for future reference
             <div className="">

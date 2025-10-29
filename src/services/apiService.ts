@@ -32,9 +32,16 @@ apiClient.interceptors.request.use(
         console.log('[API Request]', {
           url: config.url,
           method: config.method,
+          params: config.params,
+          cost_center_id: config.params?.cost_center_id,
           hasToken: !!token,
           tokenPrefix: token ? token.substring(0, 30) + '...' : 'NO TOKEN'
         });
+
+        // Log especial si hay cost_center_id
+        if (config.params?.cost_center_id) {
+          console.log('🎯 [API] FILTRANDO POR CENTRO DE COSTO:', config.params.cost_center_id);
+        }
         
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
