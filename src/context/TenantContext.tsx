@@ -1,5 +1,7 @@
 // src/context/TenantContext.tsx
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { getCurrentOrganization, getUserOrganizations, switchOrganization, type Organization, type OrganizationMembership } from '../services/organizationService';
+import { useAuth } from '@clerk/clerk-react';
 
 // Keep the types the same so components using them don't break
 interface TenantTheme {
@@ -15,64 +17,145 @@ interface TenantConfig {
   theme: TenantTheme;
   features: string[];
   companyId: number;
+  slug?: string;
+  userRole?: string;
 }
 
 interface TenantContextType {
-  currentTenant: TenantConfig;  // Changed to non-nullable
+  currentTenant: TenantConfig;
   setCurrentTenant: (tenant: TenantConfig) => void;
   availableTenants: TenantConfig[];
   isLoading: boolean;
+  refreshOrganization: () => Promise<void>;
+  switchToOrganization: (organizationId: string) => Promise<void>;
 }
 
-// Single default tenant configuration
-const defaultTenant: TenantConfig = {
-  id: 'default',
-  name: 'Construction Company',
-  companyId: 1,
-  theme: {
-    primaryColor: '#3C50E0',
-    secondaryColor: '#80CAEE',
-    accentColor: '#10B981',
-    logoUrl: '/images/logo/logo.svg',
-  },
-  // Include all features for the MVP
-  features: ['cashflow', 'dashboard', 'projects', 'expenses', 'income'],
+// Default theme configuration
+const defaultTheme: TenantTheme = {
+  primaryColor: '#3C50E0',
+  secondaryColor: '#80CAEE',
+  accentColor: '#10B981',
+  logoUrl: '/images/logo/logo.svg',
 };
 
-// Create the context with the default tenant
+// Default features
+const defaultFeatures = ['cashflow', 'dashboard', 'projects', 'expenses', 'income'];
+
+// Fallback tenant (usado solo si no hay organización)
+const fallbackTenant: TenantConfig = {
+  id: 'loading',
+  name: 'Loading...',
+  companyId: 0,
+  theme: defaultTheme,
+  features: defaultFeatures,
+};
+
+// Create the context
 const TenantContext = createContext<TenantContextType>({
-  currentTenant: defaultTenant,
+  currentTenant: fallbackTenant,
   setCurrentTenant: () => {},
-  availableTenants: [defaultTenant],
-  isLoading: false,
+  availableTenants: [],
+  isLoading: true,
+  refreshOrganization: async () => {},
+  switchToOrganization: async () => {},
 });
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always use the default tenant, non-nullable
-  const [currentTenant, setCurrentTenant] = useState<TenantConfig>(defaultTenant);
-  // Only include the default tenant in available tenants
-  const [availableTenants] = useState<TenantConfig[]>([defaultTenant]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentTenant, setCurrentTenant] = useState<TenantConfig>(fallbackTenant);
+  const [availableTenants, setAvailableTenants] = useState<TenantConfig[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { isSignedIn, isLoaded } = useAuth();
 
-  // Apply theme on mount
-  React.useEffect(() => {
-    document.documentElement.style.setProperty('--color-primary', defaultTenant.theme.primaryColor);
-    document.documentElement.style.setProperty('--color-secondary', defaultTenant.theme.secondaryColor);
-    document.documentElement.style.setProperty('--color-accent', defaultTenant.theme.accentColor);
-    
-    // Store default tenant in localStorage to maintain compatibility
-    localStorage.setItem('currentTenant', JSON.stringify(defaultTenant));
+  // Función para convertir Organization a TenantConfig
+  const organizationToTenant = (org: Organization): TenantConfig => ({
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    userRole: org.userRole,
+    companyId: 1, // Legacy compatibility
+    theme: defaultTheme,
+    features: defaultFeatures,
+  });
+
+  // Función para cargar organización actual
+  const loadCurrentOrganization = async () => {
+    try {
+      setIsLoading(true);
+      const org = await getCurrentOrganization();
+      const tenant = organizationToTenant(org);
+      setCurrentTenant(tenant);
+      applyTheme(tenant.theme);
+      localStorage.setItem('currentTenant', JSON.stringify(tenant));
+    } catch (error) {
+      console.error('[TenantContext] Error loading organization:', error);
+      // Mantener el tenant actual si falla
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Función para cargar organizaciones disponibles
+  const loadAvailableOrganizations = async () => {
+    try {
+      const orgs = await getUserOrganizations();
+      const tenants = orgs.map(org => organizationToTenant({
+        id: org.id,
+        name: org.name,
+        userRole: org.role
+      }));
+      setAvailableTenants(tenants);
+    } catch (error) {
+      console.error('[TenantContext] Error loading organizations:', error);
+      setAvailableTenants([]);
+    }
+  };
+
+  // Aplicar tema
+  const applyTheme = (theme: TenantTheme) => {
+    document.documentElement.style.setProperty('--color-primary', theme.primaryColor);
+    document.documentElement.style.setProperty('--color-secondary', theme.secondaryColor);
+    document.documentElement.style.setProperty('--color-accent', theme.accentColor);
+  };
+
+  // Cambiar de organización
+  const switchToOrganization = async (organizationId: string) => {
+    try {
+      setIsLoading(true);
+      await switchOrganization(organizationId);
+
+      // Recargar la organización actual
+      await loadCurrentOrganization();
+
+      // Recargar la página para actualizar todos los datos
+      window.location.reload();
+    } catch (error) {
+      console.error('[TenantContext] Error switching organization:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cargar datos al montar si el usuario está autenticado
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      loadCurrentOrganization();
+      loadAvailableOrganizations();
+    } else if (isLoaded && !isSignedIn) {
+      setIsLoading(false);
+    }
+  }, [isLoaded, isSignedIn]);
+
+  // Aplicar tema inicial
+  useEffect(() => {
+    applyTheme(defaultTheme);
   }, []);
 
-  // Keep the update function for compatibility
+  // Función de actualización manual del tenant
   const updateTenant = (tenant: TenantConfig) => {
     setCurrentTenant(tenant);
     localStorage.setItem('currentTenant', JSON.stringify(tenant));
-
-    // Apply theme changes
-    document.documentElement.style.setProperty('--color-primary', tenant.theme.primaryColor);
-    document.documentElement.style.setProperty('--color-secondary', tenant.theme.secondaryColor);
-    document.documentElement.style.setProperty('--color-accent', tenant.theme.accentColor);
+    applyTheme(tenant.theme);
   };
 
   return (
@@ -82,6 +165,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setCurrentTenant: updateTenant,
         availableTenants,
         isLoading,
+        refreshOrganization: loadCurrentOrganization,
+        switchToOrganization,
       }}
     >
       {children}

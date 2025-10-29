@@ -45,6 +45,11 @@ export const incomeDataService = {
   async getByStatus(typeId: number): Promise<any[]> {
     const response = await apiService.get(`${BASE_URL}/income-types/${typeId}/incomes-by-status`);
     return response.data;
+  },
+
+  async bulkCreate(incomes: Partial<IncomeData>[]): Promise<any> {
+    const response = await apiService.post(`${BASE_URL}/incomes/bulk`, { incomes });
+    return response;
   }
 };
 

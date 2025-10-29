@@ -33,20 +33,20 @@ import EgresossIndex from "./pages/Costs/CostsIndex";
 import { BudgetAnalyzer } from "./components/BudgetAnalyzer/BudgetAnalyzer";
 // Sistema dinámico de ingresos
 import IncomeTypesIndex from './pages/DynamicIncome/IncomeTypesIndex';
-import IncomeTypeForm from './pages/DynamicIncome/IncomeTypeForm';
+// import IncomeTypeForm from './pages/DynamicIncome/IncomeTypeForm'; // Ya no se usa - ahora es modal
 import IncomeDataList from './pages/DynamicIncome/IncomeDataList';
 import IncomeDataForm from './pages/DynamicIncome/IncomeDataForm';
 import IncomeDashboard from './pages/DynamicIncome/IncomeDashboard';
 import ConsolidatedHome from './pages/Dashboard/ConsolidatedHome';
 // Sistema dinámico de egresos
 import ExpenseTypesIndex from './pages/DynamicExpense/ExpenseTypesIndex';
-import ExpenseTypeForm from './pages/DynamicExpense/ExpenseTypeForm';
+// import ExpenseTypeForm from './pages/DynamicExpense/ExpenseTypeForm'; // Ya no se usa - ahora es modal
 import ExpenseDataList from './pages/DynamicExpense/ExpenseDataList';
 import ExpenseDataForm from './pages/DynamicExpense/ExpenseDataForm';
 import ExpenseDashboard from './pages/DynamicExpense/ExpenseDashboard';
 // Centros de costo
 import CostCentersIndex from './pages/CostCenters/CostCentersIndex';
-import CostCenterForm from './pages/CostCenters/CostCenterForm';
+// import CostCenterForm from './pages/CostCenters/CostCenterForm'; // Ya no se usa - ahora es modal
 
 // ✅ Componente que configura el token getter para apiService
 function ClerkTokenProvider() {
@@ -199,6 +199,8 @@ export default function App() {
                   <CostCentersIndex />
                 </ClerkProtectedRoute>
               } />
+              {/* Rutas de formularios comentadas - ahora se usan modales */}
+              {/*
               <Route path="/centros-costo/nuevo" element={
                 <ClerkProtectedRoute>
                   <CostCenterForm />
@@ -209,6 +211,7 @@ export default function App() {
                   <CostCenterForm />
                 </ClerkProtectedRoute>
               } />
+              */}
 
               {/* Ingresos - Sistema dinámico */}
               <Route path="/ingresos/resumen" element={
@@ -221,6 +224,8 @@ export default function App() {
                   <IncomeTypesIndex />
                 </ClerkProtectedRoute>
               } />
+              {/* Rutas de formularios comentadas - ahora se usan modales */}
+              {/*
               <Route path="/ingresos/tipos/nuevo" element={
                 <ClerkProtectedRoute>
                   <IncomeTypeForm />
@@ -231,6 +236,7 @@ export default function App() {
                   <IncomeTypeForm />
                 </ClerkProtectedRoute>
               } />
+              */}
               <Route path="/ingresos/datos/:typeName" element={
                 <ClerkProtectedRoute>
                   <IncomeDataList />
@@ -258,6 +264,8 @@ export default function App() {
                   <ExpenseTypesIndex />
                 </ClerkProtectedRoute>
               } />
+              {/* Rutas de formularios comentadas - ahora se usan modales */}
+              {/*
               <Route path="/egresos/tipos/nuevo" element={
                 <ClerkProtectedRoute>
                   <ExpenseTypeForm />
@@ -268,6 +276,7 @@ export default function App() {
                   <ExpenseTypeForm />
                 </ClerkProtectedRoute>
               } />
+              */}
               <Route path="/egresos/datos/:typeName" element={
                 <ClerkProtectedRoute>
                   <ExpenseDataList />
