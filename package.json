@@ -23,6 +23,7 @@
     "apexcharts": "^4.1.0",
     "axios": "^1.8.4",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
     "flatpickr": "^4.6.13",
     "gsap": "^3.13.0",
     "html2canvas": "^1.4.1",

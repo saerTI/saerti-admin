@@ -7,11 +7,12 @@ import { expenseStatusService } from '@/services/expenseStatusService';
 import { expenseCategoryService } from '@/services/expenseCategoryService';
 import { useCostCenter } from '@/context/CostCenterContext';
 import DatePicker from '@/components/form/date-picker';
+import BulkImportModal from '@/components/BulkImportModal';
 import type { ExpenseData, ExpenseType, ExpenseFilters, ExpenseStatus, ExpenseCategory } from '@/types/expense';
 
 export default function ExpenseDataList() {
   const { typeName } = useParams<{ typeName?: string }>();
-  const { selectedCostCenterId } = useCostCenter();
+  const { selectedCostCenterId, costCenters } = useCostCenter();
 
   const [expenses, setExpenses] = useState<ExpenseData[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
@@ -22,6 +23,7 @@ export default function ExpenseDataList() {
   const [error, setError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseData | null>(null);
   const [formData, setFormData] = useState<Partial<ExpenseData>>({});
   const [saving, setSaving] = useState(false);
@@ -240,6 +242,197 @@ export default function ExpenseDataList() {
     }));
   };
 
+  const handleBulkImport = async (data: any[]): Promise<{ success: boolean; message: string; data?: any }> => {
+    try {
+      // Agregar el expense_type_id a cada registro
+      const expensesWithType = data.map(row => {
+        // Remover _rowNumber que es solo para previsualización
+        const { _rowNumber, ...cleanRow } = row;
+        return {
+          ...cleanRow,
+          expense_type_id: currentType?.id
+        };
+      });
+
+      // Llamar al endpoint de carga masiva
+      const result = await expenseDataService.bulkCreate(expensesWithType);
+
+      // Recargar la lista de egresos
+      await loadExpenses();
+
+      // Retornar resultado estructurado para el modal
+      if (result.success) {
+        return {
+          success: true,
+          message: result.message || `Se importaron ${result.data?.success?.length || 0} registros exitosamente.`,
+          data: result.data
+        };
+      } else {
+        return {
+          success: false,
+          message: result.message || 'Ocurrió un error durante la importación.',
+          data: result.data
+        };
+      }
+    } catch (err: any) {
+      console.error('Error en importación masiva:', err);
+      return {
+        success: false,
+        message: err.response?.data?.message || err.message || 'Error durante la importación masiva.',
+        data: err.response?.data?.data
+      };
+    }
+  };
+
+  const getTemplateData = () => {
+    const columns: Array<{
+      field: string;
+      label: string;
+      type: 'text' | 'number' | 'date' | 'select';
+      required?: boolean;
+      options?: string[];
+    }> = [
+      { field: 'name', label: 'Nombre', type: 'text', required: currentType?.required_name },
+      { field: 'date', label: 'Fecha', type: 'date', required: currentType?.required_date },
+      { field: 'description', label: 'Descripción', type: 'text', required: false },
+    ];
+
+    if (currentType?.show_amount) {
+      columns.push({
+        field: 'amount',
+        label: 'Monto',
+        type: 'number',
+        required: currentType?.required_amount
+      });
+    }
+
+    if (currentType?.show_category && categories.length > 0) {
+      columns.push({
+        field: 'category_id',
+        label: 'Categoría ID',
+        type: 'select',
+        required: currentType?.required_category,
+        options: categories.map(c => `${c.id} - ${c.name}`)
+      });
+    }
+
+    if (statuses.length > 0) {
+      columns.push({
+        field: 'status_id',
+        label: 'Estado ID',
+        type: 'select',
+        required: currentType?.required_status,
+        options: statuses.map(s => `${s.id} - ${s.name}`)
+      });
+    }
+
+    if (currentType?.show_payment_method) {
+      columns.push({
+        field: 'payment_method',
+        label: 'Método de Pago',
+        type: 'select',
+        required: currentType?.required_payment_method,
+        options: ['transferencia', 'cheque', 'efectivo', 'tarjeta', 'otro']
+      });
+    }
+
+    if (currentType?.show_payment_date) {
+      columns.push({
+        field: 'payment_date',
+        label: 'Fecha de Pago',
+        type: 'date',
+        required: currentType?.required_payment_date
+      });
+    }
+
+    if (currentType?.show_payment_status) {
+      columns.push({
+        field: 'payment_status',
+        label: 'Estado de Pago',
+        type: 'select',
+        required: currentType?.required_payment_status,
+        options: ['pendiente', 'parcial', 'pagado', 'anulado']
+      });
+    }
+
+    if (currentType?.show_reference_number) {
+      columns.push({
+        field: 'reference_number',
+        label: 'Número de Referencia',
+        type: 'text',
+        required: currentType?.required_reference_number
+      });
+    }
+
+    if (currentType?.show_invoice_number) {
+      columns.push({
+        field: 'invoice_number',
+        label: 'Número de Factura',
+        type: 'text',
+        required: currentType?.required_invoice_number
+      });
+    }
+
+    if (currentType?.show_tax_amount) {
+      columns.push({
+        field: 'tax_amount',
+        label: 'Monto de IVA',
+        type: 'number',
+        required: currentType?.required_tax_amount
+      });
+    }
+
+    if (currentType?.show_net_amount) {
+      columns.push({
+        field: 'net_amount',
+        label: 'Monto Neto',
+        type: 'number',
+        required: currentType?.required_net_amount
+      });
+    }
+
+    if (currentType?.show_total_amount) {
+      columns.push({
+        field: 'total_amount',
+        label: 'Monto Total',
+        type: 'number',
+        required: currentType?.required_total_amount
+      });
+    }
+
+    if (currentType?.show_currency) {
+      columns.push({
+        field: 'currency',
+        label: 'Moneda',
+        type: 'select',
+        required: currentType?.required_currency,
+        options: ['CLP', 'USD', 'EUR']
+      });
+    }
+
+    if (currentType?.show_exchange_rate) {
+      columns.push({
+        field: 'exchange_rate',
+        label: 'Tipo de Cambio',
+        type: 'number',
+        required: currentType?.required_exchange_rate
+      });
+    }
+
+    columns.push({
+      field: 'cost_center_id',
+      label: 'Centro de Costo ID',
+      type: 'select',
+      required: currentType?.required_cost_center,
+      options: costCenters.map(cc => `${cc.id} - ${cc.code} ${cc.name}`)
+    });
+
+    return {
+      columns,
+      sheetName: currentType?.name || 'egresos'
+    };
+  };
+
   const clearAllFilters = () => {
     setClientFilters({
       search: '',
@@ -324,36 +517,45 @@ export default function ExpenseDataList() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-start mb-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {selectedType ? selectedType.name : 'Datos de Egresos'}
-            </h1>
-            <span className="px-3 py-1 text-sm font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-full">
-              Egresos
-            </span>
+    <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex-1">
+            <div className="flex items-end gap-3">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white/90">
+                {selectedType ? selectedType.name : 'Datos de Egresos'}
+              </h2>
+              {selectedType && selectedType.description && (
+                <span className="text-sm text-gray-500 dark:text-gray-400 pb-0.5">
+                  · {selectedType.description}
+                </span>
+              )}
+              {!selectedType && (
+                <span className="text-sm text-gray-500 dark:text-gray-400 pb-0.5">
+                  · Todos los egresos registrados
+                </span>
+              )}
+            </div>
           </div>
-          {selectedType ? (
-            selectedType.description && (
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                {selectedType.description}
-              </p>
-            )
-          ) : (
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Todos los egresos registrados
-            </p>
-          )}
-        </div>
         {selectedType && (
-          <button
-            onClick={() => { console.log("Button clicked!"); handleOpenModal(); }}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex-shrink-0"
-          >
-            + Nuevo Egreso
-          </button>
+          <div className="flex gap-3 flex-shrink-0">
+            <button
+              onClick={() => setIsBulkImportModalOpen(true)}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Importación Masiva
+            </button>
+            <button
+              onClick={() => { console.log("Button clicked!"); handleOpenModal(); }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              + Nuevo Egreso
+            </button>
+          </div>
         )}
       </div>
       {/* Filters */}
@@ -732,8 +934,8 @@ export default function ExpenseDataList() {
 
       {/* Modal for Create/Edit Expense */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={handleCloseModal}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -951,6 +1153,18 @@ export default function ExpenseDataList() {
           </div>
         </div>
       )}
+
+      {/* Bulk Import Modal */}
+      {selectedType && (
+        <BulkImportModal
+          isOpen={isBulkImportModalOpen}
+          onClose={() => setIsBulkImportModalOpen(false)}
+          onImport={handleBulkImport}
+          templateData={getTemplateData()}
+          entityType="expense"
+        />
+      )}
+      </div>
     </div>
   );
 }

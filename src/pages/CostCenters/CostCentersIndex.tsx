@@ -1,15 +1,16 @@
 // src/pages/CostCenters/CostCentersIndex.tsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { Plus, Building2, Pencil, Trash2 } from 'lucide-react';
 import { getCostCenters, deleteCostCenter, CostCenter } from '../../services/costCenterService';
-import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import Button from '../../components/ui/button/Button';
+import CostCenterFormModal from '../../components/CostCenterFormModal';
 
 export default function CostCentersIndex() {
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCostCenterId, setEditingCostCenterId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     loadCostCenters();
@@ -44,10 +45,23 @@ export default function CostCentersIndex() {
     }
   };
 
+  const handleOpenModal = (costCenterId?: number) => {
+    setEditingCostCenterId(costCenterId);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingCostCenterId(undefined);
+  };
+
+  const handleModalSuccess = () => {
+    loadCostCenters();
+  };
+
   if (loading) {
     return (
-      <div className="w-full px-4 py-6">
-        <PageBreadcrumb pageTitle="Centros de Costo" titleSize="2xl" />
+      <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
         <div className="flex h-60 items-center justify-center">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-brand-500 border-t-transparent"></div>
         </div>
@@ -57,8 +71,7 @@ export default function CostCentersIndex() {
 
   if (error) {
     return (
-      <div className="w-full px-4 py-6">
-        <PageBreadcrumb pageTitle="Centros de Costo" titleSize="2xl" />
+      <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
         <div className="rounded-sm border border-red-200 bg-red-50 p-4 text-center text-red-500 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-400">
           <p>{error}</p>
           <button
@@ -73,25 +86,26 @@ export default function CostCentersIndex() {
   }
 
   return (
-    <div className="w-full px-4 py-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <PageBreadcrumb pageTitle="Centros de Costo" titleSize="2xl" />
-        <Link to="/centros-costo/nuevo">
-          <Button variant="primary" size="md">
+    <div className="mx-auto max-w-screen-2xl p-2 md:p-3 2xl:p-5">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-end gap-3">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white/90">
+              Centros de Costo
+            </h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400 pb-0.5">
+              · Gestiona los centros de costo de tu organización
+            </span>
+          </div>
+          <Button variant="primary" size="md" onClick={() => handleOpenModal()}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Centro de Costo
           </Button>
-        </Link>
-      </div>
+        </div>
 
-      {/* Description */}
-      <p className="text-gray-600 dark:text-gray-400 mb-6">
-        Gestiona los centros de costo de tu organización. Los centros de costo se utilizan para organizar y analizar gastos e ingresos.
-      </p>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
@@ -133,10 +147,10 @@ export default function CostCentersIndex() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* Cost Centers Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        {/* Cost Centers Table */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/20">
@@ -192,12 +206,12 @@ export default function CostCentersIndex() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          to={`/centros-costo/${cc.id}/editar`}
+                        <button
+                          onClick={() => handleOpenModal(cc.id)}
                           className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                         >
                           <Pencil className="w-4 h-4" />
-                        </Link>
+                        </button>
                         <button
                           className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                           onClick={() => handleDelete(cc.id, cc.name)}
@@ -212,7 +226,15 @@ export default function CostCentersIndex() {
             </tbody>
           </table>
         </div>
+        </div>
       </div>
+
+      <CostCenterFormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        costCenterId={editingCostCenterId}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   );
 }
